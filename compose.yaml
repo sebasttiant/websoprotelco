@@ -1,0 +1,36 @@
+name: websoprotelco
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-websoprotelco}
+      POSTGRES_USER: ${POSTGRES_USER:-websoprotelco}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-websoprotelco_dev_password}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-websoprotelco}:${POSTGRES_PASSWORD:-websoprotelco_dev_password}@db:5432/${POSTGRES_DB:-websoprotelco}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

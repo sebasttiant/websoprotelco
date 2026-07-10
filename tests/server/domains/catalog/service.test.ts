@@ -9,7 +9,13 @@ vi.mock("@/server/db/pool", () => ({
   query: mockQuery,
 }));
 
-import { getCategories, getFeaturedProducts, getProductBySlug, getProducts } from "@/domains/catalog/service";
+import {
+  getCategories,
+  getFeaturedProducts,
+  getProductBySlug,
+  getProducts,
+  getProductsForAdmin,
+} from "@/domains/catalog/service";
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -142,5 +148,58 @@ describe("getCategories", () => {
     const categories = await getCategories();
 
     expect(categories.map((category) => category.position)).toEqual([2, 1]);
+  });
+});
+
+describe("getProductsForAdmin", () => {
+  test("includes inactive products when no status filter is applied, unlike the storefront read", async () => {
+    mockQuery.mockResolvedValueOnce([{ count: "1" }]).mockResolvedValueOnce([{
+      id: "11111111-1111-4111-8111-111111111111",
+      sku: "SP-1",
+      slug: "sp-1",
+      name: "Discontinued splicer",
+      brand: null,
+      price_cents: "1000",
+      currency: "COP",
+      stock_quantity: 0,
+      is_active: false,
+      category_name: null,
+    }]);
+
+    const result = await getProductsForAdmin();
+
+    const [countSql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    const [listSql] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(countSql).not.toContain("WHERE");
+    expect(listSql).not.toContain("p.is_active =");
+    expect(result.rows[0]).toMatchObject({ isActive: false, priceCents: 1000 });
+  });
+
+  test("narrows to only active or only inactive products when a status filter is given", async () => {
+    mockQuery.mockResolvedValueOnce([{ count: "0" }]).mockResolvedValueOnce([]);
+
+    await getProductsForAdmin({ status: "inactive" });
+
+    const [listSql, listValues] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(listSql).toContain("p.is_active = $1");
+    expect(listValues[0]).toBe(false);
+  });
+
+  test("clamps a negative page to the first page instead of producing a negative OFFSET", async () => {
+    mockQuery.mockResolvedValueOnce([{ count: "0" }]).mockResolvedValueOnce([]);
+
+    await getProductsForAdmin({ page: -5 });
+
+    const [, listValues] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(listValues.at(-1)).toBe(0);
+  });
+
+  test("clamps an absurdly large page back to page 1 rather than trusting it", async () => {
+    mockQuery.mockResolvedValueOnce([{ count: "0" }]).mockResolvedValueOnce([]);
+
+    await getProductsForAdmin({ page: 999_999_999 });
+
+    const [, listValues] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(listValues.at(-1)).toBe(0);
   });
 });

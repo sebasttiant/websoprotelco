@@ -4,9 +4,16 @@
 
 export type {
   CatalogDeleteInput,
+  CategoryAdminDetail,
   CategoryAdminInput,
+  CategoryAdminSummary,
+  CategoryOption,
   CategorySummary,
+  ProductAdminDetail,
   ProductAdminInput,
+  ProductAdminListFilters,
+  ProductAdminListResult,
+  ProductAdminSummary,
   ProductDetail,
   ProductListFilters,
   ProductSort,
@@ -25,7 +32,13 @@ export {
 
 export {
   getCategories,
+  getCategoriesForAdmin,
+  getCategoryByIdForAdmin,
+  getCategoryOptions,
+  getCategoryOptionsExcluding,
   getFeaturedProducts,
+  getProductByIdForAdmin,
   getProductBySlug,
   getProducts,
+  getProductsForAdmin,
 } from "./service";

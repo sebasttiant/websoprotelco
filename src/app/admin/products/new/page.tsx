@@ -1,24 +1,14 @@
 import Link from "next/link";
 
-import { createProduct } from "@/domains/catalog";
+import { createProduct, getCategoryOptions, type CategoryOption } from "@/domains/catalog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
-import { query } from "@/server/db/pool";
 
 export const dynamic = "force-dynamic";
 
-interface CategoryOption {
-  id: string;
-  name: string;
-}
-
 type FormAction = (formData: FormData) => Promise<void>;
 
-async function getCategories(): Promise<CategoryOption[]> {
-  return query<CategoryOption>("SELECT id, name FROM categories ORDER BY display_order ASC, name ASC");
-}
-
 export default async function NewProductPage() {
-  const categories = await getCategories();
+  const categories = await getCategoryOptions();
 
   return (
     <section className="mx-auto max-w-3xl space-y-6">

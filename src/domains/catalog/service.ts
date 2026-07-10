@@ -1,9 +1,17 @@
 import * as repository from "./repository";
 import type { ProductRow } from "./repository";
+import { PRODUCT_ADMIN_PAGE_SIZE, productAdminPageSchema } from "./schemas";
 import type {
+  CategoryAdminDetail,
   CategoryAdminInput,
+  CategoryAdminSummary,
+  CategoryOption,
   CategorySummary,
+  ProductAdminDetail,
   ProductAdminInput,
+  ProductAdminListFilters,
+  ProductAdminListResult,
+  ProductAdminSummary,
   ProductDetail,
   ProductListFilters,
   ProductSummary,
@@ -45,6 +53,64 @@ function mapCategorySummary(row: repository.CategoryRow): CategorySummary {
   };
 }
 
+function mapProductAdminSummary(row: repository.ProductAdminRow): ProductAdminSummary {
+  return {
+    id: row.id,
+    sku: row.sku,
+    slug: row.slug,
+    name: row.name,
+    brand: row.brand,
+    priceCents: toNumber(row.price_cents),
+    currency: row.currency,
+    stockQuantity: row.stock_quantity,
+    isActive: row.is_active,
+    categoryName: row.category_name,
+  };
+}
+
+function mapProductAdminDetail(row: repository.ProductAdminDetailRow): ProductAdminDetail {
+  return {
+    id: row.id,
+    categoryId: row.category_id,
+    sku: row.sku,
+    slug: row.slug,
+    name: row.name,
+    description: row.description,
+    priceCents: toNumber(row.price_cents),
+    currency: row.currency,
+    imageUrl: row.image_url,
+    brand: row.brand,
+    stockQuantity: row.stock_quantity,
+    isActive: row.is_active,
+  };
+}
+
+function mapCategoryOption(row: repository.CategoryOptionRow): CategoryOption {
+  return { id: row.id, name: row.name };
+}
+
+function mapCategoryAdminSummary(row: repository.CategoryAdminRow): CategoryAdminSummary {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    imageUrl: row.image_url,
+    displayOrder: row.display_order,
+    parentName: row.parent_name,
+  };
+}
+
+function mapCategoryAdminDetail(row: repository.CategoryAdminDetailRow): CategoryAdminDetail {
+  return {
+    id: row.id,
+    parentId: row.parent_id,
+    slug: row.slug,
+    name: row.name,
+    imageUrl: row.image_url,
+    displayOrder: row.display_order,
+  };
+}
+
 export async function getProducts(filters: ProductListFilters = {}): Promise<ProductSummary[]> {
   const rows = await repository.findActiveProducts(filters);
   return rows.map(mapProductSummary);
@@ -72,6 +138,47 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail | nu
 export async function getCategories(): Promise<CategorySummary[]> {
   const rows = await repository.findCategories();
   return rows.map(mapCategorySummary);
+}
+
+// Unlike getProducts()/getFeaturedProducts() above, this deliberately returns
+// every product regardless of `is_active` — admin staff manage the full
+// catalog, not just what customers can currently see.
+export async function getProductsForAdmin(filters: ProductAdminListFilters = {}): Promise<ProductAdminListResult> {
+  const page = productAdminPageSchema.parse(filters.page);
+  const { rows, total } = await repository.findAllProductsForAdmin({ ...filters, page });
+  const totalPages = Math.max(1, Math.ceil(total / PRODUCT_ADMIN_PAGE_SIZE));
+
+  return {
+    rows: rows.map(mapProductAdminSummary),
+    total,
+    totalPages,
+    page: Math.min(page, totalPages),
+  };
+}
+
+export async function getProductByIdForAdmin(id: string): Promise<ProductAdminDetail | null> {
+  const row = await repository.findProductByIdForAdmin(id);
+  return row ? mapProductAdminDetail(row) : null;
+}
+
+export async function getCategoryOptions(): Promise<CategoryOption[]> {
+  const rows = await repository.findCategoryOptions();
+  return rows.map(mapCategoryOption);
+}
+
+export async function getCategoryOptionsExcluding(id: string): Promise<CategoryOption[]> {
+  const rows = await repository.findCategoryOptionsExcluding(id);
+  return rows.map(mapCategoryOption);
+}
+
+export async function getCategoriesForAdmin(): Promise<CategoryAdminSummary[]> {
+  const rows = await repository.findAllCategoriesForAdmin();
+  return rows.map(mapCategoryAdminSummary);
+}
+
+export async function getCategoryByIdForAdmin(id: string): Promise<CategoryAdminDetail | null> {
+  const row = await repository.findCategoryByIdForAdmin(id);
+  return row ? mapCategoryAdminDetail(row) : null;
 }
 
 export async function createProduct(input: ProductAdminInput): Promise<void> {

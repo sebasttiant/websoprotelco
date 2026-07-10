@@ -1,24 +1,14 @@
 import Link from "next/link";
 
-import { createCategory } from "@/domains/catalog";
+import { createCategory, getCategoryOptions } from "@/domains/catalog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
-import { query } from "@/server/db/pool";
 
 export const dynamic = "force-dynamic";
 
 type FormAction = (formData: FormData) => Promise<void>;
 
-interface CategoryOption {
-  id: string;
-  name: string;
-}
-
-async function getCategories(): Promise<CategoryOption[]> {
-  return query<CategoryOption>("SELECT id, name FROM categories ORDER BY display_order ASC, name ASC");
-}
-
 export default async function NewCategoryPage() {
-  const categories = await getCategories();
+  const categories = await getCategoryOptions();
   const inputClass = "rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900";
 
   return (

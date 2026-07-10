@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { updateProduct } from "@/domains/catalog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
-import { query } from "@/server/db/pool";
+import { getCategoryOptions, getProductByIdForAdmin, updateProduct } from "@/domains/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -13,44 +12,9 @@ interface EditProductPageProps {
 
 type FormAction = (formData: FormData) => Promise<void>;
 
-interface CategoryOption {
-  id: string;
-  name: string;
-}
-
-interface ProductRow {
-  id: string;
-  category_id: string;
-  sku: string;
-  slug: string;
-  name: string;
-  description: string;
-  price_cents: string;
-  currency: string;
-  image_url: string | null;
-  brand: string | null;
-  stock_quantity: number;
-  is_active: boolean;
-}
-
-async function getCategories(): Promise<CategoryOption[]> {
-  return query<CategoryOption>("SELECT id, name FROM categories ORDER BY display_order ASC, name ASC");
-}
-
-async function getProduct(id: string): Promise<ProductRow | null> {
-  const rows = await query<ProductRow>(
-    `SELECT id, category_id, sku, slug, name, description, price_cents, currency, image_url, brand, stock_quantity, is_active
-     FROM products
-     WHERE id = $1
-     LIMIT 1`,
-    [id],
-  );
-  return rows[0] ?? null;
-}
-
 export default async function EditProductPage({ params }: EditProductPageProps) {
   const { id } = await params;
-  const [product, categories] = await Promise.all([getProduct(id), getCategories()]);
+  const [product, categories] = await Promise.all([getProductByIdForAdmin(id), getCategoryOptions()]);
 
   if (!product) {
     notFound();
@@ -72,16 +36,16 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
           <label className="grid gap-2 text-sm font-bold text-slate-700">SKU<input name="sku" required defaultValue={product.sku} className={inputClass} /></label>
           <label className="grid gap-2 text-sm font-bold text-slate-700">Slug<input name="slug" required defaultValue={product.slug} className={inputClass} /></label>
         </div>
-        <label className="grid gap-2 text-sm font-bold text-slate-700">Category<select name="categoryId" required defaultValue={product.category_id} className={inputClass}>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+        <label className="grid gap-2 text-sm font-bold text-slate-700">Category<select name="categoryId" required defaultValue={product.categoryId} className={inputClass}>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">Description<textarea name="description" defaultValue={product.description} className={inputClass} rows={4} /></label>
         <div className="grid gap-4 md:grid-cols-3">
-          <label className="grid gap-2 text-sm font-bold text-slate-700">Price cents<input name="priceCents" type="number" min="0" defaultValue={product.price_cents} className={inputClass} /></label>
+          <label className="grid gap-2 text-sm font-bold text-slate-700">Price cents<input name="priceCents" type="number" min="0" defaultValue={product.priceCents} className={inputClass} /></label>
           <label className="grid gap-2 text-sm font-bold text-slate-700">Currency<input name="currency" defaultValue={product.currency} maxLength={3} className={inputClass} /></label>
-          <label className="grid gap-2 text-sm font-bold text-slate-700">Stock<input name="stockQuantity" type="number" min="0" defaultValue={product.stock_quantity} className={inputClass} /></label>
+          <label className="grid gap-2 text-sm font-bold text-slate-700">Stock<input name="stockQuantity" type="number" min="0" defaultValue={product.stockQuantity} className={inputClass} /></label>
         </div>
         <label className="grid gap-2 text-sm font-bold text-slate-700">Brand<input name="brand" defaultValue={product.brand ?? ""} className={inputClass} /></label>
-        <ImageUploadField name="imageUrl" label="Product image" defaultValue={product.image_url} />
-        <label className="flex items-center gap-3 text-sm font-bold text-slate-700"><input type="checkbox" name="isActive" defaultChecked={product.is_active} className="h-5 w-5" /> Active</label>
+        <ImageUploadField name="imageUrl" label="Product image" defaultValue={product.imageUrl} />
+        <label className="flex items-center gap-3 text-sm font-bold text-slate-700"><input type="checkbox" name="isActive" defaultChecked={product.isActive} className="h-5 w-5" /> Active</label>
         <button type="submit" className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white">Update product</button>
       </form>
     </section>

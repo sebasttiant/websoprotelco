@@ -7,6 +7,9 @@ on:
       - main
       - "feature/**"
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     name: Lint, typecheck, test, build
@@ -59,3 +62,6 @@ jobs:
 
       - name: Build runtime image
         run: docker build --network host --target runner -t websoprotelco:ci .
+
+      - name: Build migrator image
+        run: docker build --network host --target migrator -t websoprotelco-migrator:ci .

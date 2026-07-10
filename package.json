@@ -8,9 +8,9 @@
     "pnpm": "11.9.0"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 8585",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 8585",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

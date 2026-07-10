@@ -1,7 +1,15 @@
 export const ROLES = ["admin", "staff"] as const;
 export type Role = (typeof ROLES)[number];
 
-export const PERMISSIONS = ["admin:access", "catalog:read", "catalog:write", "quote:read", "quote:write"] as const;
+export const PERMISSIONS = [
+  "admin:access",
+  "catalog:read",
+  "catalog:write",
+  "quote:read",
+  "quote:write",
+  "settings:read",
+  "settings:write",
+] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 const ROLE_SET: ReadonlySet<string> = new Set(ROLES);

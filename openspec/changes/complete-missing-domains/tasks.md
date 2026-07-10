@@ -13,19 +13,19 @@
 
 ## Phase 1: Settings Domain (PR 1)
 
-- [ ] 1.1 Create migration `0006_settings.sql` with seed data
-- [ ] 1.2 Write schema tests for settings validation
-- [ ] 1.3 Implement `src/domains/settings/schemas.ts`
-- [ ] 1.4 Write repository tests
-- [ ] 1.5 Implement `src/domains/settings/repository.ts`
-- [ ] 1.6 Write service tests
-- [ ] 1.7 Implement `src/domains/settings/service.ts`
-- [ ] 1.8 Write action tests
-- [ ] 1.9 Implement `src/domains/settings/actions.ts`
-- [ ] 1.10 Create `src/domains/settings/index.ts`
-- [ ] 1.11 Create admin page `src/app/admin/settings/page.tsx`
-- [ ] 1.12 Run gates: lint, typecheck, test, build
-- [ ] 1.13 Commit as work unit
+- [x] 1.1 Create migration `0006_settings.sql` with seed data
+- [x] 1.2 Write schema tests for settings validation
+- [x] 1.3 Implement `src/domains/settings/schemas.ts`
+- [x] 1.4 Write repository tests (covered indirectly via service tests asserting on SQL, matching the users domain convention — no repository.test.ts exists in any domain)
+- [x] 1.5 Implement `src/domains/settings/repository.ts`
+- [x] 1.6 Write service tests
+- [x] 1.7 Implement `src/domains/settings/service.ts`
+- [x] 1.8 Write action tests
+- [x] 1.9 Implement `src/domains/settings/actions.ts`
+- [x] 1.10 Create `src/domains/settings/index.ts`
+- [x] 1.11 Create admin page `src/app/admin/settings/page.tsx`
+- [x] 1.12 Run gates: lint, typecheck, test, build (all 4 green — see apply report)
+- [ ] 1.13 Commit as work unit (left for the orchestrator to review and commit)
 
 ## Phase 2: Leads Domain (PR 2)
 

@@ -1,7 +1,7 @@
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Container } from "@/components/ui/container";
-import { submitContactRequest } from "@/domains/quote-order";
+import { createLead } from "@/domains/leads";
 
 interface ContactPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -69,7 +69,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
               </div>
             ) : null}
 
-            <form action={submitContactRequest} className="grid gap-6 md:grid-cols-2">
+            <form action={createLead} className="grid gap-6 md:grid-cols-2">
               <label className="space-y-2 text-sm font-black uppercase tracking-wider text-brand-navy">
                 Nombre Completo
                 <input name="name" required placeholder="Ej: Juan Pérez" className="w-full rounded-2xl border border-brand-line bg-brand-ice p-4 font-medium normal-case tracking-normal outline-none focus:border-brand-blue" />

@@ -29,20 +29,20 @@
 
 ## Phase 2: Leads Domain (PR 2)
 
-- [ ] 2.1 Create migration `0007_leads.sql`
-- [ ] 2.2 Write schema tests for leads validation
-- [ ] 2.3 Implement `src/domains/leads/schemas.ts`
-- [ ] 2.4 Write repository tests
-- [ ] 2.5 Implement `src/domains/leads/repository.ts`
-- [ ] 2.6 Write service tests
-- [ ] 2.7 Implement `src/domains/leads/service.ts`
-- [ ] 2.8 Write action tests
-- [ ] 2.9 Implement `src/domains/leads/actions.ts`
-- [ ] 2.10 Create `src/domains/leads/index.ts`
-- [ ] 2.11 Update contact form to use leads domain
-- [ ] 2.12 Create admin page `src/app/admin/leads/page.tsx`
-- [ ] 2.13 Run gates: lint, typecheck, test, build
-- [ ] 2.14 Commit as work unit
+- [x] 2.1 Create migration `0007_leads.sql`
+- [x] 2.2 Write schema tests for leads validation
+- [x] 2.3 Implement `src/domains/leads/schemas.ts`
+- [x] 2.4 Write repository tests (covered indirectly via service tests asserting on SQL, matching the settings/users domain convention — no repository.test.ts exists in any domain)
+- [x] 2.5 Implement `src/domains/leads/repository.ts`
+- [x] 2.6 Write service tests
+- [x] 2.7 Implement `src/domains/leads/service.ts`
+- [x] 2.8 Write action tests
+- [x] 2.9 Implement `src/domains/leads/actions.ts`
+- [x] 2.10 Create `src/domains/leads/index.ts`
+- [x] 2.11 Update contact form to use leads domain
+- [x] 2.12 Create admin page `src/app/admin/leads/page.tsx` (plus `src/app/admin/leads/[id]/page.tsx` detail page for notes/assignment, and the nav link in `src/app/admin/layout.tsx`)
+- [x] 2.13 Run gates: lint, typecheck, test, build (all 4 green — see apply report)
+- [ ] 2.14 Commit as work unit (left for the orchestrator to review and commit)
 
 ## Phase 3: Inventory Domain (PR 3)
 

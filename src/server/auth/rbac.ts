@@ -9,6 +9,8 @@ export const PERMISSIONS = [
   "quote:write",
   "settings:read",
   "settings:write",
+  "leads:read",
+  "leads:write",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -16,7 +18,7 @@ const ROLE_SET: ReadonlySet<string> = new Set(ROLES);
 
 const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   admin: PERMISSIONS,
-  staff: ["catalog:read", "quote:read", "quote:write"],
+  staff: ["catalog:read", "quote:read", "quote:write", "leads:read", "leads:write"],
 };
 
 export function isRole(value: unknown): value is Role {

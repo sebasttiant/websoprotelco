@@ -38,6 +38,19 @@ describe("hasPermission", () => {
     expect(hasPermission("staff", "catalog:write")).toBe(false);
   });
 
+  test("staff has leads:read", () => {
+    expect(hasPermission("staff", "leads:read")).toBe(true);
+  });
+
+  test("staff has leads:write", () => {
+    expect(hasPermission("staff", "leads:write")).toBe(true);
+  });
+
+  test("admin has leads:read and leads:write", () => {
+    expect(hasPermission("admin", "leads:read")).toBe(true);
+    expect(hasPermission("admin", "leads:write")).toBe(true);
+  });
+
   test("fails closed for an unknown role", () => {
     const unknownRole = "superuser" as Role;
 

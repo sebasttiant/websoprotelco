@@ -36,7 +36,10 @@ Chain strategy: feature-branch-chain
 
 ## Phase 2: Server Foundations
 
-- [ ] 2.1 Create `db/schema.sql`, `db/migrations/**`, and `src/server/db/**` for canonical PostgreSQL tables and migration checks.
+- [x] 2.1 Create `db/migrations/**` and `src/server/db/**` for canonical PostgreSQL tables and migration checks.
+  - Deviation: `db/schema.sql` was intentionally not created. Ordered migrations are the single source of truth; a parallel canonical dump would be a second source that silently drifts. Regenerate a dump with `pg_dump --schema-only` if one is ever needed.
+  - Delivered: `0001_initial_schema.sql` (users, categories, products, quote_requests, quote_request_items), a checksum/ordering-guarded migration runner with an advisory lock, a validated env layer, a pooled client, and an opt-in DB health probe.
+  - Not delivered: no repository/query layer reads these tables yet, and migrations are not run as part of container start-up.
 - [ ] 2.2 Create `src/server/auth/**` with sessions, password hashing, `requireSession()`, and `requirePermission()`; test invalid credentials and bypass denial.
 - [ ] 2.3 Create `src/server/storage/**` and `src/server/notifications/**` adapters for uploads metadata and `notification_outbox`.
 

@@ -9,7 +9,7 @@ vi.mock("@/server/db/pool", () => ({
   query: mockQuery,
 }));
 
-import { getQuotes, submitQuoteRequest, updateQuoteStatus } from "@/domains/quote-order/service";
+import { getQuotes, getQuotesForCustomer, submitQuoteRequest, updateQuoteStatus } from "@/domains/quote-order/service";
 
 const quoteId = "33333333-3333-4333-8333-333333333333";
 
@@ -56,6 +56,41 @@ describe("getQuotes", () => {
       contactName: "Jane Buyer",
       contactEmail: "jane@example.test",
       itemCount: 3,
+    });
+  });
+});
+
+describe("getQuotesForCustomer", () => {
+  test("scopes the read to the exact email it is given, even a foreign one (IDOR guard)", async () => {
+    mockQuery.mockResolvedValue([]);
+
+    await getQuotesForCustomer("victim@example.test");
+
+    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("WHERE lower(contact_email) = lower($1)");
+    expect(sql).toContain("LIMIT 5");
+    expect(values).toEqual(["victim@example.test"]);
+  });
+
+  test("maps a customer quote row into a CustomerQuoteSummary", async () => {
+    mockQuery.mockResolvedValue([
+      {
+        id: quoteId,
+        reference: "WEB-1",
+        status: "received",
+        message: "Necesito fibra óptica.",
+        created_at: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+
+    const [quote] = await getQuotesForCustomer("jane@example.test");
+
+    expect(quote).toEqual({
+      id: quoteId,
+      reference: "WEB-1",
+      status: "received",
+      message: "Necesito fibra óptica.",
+      createdAt: "2026-01-01T00:00:00.000Z",
     });
   });
 });

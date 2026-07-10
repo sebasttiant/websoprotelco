@@ -1,7 +1,8 @@
 import * as repository from "./repository";
-import type { QuoteRow } from "./repository";
+import type { CustomerQuoteRow, QuoteRow } from "./repository";
 import type {
   ContactRequestInput,
+  CustomerQuoteSummary,
   QuoteListFilters,
   QuoteStatus,
   QuoteStatusUpdateInput,
@@ -59,6 +60,24 @@ export async function submitQuoteRequest(input: ContactRequestInput): Promise<vo
 export async function getQuotes(filters: QuoteListFilters = {}): Promise<QuoteSummary[]> {
   const rows = await repository.findQuotes(filters);
   return rows.map(mapQuoteSummary);
+}
+
+function mapCustomerQuoteSummary(row: CustomerQuoteRow): CustomerQuoteSummary {
+  return {
+    id: row.id,
+    reference: row.reference,
+    status: row.status,
+    message: row.message,
+    createdAt: row.created_at,
+  };
+}
+
+// Returns a customer's own recent quotes. `email` MUST be the session user's own
+// email, resolved server-side from their session — this function performs no
+// ownership check itself and trusts the email it is given as the scope.
+export async function getQuotesForCustomer(email: string): Promise<CustomerQuoteSummary[]> {
+  const rows = await repository.findQuotesByCustomerEmail(email);
+  return rows.map(mapCustomerQuoteSummary);
 }
 
 export async function updateQuoteStatus(input: QuoteStatusUpdateInput): Promise<QuoteStatusUpdateOutcome> {

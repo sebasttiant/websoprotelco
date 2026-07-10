@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { changePassword } from "@/app/cuenta/actions";
+import { changePassword } from "@/domains/users";
 
 export const dynamic = "force-dynamic";
 

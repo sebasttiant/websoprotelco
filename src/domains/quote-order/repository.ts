@@ -10,6 +10,14 @@ import { query } from "@/server/db/pool";
 
 import type { QuoteListFilters, QuoteStatus } from "./schemas";
 
+export interface CustomerQuoteRow extends QueryResultRow {
+  id: string;
+  reference: string;
+  status: QuoteStatus;
+  message: string;
+  created_at: string;
+}
+
 export interface QuoteRow extends QueryResultRow {
   id: string;
   reference: string;
@@ -60,6 +68,21 @@ export async function findQuotes(filters: QuoteListFilters = {}): Promise<QuoteR
      GROUP BY qr.id
      ORDER BY qr.created_at DESC`,
     values,
+  );
+}
+
+// Reads the most recent quote requests belonging to a single customer email.
+// The caller MUST pass the session user's own email (resolved server-side from
+// their session), never an email taken from a route param, form field, or search
+// param — this query trusts whatever email it is handed as the ownership scope.
+export async function findQuotesByCustomerEmail(email: string): Promise<CustomerQuoteRow[]> {
+  return query<CustomerQuoteRow>(
+    `SELECT id, reference, status, message, created_at
+     FROM quote_requests
+     WHERE lower(contact_email) = lower($1)
+     ORDER BY created_at DESC
+     LIMIT 5`,
+    [email],
   );
 }
 

@@ -1,30 +1,22 @@
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { getUsersForAdmin, type AdminUserSummary } from "@/domains/users";
 import { requirePermission } from "@/server/auth/guards";
-import { query } from "@/server/db/pool";
 
 export const dynamic = "force-dynamic";
 
-interface UserRow {
-  id: string;
-  email: string;
-  role: string;
-  is_active: boolean;
-  created_at: string;
-}
-
-async function getUsers(): Promise<UserRow[]> {
-  await requirePermission("admin:access");
-  return query<UserRow>("SELECT id, email, role, is_active, created_at FROM users ORDER BY created_at DESC, email ASC");
-}
-
 export default async function AdminUsersPage() {
-  const rows = await getUsers();
-  const columns: DataTableColumn<UserRow>[] = [
+  // Listing every user is an admin-only capability. The RBAC matrix grants
+  // "admin:access" to the admin role only (staff does not have it), so this guard
+  // keeps the directory admin-only. It runs before any query is issued.
+  await requirePermission("admin:access");
+
+  const rows = await getUsersForAdmin();
+  const columns: DataTableColumn<AdminUserSummary>[] = [
     { key: "email", header: "Email", render: (row) => <span className="font-black text-slate-950">{row.email}</span> },
     { key: "role", header: "Role", render: (row) => row.role },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.is_active ? "active" : "inactive"} /> },
-    { key: "created", header: "Created", render: (row) => new Date(row.created_at).toLocaleDateString("es-CO") },
+    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.isActive ? "active" : "inactive"} /> },
+    { key: "created", header: "Created", render: (row) => new Date(row.createdAt).toLocaleDateString("es-CO") },
   ];
 
   return (

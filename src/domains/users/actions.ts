@@ -7,31 +7,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireSession } from "@/server/auth/guards";
-import { hashPassword, verifyPassword } from "@/server/auth/password";
-import { query } from "@/server/db/pool";
+
+import { passwordChangeInputSchema, profileUpdateInputSchema } from "./schemas";
+import * as usersService from "./service";
 
 export interface AccountActionState {
   success: boolean;
   message: string;
-}
-
-const profileSchema = z.object({
-  name: z.string().trim().min(2, { error: "Name is required." }).max(160),
-  email: z.email({ error: "A valid email is required." }).trim().toLowerCase(),
-});
-
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, { error: "Current password is required." }),
-  newPassword: z.string().min(12, { error: "New password must be at least 12 characters." }).max(200),
-  confirmPassword: z.string().min(1, { error: "Password confirmation is required." }),
-}).superRefine((value, ctx) => {
-  if (value.newPassword !== value.confirmPassword) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["confirmPassword"], message: "Passwords do not match." });
-  }
-});
-
-interface PasswordRow {
-  password_hash: string | null;
 }
 
 function stringValue(formData: FormData, key: string): string | undefined {
@@ -53,16 +35,19 @@ function accountErrorState(error: unknown): AccountActionState {
   return { success: false, message: "The operation could not be completed." };
 }
 
+// Customer self-service. The target user id is taken from the server session as
+// the FIRST statement, never from the form, so a caller cannot update another
+// user's profile by smuggling an "id" field into the request.
 export async function updateProfile(formData: FormData): Promise<AccountActionState> {
   const user = await requireSession();
 
   try {
-    const input = profileSchema.parse({
+    const input = profileUpdateInputSchema.parse({
       name: stringValue(formData, "name"),
       email: stringValue(formData, "email"),
     });
 
-    await query("UPDATE users SET full_name = $2, email = $3 WHERE id = $1", [user.id, input.name, input.email]);
+    await usersService.updateProfile(user.id, input);
     revalidatePath("/cuenta");
     revalidatePath("/cuenta/perfil");
     redirect("/cuenta?success=profile-updated");
@@ -71,25 +56,24 @@ export async function updateProfile(formData: FormData): Promise<AccountActionSt
   }
 }
 
+// Customer self-service. Scoped to the session user's own id, and the service
+// re-verifies the current password before any new hash is written.
 export async function changePassword(formData: FormData): Promise<AccountActionState> {
   const user = await requireSession();
 
   try {
-    const input = passwordSchema.parse({
+    const input = passwordChangeInputSchema.parse({
       currentPassword: stringValue(formData, "currentPassword"),
       newPassword: stringValue(formData, "newPassword"),
       confirmPassword: stringValue(formData, "confirmPassword"),
     });
 
-    const rows = await query<PasswordRow>("SELECT password_hash FROM users WHERE id = $1 LIMIT 1", [user.id]);
-    const storedHash = rows[0]?.password_hash;
+    const outcome = await usersService.changePassword(user.id, input);
 
-    if (!storedHash || !(await verifyPassword(input.currentPassword, storedHash))) {
+    if (outcome === "invalid-current-password") {
       return { success: false, message: "Current password is incorrect." };
     }
 
-    const newHash = await hashPassword(input.newPassword);
-    await query("UPDATE users SET password_hash = $2 WHERE id = $1", [user.id, newHash]);
     revalidatePath("/cuenta");
     redirect("/cuenta?success=password-updated");
   } catch (error) {

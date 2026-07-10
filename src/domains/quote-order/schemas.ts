@@ -46,6 +46,21 @@ export const quoteListFiltersSchema = z.object({
 
 export type QuoteListFilters = z.infer<typeof quoteListFiltersSchema>;
 
+// --- Customer self-service read model ----------------------------------------
+// Recent quotes shown to a signed-in customer on their own account page. Always
+// scoped by the customer's own email (resolved server-side from their session),
+// never by an email taken from route params or form input.
+
+export const customerQuoteSummarySchema = z.object({
+  id: z.uuid(),
+  reference: z.string(),
+  status: quoteStatusSchema,
+  message: z.string(),
+  createdAt: z.string(),
+});
+
+export type CustomerQuoteSummary = z.infer<typeof customerQuoteSummarySchema>;
+
 // --- Admin mutation input ----------------------------------------------------
 
 export const quoteStatusUpdateInputSchema = z.object({

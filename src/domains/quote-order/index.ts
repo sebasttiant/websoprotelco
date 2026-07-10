@@ -4,6 +4,7 @@
 
 export type {
   ContactRequestInput,
+  CustomerQuoteSummary,
   QuoteListFilters,
   QuoteStatus,
   QuoteStatusUpdateInput,
@@ -14,4 +15,4 @@ export { isQuoteStatus, QUOTE_STATUSES } from "./schemas";
 
 export { submitContactRequest, updateQuoteStatus, type AdminActionState } from "./actions";
 
-export { getQuotes } from "./service";
+export { getQuotes, getQuotesForCustomer } from "./service";

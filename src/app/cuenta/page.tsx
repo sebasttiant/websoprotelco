@@ -1,46 +1,18 @@
 import Link from "next/link";
 
+import { getQuotesForCustomer } from "@/domains/quote-order";
+import { getAccountOverview } from "@/domains/users";
 import { requireSession } from "@/server/auth/guards";
-import { query } from "@/server/db/pool";
 
 export const dynamic = "force-dynamic";
 
-interface AccountRow {
-  email: string;
-  full_name: string | null;
-  role: string;
-  created_at: string;
-}
-
-interface QuoteRow {
-  id: string;
-  reference: string;
-  status: string;
-  message: string;
-  created_at: string;
-}
-
-async function getAccount(userId: string): Promise<AccountRow | null> {
-  const rows = await query<AccountRow>("SELECT email, full_name, role, created_at FROM users WHERE id = $1 LIMIT 1", [userId]);
-
-  return rows[0] ?? null;
-}
-
-async function getRecentQuotes(email: string): Promise<QuoteRow[]> {
-  return query<QuoteRow>(
-    `SELECT id, reference, status, message, created_at
-     FROM quote_requests
-     WHERE lower(contact_email) = lower($1)
-     ORDER BY created_at DESC
-     LIMIT 5`,
-    [email],
-  );
-}
-
 export default async function AccountPage() {
   const session = await requireSession();
-  const account = await getAccount(session.id);
-  const quotes = account ? await getRecentQuotes(account.email) : [];
+  // Both reads are scoped to the session user only: the account is fetched by the
+  // session id, and quotes are then scoped by that same account's email — never by
+  // an id or email taken from the request.
+  const account = await getAccountOverview(session.id);
+  const quotes = account ? await getQuotesForCustomer(account.email) : [];
 
   return (
     <main className="mx-auto max-w-5xl space-y-8 px-6 py-12">
@@ -54,7 +26,7 @@ export default async function AccountPage() {
         <div className="rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
           <h2 className="text-2xl font-black text-slate-950">Profile</h2>
           <dl className="mt-6 grid gap-4 text-sm">
-            <div><dt className="font-black text-slate-500">Name</dt><dd className="font-bold text-slate-950">{account?.full_name ?? "Not configured"}</dd></div>
+            <div><dt className="font-black text-slate-500">Name</dt><dd className="font-bold text-slate-950">{account?.fullName ?? "Not configured"}</dd></div>
             <div><dt className="font-black text-slate-500">Email</dt><dd className="font-bold text-slate-950">{account?.email ?? session.email}</dd></div>
             <div><dt className="font-black text-slate-500">Role</dt><dd className="font-bold text-slate-950">{account?.role ?? session.role}</dd></div>
           </dl>

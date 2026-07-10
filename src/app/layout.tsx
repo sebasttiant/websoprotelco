@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+
+import { Toast } from "@/components/ui/toast";
 
 import "./globals.css";
 
@@ -11,7 +13,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        {children}
+        <Suspense fallback={null}>
+          <Toast />
+        </Suspense>
+      </body>
     </html>
   );
 }

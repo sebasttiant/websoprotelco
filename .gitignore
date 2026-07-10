@@ -23,6 +23,14 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Local/generated AI registry artifacts
+.atl/
+.codegraph/
+
+# Runtime image uploads written by the storage adapter
+public/uploads/*
+!public/uploads/.gitkeep
+
 # OS/editor
 .DS_Store
 .idea/

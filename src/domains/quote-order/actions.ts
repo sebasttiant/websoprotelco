@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 import { z } from "zod";
 
-import { requirePermission } from "@/server/auth/guards";
+import { getCurrentUser, requirePermission } from "@/server/auth/guards";
 
 import { contactRequestInputSchema, quoteStatusUpdateInputSchema } from "./schemas";
 import * as quoteOrderService from "./service";
@@ -61,7 +61,13 @@ export async function submitContactRequest(formData: FormData): Promise<void> {
     redirect("/contacto?error=validation");
   }
 
-  await quoteOrderService.submitQuoteRequest(parsed.data);
+  // Resolve the session WITHOUT guarding: getCurrentUser returns null for guests, so
+  // unauthenticated visitors are never rejected. This is ownership binding, not an
+  // access check — an authenticated submission is tied to the session user's id, a
+  // guest submission stays NULL.
+  const user = await getCurrentUser();
+
+  await quoteOrderService.submitQuoteRequest(parsed.data, user?.id ?? null);
 
   redirect("/contacto?sent=1");
 }

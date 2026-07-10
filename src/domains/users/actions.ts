@@ -44,7 +44,6 @@ export async function updateProfile(formData: FormData): Promise<AccountActionSt
   try {
     const input = profileUpdateInputSchema.parse({
       name: stringValue(formData, "name"),
-      email: stringValue(formData, "email"),
     });
 
     await usersService.updateProfile(user.id, input);

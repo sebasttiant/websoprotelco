@@ -47,13 +47,17 @@ function createReference(): string {
   return `WEB-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
-export async function submitQuoteRequest(input: ContactRequestInput): Promise<void> {
+// `userId` is the session user's id when the request is submitted while signed in, or
+// NULL for an anonymous guest. It is resolved server-side by the caller (never taken
+// from form input) and fixes ownership at insert time.
+export async function submitQuoteRequest(input: ContactRequestInput, userId: string | null): Promise<void> {
   await repository.insertQuoteRequest({
     reference: createReference(),
     contactName: input.name,
     contactEmail: input.email,
     contactPhone: input.phone,
     message: `[${input.subject}] ${input.message}`,
+    userId,
   });
 }
 
@@ -72,11 +76,16 @@ function mapCustomerQuoteSummary(row: CustomerQuoteRow): CustomerQuoteSummary {
   };
 }
 
-// Returns a customer's own recent quotes. `email` MUST be the session user's own
-// email, resolved server-side from their session — this function performs no
-// ownership check itself and trusts the email it is given as the scope.
-export async function getQuotesForCustomer(email: string): Promise<CustomerQuoteSummary[]> {
-  const rows = await repository.findQuotesByCustomerEmail(email);
+// Returns a user's own recent quotes. `userId` MUST be the session user's own id,
+// resolved server-side from their session. A falsy id is rejected before any query
+// runs so a missing owner can never reach the database as a NULL parameter and widen
+// the scope to guest quotes.
+export async function getQuotesForUser(userId: string): Promise<CustomerQuoteSummary[]> {
+  if (!userId) {
+    return [];
+  }
+
+  const rows = await repository.findQuotesByUserId(userId);
   return rows.map(mapCustomerQuoteSummary);
 }
 

@@ -56,20 +56,36 @@ afterEach(() => {
 });
 
 describe("updateProfile", () => {
-  test("updates the authenticated user's name and email", async () => {
+  test("updates the authenticated user's name only and never touches the email column", async () => {
     mockRequireSession.mockResolvedValue({ id: userId, email: "old@soprotelco.test", role: "staff" });
     mockQuery.mockResolvedValue([]);
 
-    await expect(updateProfile(formData({ name: "SOPROTELCO Buyer", email: "Buyer@Soprotelco.test" }))).rejects.toThrow(
-      "NEXT_REDIRECT",
-    );
+    await expect(updateProfile(formData({ name: "SOPROTELCO Buyer" }))).rejects.toThrow("NEXT_REDIRECT");
 
-    expect(mockQuery).toHaveBeenCalledWith("UPDATE users SET full_name = $2, email = $3 WHERE id = $1", [
+    expect(mockQuery).toHaveBeenCalledWith("UPDATE users SET full_name = $2 WHERE id = $1", [
       userId,
       "SOPROTELCO Buyer",
-      "buyer@soprotelco.test",
     ]);
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).not.toContain("email");
     expect(mockRedirect).toHaveBeenCalledWith("/cuenta?success=profile-updated");
+  });
+
+  test("ignores a smuggled email field: a user cannot repoint their account at another address", async () => {
+    mockRequireSession.mockResolvedValue({ id: userId, email: "old@soprotelco.test", role: "staff" });
+    mockQuery.mockResolvedValue([]);
+
+    await expect(
+      updateProfile(formData({ name: "SOPROTELCO Buyer", email: "victim@soprotelco.test" })),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    // The email column is never written and the victim's address never reaches the query.
+    expect(mockQuery).toHaveBeenCalledWith("UPDATE users SET full_name = $2 WHERE id = $1", [
+      userId,
+      "SOPROTELCO Buyer",
+    ]);
+    const [, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(values).not.toContain("victim@soprotelco.test");
   });
 
   test("ignores an attacker-supplied id and scopes the update to the session user (IDOR guard)", async () => {
@@ -77,7 +93,7 @@ describe("updateProfile", () => {
     mockQuery.mockResolvedValue([]);
 
     await expect(
-      updateProfile(formData({ id: foreignId, name: "SOPROTELCO Buyer", email: "buyer@soprotelco.test" })),
+      updateProfile(formData({ id: foreignId, name: "SOPROTELCO Buyer" })),
     ).rejects.toThrow("NEXT_REDIRECT");
 
     const [, values] = mockQuery.mock.calls[0] as [string, unknown[]];
@@ -85,10 +101,10 @@ describe("updateProfile", () => {
     expect(values).not.toContain(foreignId);
   });
 
-  test("returns a validation error for an invalid email", async () => {
+  test("returns a validation error for an invalid name", async () => {
     mockRequireSession.mockResolvedValue({ id: userId, email: "old@soprotelco.test", role: "staff" });
 
-    const result = await updateProfile(formData({ name: "SOPROTELCO Buyer", email: "not-an-email" }));
+    const result = await updateProfile(formData({ name: "J" }));
 
     expect(result.success).toBe(false);
     expect(mockQuery).not.toHaveBeenCalled();

@@ -9,30 +9,54 @@ vi.mock("@/server/db/pool", () => ({
   query: mockQuery,
 }));
 
-import { getQuotes, getQuotesForCustomer, submitQuoteRequest, updateQuoteStatus } from "@/domains/quote-order/service";
+import { getQuotes, getQuotesForUser, submitQuoteRequest, updateQuoteStatus } from "@/domains/quote-order/service";
 
 const quoteId = "33333333-3333-4333-8333-333333333333";
+const userId = "22222222-2222-4222-8222-222222222222";
 
 afterEach(() => {
   vi.clearAllMocks();
 });
 
+const contactInput = {
+  name: "Jane Buyer",
+  email: "jane@example.test",
+  phone: "+57 300 000 0000",
+  subject: "Cotización de Productos",
+  message: "Necesito una cotización para fibra óptica.",
+} as const;
+
 describe("submitQuoteRequest", () => {
   test("prefixes the stored message with the subject and generates a reference", async () => {
     mockQuery.mockResolvedValue([]);
 
-    await submitQuoteRequest({
-      name: "Jane Buyer",
-      email: "jane@example.test",
-      phone: "+57 300 000 0000",
-      subject: "Cotización de Productos",
-      message: "Necesito una cotización para fibra óptica.",
-    });
+    await submitQuoteRequest(contactInput, userId);
 
     const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(sql).toContain("INSERT INTO quote_requests");
+    expect(sql).toContain("user_id");
     expect(values[0]).toMatch(/^WEB-/);
     expect(values[4]).toBe("[Cotización de Productos] Necesito una cotización para fibra óptica.");
+  });
+
+  test("binds the request to the session user's id for an authenticated submission", async () => {
+    mockQuery.mockResolvedValue([]);
+
+    await submitQuoteRequest(contactInput, userId);
+
+    const [, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    // user_id is the sixth VALUES placeholder ($6), i.e. index 5.
+    expect(values[5]).toBe(userId);
+  });
+
+  test("stores NULL for a guest submission and still inserts the request", async () => {
+    mockQuery.mockResolvedValue([]);
+
+    await submitQuoteRequest(contactInput, null);
+
+    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("INSERT INTO quote_requests");
+    expect(values[5]).toBeNull();
   });
 });
 
@@ -60,16 +84,32 @@ describe("getQuotes", () => {
   });
 });
 
-describe("getQuotesForCustomer", () => {
-  test("scopes the read to the exact email it is given, even a foreign one (IDOR guard)", async () => {
+describe("getQuotesForUser", () => {
+  test("scopes the read to the session user's id via an equality predicate, never IS NULL", async () => {
     mockQuery.mockResolvedValue([]);
 
-    await getQuotesForCustomer("victim@example.test");
+    await getQuotesForUser(userId);
 
     const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain("WHERE lower(contact_email) = lower($1)");
+    expect(sql).toContain("WHERE user_id = $1");
     expect(sql).toContain("LIMIT 5");
-    expect(values).toEqual(["victim@example.test"]);
+    // The predicate must never degrade into IS NULL, which would leak every guest quote.
+    expect(sql).not.toContain("IS NULL");
+    expect(sql).not.toContain("contact_email");
+    expect(values).toEqual([userId]);
+  });
+
+  test("returns nothing for a user with no quotes", async () => {
+    mockQuery.mockResolvedValue([]);
+
+    expect(await getQuotesForUser(userId)).toEqual([]);
+  });
+
+  test("never issues a query for a falsy user id, so guest (NULL) quotes cannot leak", async () => {
+    // A missing owner id must not reach the database as a NULL parameter that could
+    // match guest rows. The scope collapses to an empty result before any query runs.
+    expect(await getQuotesForUser("")).toEqual([]);
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 
   test("maps a customer quote row into a CustomerQuoteSummary", async () => {
@@ -83,7 +123,7 @@ describe("getQuotesForCustomer", () => {
       },
     ]);
 
-    const [quote] = await getQuotesForCustomer("jane@example.test");
+    const [quote] = await getQuotesForUser(userId);
 
     expect(quote).toEqual({
       id: quoteId,

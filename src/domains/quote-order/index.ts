@@ -15,4 +15,4 @@ export { isQuoteStatus, QUOTE_STATUSES } from "./schemas";
 
 export { submitContactRequest, updateQuoteStatus, type AdminActionState } from "./actions";
 
-export { getQuotes, getQuotesForCustomer } from "./service";
+export { getQuotes, getQuotesForUser } from "./service";

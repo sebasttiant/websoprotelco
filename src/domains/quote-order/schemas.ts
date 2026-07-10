@@ -48,8 +48,8 @@ export type QuoteListFilters = z.infer<typeof quoteListFiltersSchema>;
 
 // --- Customer self-service read model ----------------------------------------
 // Recent quotes shown to a signed-in customer on their own account page. Always
-// scoped by the customer's own email (resolved server-side from their session),
-// never by an email taken from route params or form input.
+// scoped by the customer's own user_id (resolved server-side from their session),
+// never by an email or id taken from route params or form input.
 
 export const customerQuoteSummarySchema = z.object({
   id: z.uuid(),

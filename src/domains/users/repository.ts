@@ -62,8 +62,11 @@ export async function findPasswordHashById(id: string): Promise<string | null> {
   return rows[0]?.password_hash ?? null;
 }
 
-export async function updateProfileById(id: string, fullName: string, email: string): Promise<void> {
-  await query("UPDATE users SET full_name = $2, email = $3 WHERE id = $1", [id, fullName, email]);
+// Updates the editable profile fields for exactly one user. Deliberately does NOT
+// touch the email column: email is immutable through self-service so a user cannot
+// repoint their account (and its quote history) at another address.
+export async function updateProfileById(id: string, fullName: string): Promise<void> {
+  await query("UPDATE users SET full_name = $2 WHERE id = $1", [id, fullName]);
 }
 
 export async function updatePasswordHashById(id: string, passwordHash: string): Promise<void> {

@@ -1,19 +1,21 @@
 // @vitest-environment node
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-const { mockRedirect, mockRequirePermission, mockQuery, mockRevalidatePath } = vi.hoisted(() => ({
+const { mockRedirect, mockRequirePermission, mockGetCurrentUser, mockQuery, mockRevalidatePath } = vi.hoisted(() => ({
   mockRedirect: vi.fn((url: string) => {
     const error = new Error("NEXT_REDIRECT") as Error & { digest: string };
     error.digest = `NEXT_REDIRECT;replace;${url};307;`;
     throw error;
   }),
   mockRequirePermission: vi.fn(),
+  mockGetCurrentUser: vi.fn(),
   mockQuery: vi.fn(),
   mockRevalidatePath: vi.fn(),
 }));
 
 vi.mock("@/server/auth/guards", () => ({
   requirePermission: mockRequirePermission,
+  getCurrentUser: mockGetCurrentUser,
 }));
 
 vi.mock("@/server/db/pool", () => ({
@@ -47,8 +49,11 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+const buyerId = "22222222-2222-4222-8222-222222222222";
+
 describe("public contact request submission", () => {
-  test("an unauthenticated visitor can submit a quote request", async () => {
+  test("an unauthenticated visitor can submit a quote request stored with a NULL owner", async () => {
+    mockGetCurrentUser.mockResolvedValue(null);
     mockQuery.mockResolvedValue([]);
 
     await expect(submitContactRequest(formData({
@@ -59,12 +64,32 @@ describe("public contact request submission", () => {
       message: "Necesito una cotización para fibra óptica.",
     }))).rejects.toThrow("NEXT_REDIRECT");
 
+    // The contact form must stay open: resolving the session must never guard it.
     expect(mockRequirePermission).not.toHaveBeenCalled();
     expect(mockRedirect).toHaveBeenCalledWith("/contacto?sent=1");
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("INSERT INTO quote_requests"),
-      expect.arrayContaining(["jane@example.test"]),
-    );
+
+    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("INSERT INTO quote_requests");
+    expect(values).toContain("jane@example.test");
+    // user_id ($6, index 5) is NULL for a guest submission.
+    expect(values[5]).toBeNull();
+  });
+
+  test("an authenticated submission is bound to the session user's id", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: buyerId, email: "buyer@soprotelco.test", role: "staff" });
+    mockQuery.mockResolvedValue([]);
+
+    await expect(submitContactRequest(formData({
+      name: "SOPROTELCO Buyer",
+      email: "buyer@soprotelco.test",
+      phone: "+57 300 000 0000",
+      subject: "Cotización de Productos",
+      message: "Necesito una cotización para fibra óptica.",
+    }))).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockRequirePermission).not.toHaveBeenCalled();
+    const [, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(values[5]).toBe(buyerId);
   });
 
   test("rejects invalid contact form input without inserting a quote request", async () => {

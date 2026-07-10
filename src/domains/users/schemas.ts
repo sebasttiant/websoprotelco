@@ -35,9 +35,13 @@ export type ProfileDetails = z.infer<typeof profileDetailsSchema>;
 
 // --- Self-service mutation input --------------------------------------------
 
+// Self-service profile edits change the display name only. Email is intentionally
+// NOT editable here: account ownership (including quote history) is bound to the
+// user id and email, so a user must not be able to repoint their account at another
+// address. Unknown keys such as a smuggled "email" are stripped by Zod's default
+// object parsing and never reach the update.
 export const profileUpdateInputSchema = z.object({
   name: z.string().trim().min(2, { error: "Name is required." }).max(160),
-  email: z.email({ error: "A valid email is required." }).trim().toLowerCase(),
 });
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateInputSchema>;

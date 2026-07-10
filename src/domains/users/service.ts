@@ -57,7 +57,7 @@ export async function getProfileDetails(userId: string): Promise<ProfileDetails 
 }
 
 export async function updateProfile(userId: string, input: ProfileUpdateInput): Promise<void> {
-  await repository.updateProfileById(userId, input.name, input.email);
+  await repository.updateProfileById(userId, input.name);
 }
 
 // Re-verifies the caller's current password before writing a new hash. If the

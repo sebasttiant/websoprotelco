@@ -40,13 +40,17 @@ export interface NewQuoteRequest {
   contactEmail: string;
   contactPhone: string;
   message: string;
+  // Owner of the request: the session user's id for an authenticated submission, or
+  // NULL for an anonymous guest. Ownership is fixed at insert time and never derived
+  // from the mutable contact_email afterwards.
+  userId: string | null;
 }
 
 export async function insertQuoteRequest(input: NewQuoteRequest): Promise<void> {
   await query(
-    `INSERT INTO quote_requests (reference, contact_name, contact_email, contact_phone, message)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [input.reference, input.contactName, input.contactEmail, input.contactPhone, input.message],
+    `INSERT INTO quote_requests (reference, contact_name, contact_email, contact_phone, message, user_id)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [input.reference, input.contactName, input.contactEmail, input.contactPhone, input.message, input.userId],
   );
 }
 
@@ -71,18 +75,19 @@ export async function findQuotes(filters: QuoteListFilters = {}): Promise<QuoteR
   );
 }
 
-// Reads the most recent quote requests belonging to a single customer email.
-// The caller MUST pass the session user's own email (resolved server-side from
-// their session), never an email taken from a route param, form field, or search
-// param — this query trusts whatever email it is handed as the ownership scope.
-export async function findQuotesByCustomerEmail(email: string): Promise<CustomerQuoteRow[]> {
+// Reads the most recent quote requests owned by a single user. The caller MUST pass
+// the session user's own id, resolved server-side from their session. Ownership is
+// bound to the immutable user_id column, so a user can never widen this scope by
+// editing their email. Guest quotes (user_id IS NULL) can never match this equality
+// predicate, so they never surface in any account history.
+export async function findQuotesByUserId(userId: string): Promise<CustomerQuoteRow[]> {
   return query<CustomerQuoteRow>(
     `SELECT id, reference, status, message, created_at
      FROM quote_requests
-     WHERE lower(contact_email) = lower($1)
+     WHERE user_id = $1
      ORDER BY created_at DESC
      LIMIT 5`,
-    [email],
+    [userId],
   );
 }
 

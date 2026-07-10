@@ -6,7 +6,7 @@ import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
-import { getProductBySlug } from "@/server/db/queries/products";
+import { getProductBySlug } from "@/domains/catalog";
 
 export const dynamic = "force-dynamic";
 

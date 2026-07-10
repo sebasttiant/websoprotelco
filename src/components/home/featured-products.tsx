@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ProductCard } from "@/components/catalog/product-card";
 import { Container } from "@/components/ui/container";
-import type { ProductSummary } from "@/server/db/queries/products";
+import type { ProductSummary } from "@/domains/catalog";
 
 interface FeaturedProductsProps {
   products: ProductSummary[];

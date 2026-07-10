@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { createCategory } from "@/app/admin/actions";
+import { createCategory } from "@/domains/catalog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { query } from "@/server/db/pool";
 

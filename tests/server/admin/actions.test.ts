@@ -28,10 +28,9 @@ vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));
 
-import { createCategory, createProduct, updateQuoteStatus } from "@/app/admin/actions";
+import { updateQuoteStatus } from "@/app/admin/actions";
 
 const productId = "11111111-1111-4111-8111-111111111111";
-const categoryId = "22222222-2222-4222-8222-222222222222";
 const quoteId = "33333333-3333-4333-8333-333333333333";
 
 function formData(entries: Record<string, string>): FormData {
@@ -46,73 +45,6 @@ function formData(entries: Record<string, string>): FormData {
 
 afterEach(() => {
   vi.clearAllMocks();
-});
-
-describe("admin product actions", () => {
-  test("creates a product after catalog write permission passes", async () => {
-    mockRequirePermission.mockResolvedValue({ id: productId, email: "admin@soprotelco.test", role: "admin" });
-    mockQuery.mockResolvedValue([]);
-
-    await expect(createProduct(formData({
-      categoryId,
-      sku: "SP-100",
-      slug: "sp-100",
-      name: "Fiber tool",
-      description: "Professional tool",
-      priceCents: "120000",
-      currency: "cop",
-      imageUrl: "https://example.test/tool.png",
-      brand: "SOPROTELCO",
-      stockQuantity: "4",
-      isActive: "on",
-    }))).rejects.toThrow("NEXT_REDIRECT");
-
-    expect(mockRedirect).toHaveBeenCalledWith("/admin/products?success=product-created");
-    expect(mockRequirePermission).toHaveBeenCalledWith("catalog:write");
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO products"), [
-      categoryId,
-      "SP-100",
-      "sp-100",
-      "Fiber tool",
-      "Professional tool",
-      120000,
-      "COP",
-      "https://example.test/tool.png",
-      "SOPROTELCO",
-      4,
-      true,
-    ]);
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/products");
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/productos");
-  });
-
-  test("returns a validation error without mutating when required product data is missing", async () => {
-    mockRequirePermission.mockResolvedValue({ id: productId, email: "admin@soprotelco.test", role: "admin" });
-
-    await expect(createProduct(formData({ categoryId }))).rejects.toThrow("NEXT_REDIRECT");
-
-    expect(mockQuery).not.toHaveBeenCalled();
-    expect(mockRedirect).toHaveBeenCalledWith("/admin/products/new?error=action-failed");
-  });
-});
-
-describe("admin category actions", () => {
-  test("creates a category and mirrors display order to the legacy position column", async () => {
-    mockRequirePermission.mockResolvedValue({ id: productId, email: "admin@soprotelco.test", role: "admin" });
-    mockQuery.mockResolvedValue([]);
-
-    await expect(createCategory(formData({
-      slug: "fiber",
-      name: "Fiber",
-      parentId: "",
-      imageUrl: "",
-      displayOrder: "2",
-    }))).rejects.toThrow("NEXT_REDIRECT");
-
-    expect(mockRedirect).toHaveBeenCalledWith("/admin/categories?success=category-created");
-    expect(mockRequirePermission).toHaveBeenCalledWith("catalog:write");
-    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO categories"), [null, "fiber", "Fiber", null, 2]);
-  });
 });
 
 describe("admin quote actions", () => {

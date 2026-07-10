@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import type { ProductSummary } from "@/server/db/queries/products";
+import type { ProductSummary } from "@/domains/catalog";
 
 interface ProductCardProps {
   product: ProductSummary;

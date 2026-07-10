@@ -5,8 +5,7 @@ import { ProductCard } from "@/components/catalog/product-card";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Container } from "@/components/ui/container";
-import { getCategories } from "@/server/db/queries/categories";
-import { getProducts, type ProductSort } from "@/server/db/queries/products";
+import { getCategories, getProducts, type ProductSort } from "@/domains/catalog";
 
 export const dynamic = "force-dynamic";
 

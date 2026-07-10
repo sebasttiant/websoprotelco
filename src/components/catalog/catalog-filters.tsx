@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import type { CategorySummary } from "@/server/db/queries/categories";
+import type { CategorySummary } from "@/domains/catalog";
 
 interface CatalogFiltersProps {
   categories: CategorySummary[];

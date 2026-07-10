@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { updateCategory } from "@/app/admin/actions";
+import { updateCategory } from "@/domains/catalog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { query } from "@/server/db/pool";
 

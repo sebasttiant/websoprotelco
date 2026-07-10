@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
-import { deleteCategory } from "@/app/admin/actions";
+import { deleteCategory } from "@/domains/catalog";
 import { query } from "@/server/db/pool";
 
 export const dynamic = "force-dynamic";

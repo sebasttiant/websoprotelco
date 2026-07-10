@@ -11,6 +11,8 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
       "@tests": fileURLToPath(new URL("./tests", import.meta.url)),
+      // Next rewrites this specifier when bundling; Vitest runs under Node and cannot.
+      "server-only": fileURLToPath(new URL("./tests/helpers/server-only-stub.ts", import.meta.url)),
     },
   },
   test: {

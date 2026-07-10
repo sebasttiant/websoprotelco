@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { createProduct } from "@/app/admin/actions";
+import { createProduct } from "@/domains/catalog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { query } from "@/server/db/pool";
 

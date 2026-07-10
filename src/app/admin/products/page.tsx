@@ -4,7 +4,7 @@ import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { SearchInput } from "@/components/admin/search-input";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { deleteProduct } from "@/app/admin/actions";
+import { deleteProduct } from "@/domains/catalog";
 import { query } from "@/server/db/pool";
 
 export const dynamic = "force-dynamic";

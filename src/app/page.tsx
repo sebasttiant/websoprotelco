@@ -4,7 +4,7 @@ import { Support } from "@/components/home/support";
 import { Ticker } from "@/components/home/ticker";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
-import { getFeaturedProducts } from "@/server/db/queries/products";
+import { getFeaturedProducts } from "@/domains/catalog";
 
 export const dynamic = "force-dynamic";
 

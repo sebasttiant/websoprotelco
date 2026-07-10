@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:db:reset": "tsx tests/helpers/reset-database.ts",
-    "test:db:seed": "tsx tests/helpers/seed-database.ts"
+    "test:db:seed": "tsx tests/helpers/seed-database.ts",
+    "db:migrate": "tsx scripts/db-migrate.ts"
   },
   "dependencies": {
     "next": "16.2.10",

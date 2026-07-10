@@ -18,7 +18,7 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
-import { updateQuoteStatus } from "@/app/admin/actions";
+import { updateQuoteStatus } from "@/domains/quote-order/actions";
 
 const quoteId = "33333333-3333-4333-8333-333333333333";
 
@@ -34,8 +34,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("admin action guards", () => {
-  test("does not read or update quote status when quote permission is denied", async () => {
+describe("quote-order action guards", () => {
+  test("a user without the quote permission is rejected before any query runs", async () => {
     mockRequirePermission.mockRejectedValue(new Error("NOT_FOUND"));
 
     await expect(updateQuoteStatus(formData({ id: quoteId, status: "in_review" }))).rejects.toThrow("NOT_FOUND");

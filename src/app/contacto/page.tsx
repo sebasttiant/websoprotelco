@@ -1,7 +1,7 @@
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Container } from "@/components/ui/container";
-import { submitContactRequest } from "./actions";
+import { submitContactRequest } from "@/domains/quote-order";
 
 interface ContactPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

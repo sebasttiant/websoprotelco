@@ -28,9 +28,9 @@ vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
 }));
 
-import { updateQuoteStatus } from "@/app/admin/actions";
+import { submitContactRequest, updateQuoteStatus } from "@/domains/quote-order/actions";
 
-const productId = "11111111-1111-4111-8111-111111111111";
+const staffId = "11111111-1111-4111-8111-111111111111";
 const quoteId = "33333333-3333-4333-8333-333333333333";
 
 function formData(entries: Record<string, string>): FormData {
@@ -47,9 +47,43 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("admin quote actions", () => {
+describe("public contact request submission", () => {
+  test("an unauthenticated visitor can submit a quote request", async () => {
+    mockQuery.mockResolvedValue([]);
+
+    await expect(submitContactRequest(formData({
+      name: "Jane Buyer",
+      email: "jane@example.test",
+      phone: "+57 300 000 0000",
+      subject: "Cotización de Productos",
+      message: "Necesito una cotización para fibra óptica.",
+    }))).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockRequirePermission).not.toHaveBeenCalled();
+    expect(mockRedirect).toHaveBeenCalledWith("/contacto?sent=1");
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO quote_requests"),
+      expect.arrayContaining(["jane@example.test"]),
+    );
+  });
+
+  test("rejects invalid contact form input without inserting a quote request", async () => {
+    await expect(submitContactRequest(formData({
+      name: "J",
+      email: "not-an-email",
+      phone: "123",
+      subject: "Hi",
+      message: "Too short",
+    }))).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockRedirect).toHaveBeenCalledWith("/contacto?error=validation");
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe("admin quote status transition", () => {
   test("updates a valid quote status transition", async () => {
-    mockRequirePermission.mockResolvedValue({ id: productId, email: "staff@soprotelco.test", role: "staff" });
+    mockRequirePermission.mockResolvedValue({ id: staffId, email: "staff@soprotelco.test", role: "staff" });
     mockQuery.mockResolvedValueOnce([{ status: "received" }]).mockResolvedValueOnce([]);
 
     await expect(updateQuoteStatus(formData({ id: quoteId, status: "in_review" }))).rejects.toThrow("NEXT_REDIRECT");
@@ -61,12 +95,13 @@ describe("admin quote actions", () => {
   });
 
   test("rejects invalid quote status transitions without updating", async () => {
-    mockRequirePermission.mockResolvedValue({ id: productId, email: "staff@soprotelco.test", role: "staff" });
+    mockRequirePermission.mockResolvedValue({ id: staffId, email: "staff@soprotelco.test", role: "staff" });
     mockQuery.mockResolvedValueOnce([{ status: "won" }]);
 
     await expect(updateQuoteStatus(formData({ id: quoteId, status: "lost" }))).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mockQuery).toHaveBeenCalledTimes(1);
     expect(mockRedirect).toHaveBeenCalledWith("/admin/quotes?error=action-failed");
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 });

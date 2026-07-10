@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { Container } from "@/components/ui/container";
-import { Logo } from "@/components/ui/logo";
 
 const NAV_LINKS = [
   { href: "/", label: "Inicio" },
@@ -14,7 +13,10 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/90 backdrop-blur-xl shadow-sm shadow-blue-950/5">
       <Container className="flex items-center justify-between py-4">
         <Link href="/" className="flex items-center gap-3" aria-label="SOPROTELCO home">
-          <Logo variant="full" />
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand-navy text-sm font-black text-white shadow-lg shadow-blue-950/20">
+            SP
+          </span>
+          <span className="hidden text-sm font-black uppercase tracking-widest text-brand-navy sm:block">SOPROTELCO</span>
         </Link>
 
         <nav className="hidden items-center gap-10 text-sm font-black text-brand-navy md:flex" aria-label="Main navigation">

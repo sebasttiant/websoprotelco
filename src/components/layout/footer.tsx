@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { Container } from "@/components/ui/container";
-import { Logo } from "@/components/ui/logo";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -12,7 +11,8 @@ export function Footer() {
         <div className="grid gap-10 md:grid-cols-4">
           <div className="space-y-5 md:col-span-2">
             <Link href="/" className="inline-flex items-center gap-3 text-brand-navy">
-              <Logo variant="full" />
+              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand-navy text-xs font-black text-white">SP</span>
+              <span className="font-black uppercase tracking-widest">SOPROTELCO SAS</span>
             </Link>
             <p className="max-w-md text-sm font-medium leading-7">
               Soluciones integrales en telecomunicaciones, fibra óptica, redes y conectividad para proyectos empresariales en Colombia.

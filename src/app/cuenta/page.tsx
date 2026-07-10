@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { getQuotesForCustomer } from "@/domains/quote-order";
+import { getQuotesForUser } from "@/domains/quote-order";
 import { getAccountOverview } from "@/domains/users";
 import { requireSession } from "@/server/auth/guards";
 
@@ -12,7 +12,7 @@ export default async function AccountPage() {
   // session id, and quotes are then scoped by that same account's email — never by
   // an id or email taken from the request.
   const account = await getAccountOverview(session.id);
-  const quotes = account ? await getQuotesForCustomer(account.email) : [];
+  const quotes = account ? await getQuotesForUser(session.id) : [];
 
   return (
     <main className="mx-auto max-w-5xl space-y-8 px-6 py-12">

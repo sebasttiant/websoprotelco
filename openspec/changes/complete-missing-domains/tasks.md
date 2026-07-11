@@ -62,19 +62,19 @@
 
 ## Phase 4: Documents Domain (PR 4)
 
-- [ ] 4.1 Create migration `0009_documents.sql`
-- [ ] 4.2 Write schema tests for documents
-- [ ] 4.3 Implement `src/domains/documents/schemas.ts`
-- [ ] 4.4 Write repository tests
-- [ ] 4.5 Implement `src/domains/documents/repository.ts`
-- [ ] 4.6 Write service tests
-- [ ] 4.7 Implement `src/domains/documents/service.ts`
-- [ ] 4.8 Write action tests
-- [ ] 4.9 Implement `src/domains/documents/actions.ts`
-- [ ] 4.10 Create `src/domains/documents/index.ts`
-- [ ] 4.11 Create admin page `src/app/admin/documents/page.tsx`
-- [ ] 4.12 Run gates: lint, typecheck, test, build
-- [ ] 4.13 Commit as work unit
+- [x] 4.1 Create migration `0009_documents.sql`
+- [x] 4.2 Write schema tests for documents
+- [x] 4.3 Implement `src/domains/documents/schemas.ts`
+- [x] 4.4 Write repository tests (covered indirectly via service tests asserting on SQL, matching the settings/leads/inventory domain convention — no repository.test.ts exists in any domain)
+- [x] 4.5 Implement `src/domains/documents/repository.ts`
+- [x] 4.6 Write service tests
+- [x] 4.7 Implement `src/domains/documents/service.ts`
+- [x] 4.8 Write action tests
+- [x] 4.9 Implement `src/domains/documents/actions.ts`
+- [x] 4.10 Create `src/domains/documents/index.ts`
+- [x] 4.11 Create admin page `src/app/admin/documents/page.tsx` (plus `src/app/api/documents/upload/route.ts`, `src/components/admin/document-upload-field.tsx`, storage adapter extensions in `src/server/storage/*`, `documents:read`/`documents:write` permissions in `src/server/auth/rbac.ts`, and the nav link in `src/app/admin/layout.tsx`)
+- [x] 4.12 Run gates: lint, typecheck, test, build (all 4 green — see apply report)
+- [x] 4.13 Commit as two work units (core + actions/admin/API)
 
 ## Phase 5: Design Domain (PR 5)
 

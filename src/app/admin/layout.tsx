@@ -24,6 +24,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
             <Link href="/admin/settings" className="hover:text-brand-blue">Settings</Link>
             <Link href="/admin/leads" className="hover:text-brand-blue">Leads</Link>
             <Link href="/admin/inventory" className="hover:text-brand-blue">Inventory</Link>
+            <Link href="/admin/documents" className="hover:text-brand-blue">Documents</Link>
           </nav>
         </div>
         <form action={signOut}>

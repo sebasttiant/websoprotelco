@@ -15,6 +15,8 @@ export const PERMISSIONS = [
   "inventory:write",
   "documents:read",
   "documents:write",
+  "design:read",
+  "design:write",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 

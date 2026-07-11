@@ -32,6 +32,10 @@ export interface DocumentStorageAdapter {
   deleteFile(pathname: string): Promise<void>;
 }
 
+export interface DesignImageStorageAdapter {
+  saveDesignImage(file: File, target: "banners" | "hero"): Promise<StoredFile>;
+}
+
 export interface UploadValidationResult {
   valid: boolean;
   error?: string;
@@ -111,6 +115,12 @@ export async function validateDocumentFile(file: File | null): Promise<UploadVal
 }
 
 export async function createDocumentStorageAdapter(): Promise<DocumentStorageAdapter> {
+  const { createLocalStorageAdapter } = await import("./local");
+
+  return createLocalStorageAdapter();
+}
+
+export async function createDesignImageStorageAdapter(): Promise<DesignImageStorageAdapter> {
   const { createLocalStorageAdapter } = await import("./local");
 
   return createLocalStorageAdapter();

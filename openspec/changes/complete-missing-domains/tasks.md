@@ -78,18 +78,18 @@
 
 ## Phase 5: Design Domain (PR 5)
 
-- [ ] 5.1 Create migration `0010_design.sql`
-- [ ] 5.2 Write schema tests for banners
-- [ ] 5.3 Implement `src/domains/design/schemas.ts`
-- [ ] 5.4 Write repository tests
-- [ ] 5.5 Implement `src/domains/design/repository.ts`
-- [ ] 5.6 Write service tests
-- [ ] 5.7 Implement `src/domains/design/service.ts`
-- [ ] 5.8 Write action tests
-- [ ] 5.9 Implement `src/domains/design/actions.ts`
-- [ ] 5.10 Create `src/domains/design/index.ts`
-- [ ] 5.11 Create admin page `src/app/admin/design/page.tsx`
-- [ ] 5.12 Run gates: lint, typecheck, test, build
+- [x] 5.1 Create migration `0010_design.sql`
+- [x] 5.2 Write schema tests for banners
+- [x] 5.3 Implement `src/domains/design/schemas.ts`
+- [x] 5.4 Write repository tests (covered indirectly via service tests asserting on SQL, matching previous domain convention)
+- [x] 5.5 Implement `src/domains/design/repository.ts`
+- [x] 5.6 Write service tests
+- [x] 5.7 Implement `src/domains/design/service.ts`
+- [x] 5.8 Write action tests
+- [x] 5.9 Implement `src/domains/design/actions.ts`
+- [x] 5.10 Create `src/domains/design/index.ts`
+- [x] 5.11 Create admin page `src/app/admin/design/page.tsx` (plus `src/app/api/design/upload/route.ts`, `src/components/admin/design-image-upload-field.tsx`, storage adapter extensions, `design:read`/`design:write` permissions, and the nav link in `src/app/admin/layout.tsx`)
+- [x] 5.12 Run gates: lint, typecheck, test, build (all 4 green — see apply report)
 - [ ] 5.13 Commit as work unit
 
 ## Critical Rules

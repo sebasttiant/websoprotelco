@@ -2,11 +2,19 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
-import { ALLOWED_IMAGE_TYPES, type DocumentStorageAdapter, type StorageAdapter, type StoredFile } from "./index";
+import {
+  ALLOWED_IMAGE_TYPES,
+  type DesignImageStorageAdapter,
+  type DocumentStorageAdapter,
+  type StorageAdapter,
+  type StoredFile,
+} from "./index";
 
 const uploadDirectory = path.join(process.cwd(), "public", "uploads");
 const publicDirectory = path.join(process.cwd(), "public");
 const documentsDirectory = path.join(publicDirectory, "documents");
+const bannerUploadsDirectory = path.join(uploadDirectory, "banners");
+const heroUploadsDirectory = path.join(uploadDirectory, "hero");
 
 const EXTENSIONS_BY_TYPE: Readonly<Record<string, string>> = {
   [ALLOWED_IMAGE_TYPES.JPEG]: "jpg",
@@ -48,6 +56,17 @@ export function sanitizeDocumentFilename(rawName: string): string {
   return `${truncated || "document"}.pdf`;
 }
 
+export function sanitizeImageFilename(rawName: string, extension: string): string {
+  const segment = lastPathSegment(rawName ?? "");
+  const sanitized = segment.replace(UNSAFE_FILENAME_CHARACTERS, "_").replace(/_+/g, "_");
+  const lastDotIndex = sanitized.lastIndexOf(".");
+  const base = lastDotIndex > -1 ? sanitized.slice(0, lastDotIndex) : sanitized;
+  const withoutLeadingDots = base.replace(/^\.+/, "");
+  const truncated = withoutLeadingDots.slice(0, MAX_DOCUMENT_BASENAME_LENGTH);
+
+  return `${truncated || "image"}.${extension}`;
+}
+
 // Defends against a sanitized-but-still-malicious path (or a programming error) landing
 // outside the documents directory. `path.resolve` collapses any remaining `..` segments
 // before the comparison, so this is the actual containment check, not the sanitizer.
@@ -68,7 +87,7 @@ function resolvePublicPath(pathname: string): string {
   return path.join(publicDirectory, relative);
 }
 
-export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAdapter {
+export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAdapter & DesignImageStorageAdapter {
   return {
     async save(file: File): Promise<StoredFile> {
       const extension = EXTENSIONS_BY_TYPE[file.type] ?? "bin";
@@ -101,6 +120,26 @@ export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAda
 
       return {
         url: `/documents/${safeCategory}/${storedFilename}`,
+        pathname,
+      };
+    },
+
+    async saveDesignImage(file: File, target: "banners" | "hero"): Promise<StoredFile> {
+      const extension = EXTENSIONS_BY_TYPE[file.type] ?? "bin";
+      const safeFilename = sanitizeImageFilename(file.name, extension);
+      const storedFilename = `${randomUUID()}_${safeFilename}`;
+      const targetDirectory = target === "hero" ? heroUploadsDirectory : bannerUploadsDirectory;
+      const pathname = path.join(targetDirectory, storedFilename);
+
+      assertWithinDirectory(uploadDirectory, pathname);
+
+      const bytes = Buffer.from(await file.arrayBuffer());
+
+      await mkdir(targetDirectory, { recursive: true });
+      await writeFile(pathname, bytes, { flag: "wx" });
+
+      return {
+        url: `/uploads/${target}/${storedFilename}`,
         pathname,
       };
     },

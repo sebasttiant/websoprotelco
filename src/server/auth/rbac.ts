@@ -13,6 +13,8 @@ export const PERMISSIONS = [
   "leads:write",
   "inventory:read",
   "inventory:write",
+  "documents:read",
+  "documents:write",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -28,6 +30,8 @@ const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "leads:write",
     "inventory:read",
     "inventory:write",
+    "documents:read",
+    "documents:write",
   ],
 };
 

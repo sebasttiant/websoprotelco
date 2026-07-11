@@ -8,6 +8,14 @@ export type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[keyof typeof ALLOWED
 
 export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 
+export const ALLOWED_DOCUMENT_TYPES = {
+  PDF: "application/pdf",
+} as const;
+
+export type AllowedDocumentType = (typeof ALLOWED_DOCUMENT_TYPES)[keyof typeof ALLOWED_DOCUMENT_TYPES];
+
+export const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
+
 export interface StoredFile {
   url: string;
   pathname: string;
@@ -15,6 +23,13 @@ export interface StoredFile {
 
 export interface StorageAdapter {
   save(file: File): Promise<StoredFile>;
+}
+
+// Kept separate from `StorageAdapter` so image-only callers are not forced to depend on
+// document methods. `createLocalStorageAdapter()` returns an object implementing both.
+export interface DocumentStorageAdapter {
+  saveDocument(file: File, category: string): Promise<StoredFile>;
+  deleteFile(pathname: string): Promise<void>;
 }
 
 export interface UploadValidationResult {
@@ -65,6 +80,37 @@ export async function validateUploadFile(file: File | null): Promise<UploadValid
 }
 
 export async function createStorageAdapter(): Promise<StorageAdapter> {
+  const { createLocalStorageAdapter } = await import("./local");
+
+  return createLocalStorageAdapter();
+}
+
+// %PDF- (the PDF file signature required by every valid PDF, regardless of version).
+const PDF_SIGNATURE = [0x25, 0x50, 0x44, 0x46, 0x2d] as const;
+
+export async function validateDocumentFile(file: File | null): Promise<UploadValidationResult> {
+  if (!file || file.size === 0) {
+    return { valid: false, error: "Document file is required." };
+  }
+
+  if (file.type !== ALLOWED_DOCUMENT_TYPES.PDF) {
+    return { valid: false, error: "Only PDF documents are allowed." };
+  }
+
+  if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+    return { valid: false, error: "Document must be 10MB or smaller." };
+  }
+
+  const bytes = new Uint8Array(await file.slice(0, PDF_SIGNATURE.length).arrayBuffer());
+
+  if (!hasSignature(bytes, PDF_SIGNATURE)) {
+    return { valid: false, error: "Document content does not match the declared file type." };
+  }
+
+  return { valid: true };
+}
+
+export async function createDocumentStorageAdapter(): Promise<DocumentStorageAdapter> {
   const { createLocalStorageAdapter } = await import("./local");
 
   return createLocalStorageAdapter();

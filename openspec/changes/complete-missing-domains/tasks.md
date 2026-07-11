@@ -90,7 +90,7 @@
 - [x] 5.10 Create `src/domains/design/index.ts`
 - [x] 5.11 Create admin page `src/app/admin/design/page.tsx` (plus `src/app/api/design/upload/route.ts`, `src/components/admin/design-image-upload-field.tsx`, storage adapter extensions, `design:read`/`design:write` permissions, and the nav link in `src/app/admin/layout.tsx`)
 - [x] 5.12 Run gates: lint, typecheck, test, build (all 4 green — see apply report)
-- [ ] 5.13 Commit as work unit
+- [x] 5.13 Commit as two work units (core + admin/upload surface)
 
 ## Critical Rules
 

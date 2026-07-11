@@ -51,6 +51,19 @@ describe("hasPermission", () => {
     expect(hasPermission("admin", "leads:write")).toBe(true);
   });
 
+  test("staff has inventory:read", () => {
+    expect(hasPermission("staff", "inventory:read")).toBe(true);
+  });
+
+  test("staff has inventory:write", () => {
+    expect(hasPermission("staff", "inventory:write")).toBe(true);
+  });
+
+  test("admin has inventory:read and inventory:write", () => {
+    expect(hasPermission("admin", "inventory:read")).toBe(true);
+    expect(hasPermission("admin", "inventory:write")).toBe(true);
+  });
+
   test("fails closed for an unknown role", () => {
     const unknownRole = "superuser" as Role;
 

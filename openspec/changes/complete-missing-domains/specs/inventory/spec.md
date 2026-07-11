@@ -80,3 +80,11 @@ CREATE INDEX idx_stock_movements_created_at ON stock_movements(created_at DESC);
 - Read inventory: requires `inventory:read` permission
 - Write inventory: requires `inventory:write` permission
 - Admin and staff roles have both permissions
+
+## Implementation Notes
+
+The low-stock threshold from REQ-3/Scenario 4 is implemented as a single global parameter
+(`DEFAULT_LOW_STOCK_THRESHOLD = 10`), overridable per request via the admin page's `threshold`
+query parameter, rather than a per-product minimum. A per-product threshold (as implied by
+Scenario 4) is deferred: `design.md` forbids altering existing tables, `products` has no
+min-stock column, and this spec defines no dedicated table to store one.

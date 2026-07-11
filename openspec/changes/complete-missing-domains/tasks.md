@@ -46,19 +46,19 @@
 
 ## Phase 3: Inventory Domain (PR 3)
 
-- [ ] 3.1 Create migration `0008_inventory.sql`
-- [ ] 3.2 Write schema tests for stock movements
-- [ ] 3.3 Implement `src/domains/inventory/schemas.ts`
-- [ ] 3.4 Write repository tests
-- [ ] 3.5 Implement `src/domains/inventory/repository.ts`
-- [ ] 3.6 Write service tests
-- [ ] 3.7 Implement `src/domains/inventory/service.ts`
-- [ ] 3.8 Write action tests
-- [ ] 3.9 Implement `src/domains/inventory/actions.ts`
-- [ ] 3.10 Create `src/domains/inventory/index.ts`
-- [ ] 3.11 Create admin page `src/app/admin/inventory/page.tsx`
-- [ ] 3.12 Run gates: lint, typecheck, test, build
-- [ ] 3.13 Commit as work unit
+- [x] 3.1 Create migration `0008_inventory.sql`
+- [x] 3.2 Write schema tests for stock movements
+- [x] 3.3 Implement `src/domains/inventory/schemas.ts`
+- [x] 3.4 Write repository tests (covered indirectly via service tests asserting on SQL, matching the settings/leads/users domain convention — no repository.test.ts exists in any domain)
+- [x] 3.5 Implement `src/domains/inventory/repository.ts`
+- [x] 3.6 Write service tests
+- [x] 3.7 Implement `src/domains/inventory/service.ts`
+- [x] 3.8 Write action tests
+- [x] 3.9 Implement `src/domains/inventory/actions.ts`
+- [x] 3.10 Create `src/domains/inventory/index.ts`
+- [x] 3.11 Create admin page `src/app/admin/inventory/page.tsx` (plus the nav link in `src/app/admin/layout.tsx` and `inventory:read`/`inventory:write` permissions in `src/server/auth/rbac.ts`)
+- [x] 3.12 Run gates: lint, typecheck, test, build (all 4 green — see apply report)
+- [ ] 3.13 Commit as work unit (left for the orchestrator to review and commit)
 
 ## Phase 4: Documents Domain (PR 4)
 

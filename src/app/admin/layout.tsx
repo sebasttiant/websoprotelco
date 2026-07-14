@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
           />
           <span className="text-xs font-black uppercase tracking-widest text-brand-accent">Admin</span>
         </Link>
-        <AdminSidebar />
+        <AdminSidebar role={user.role} />
       </aside>
 
       <div className="flex min-h-screen flex-col">

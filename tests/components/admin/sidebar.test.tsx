@@ -11,9 +11,9 @@ vi.mock("next/navigation", () => ({
 
 const { AdminSidebar } = await import("@/components/admin/sidebar");
 
-function renderSidebar(pathname: string) {
+function renderSidebar(pathname: string, role: "admin" | "staff" = "admin") {
   mockUsePathname.mockReturnValue(pathname);
-  render(<AdminSidebar />);
+  render(<AdminSidebar role={role} />);
   return screen.getByRole("navigation", { name: /admin/i });
 }
 
@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("AdminSidebar", () => {
-  test("links every admin section", () => {
+  test("links every admin section for an admin", () => {
     const nav = renderSidebar("/admin");
 
     // Labels stay English to match the admin pages they lead to; the storefront is Spanish.
@@ -76,5 +76,34 @@ describe("AdminSidebar", () => {
       "aria-current",
       "page",
     );
+  });
+});
+
+// Filtering the nav is a usability concern, not the security boundary — the pages guard
+// themselves. It exists so nobody is shown a door that answers 404, which is also what
+// requirePermission's use of notFound() is trying to achieve.
+describe("AdminSidebar for a staff user", () => {
+  test("shows the sections staff has permission to open", () => {
+    const nav = renderSidebar("/admin", "staff");
+
+    for (const label of ["Dashboard", "Products", "Categories", "Quotes", "Leads", "Inventory", "Documents"]) {
+      expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
+    }
+  });
+
+  test("hides the sections that would answer 404", () => {
+    const nav = renderSidebar("/admin", "staff");
+
+    for (const label of ["Design", "Settings", "Users"]) {
+      expect(within(nav).queryByRole("link", { name: label })).not.toBeInTheDocument();
+    }
+  });
+
+  test("keeps every section for an admin", () => {
+    const nav = renderSidebar("/admin", "admin");
+
+    for (const label of ["Design", "Settings", "Users"]) {
+      expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
+    }
   });
 });

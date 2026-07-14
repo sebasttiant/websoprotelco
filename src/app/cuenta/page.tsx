@@ -17,7 +17,7 @@ export default async function AccountPage() {
   return (
     <main className="mx-auto max-w-5xl space-y-8 px-6 py-12">
       <section className="rounded-[32px] bg-slate-950 p-8 text-white shadow-2xl shadow-blue-950/20">
-        <p className="text-xs font-black uppercase tracking-widest text-brand-yellow">Account</p>
+        <p className="text-xs font-black uppercase tracking-widest text-brand-accent">Account</p>
         <h1 className="mt-3 text-4xl font-black">Your SOPROTELCO account</h1>
         <p className="mt-3 max-w-2xl text-sm font-medium text-slate-300">Review your profile details and track recent quote requests linked to your email address.</p>
       </section>

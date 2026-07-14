@@ -78,6 +78,17 @@ describe("HeaderMobileMenu", () => {
     expect(screen.getByRole("link", { name: /iniciar sesión/i })).toHaveAttribute("href", "/login");
   });
 
+  test("offers the account and sign-out to a signed-in visitor instead of login", async () => {
+    render(<HeaderMobileMenu links={LINKS} isSignedIn />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: /abrir menú/i }));
+
+    expect(screen.getByRole("link", { name: /mi cuenta/i })).toHaveAttribute("href", "/cuenta");
+    expect(screen.getByRole("button", { name: /cerrar sesión/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /iniciar sesión/i })).not.toBeInTheDocument();
+  });
+
   test("closes on Escape", async () => {
     const { user, toggle } = renderMenu();
 

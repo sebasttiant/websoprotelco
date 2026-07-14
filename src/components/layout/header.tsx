@@ -5,6 +5,8 @@ import { toTelHref } from "@/components/layout/contact-href";
 import { HeaderMobileMenu, type HeaderNavLink } from "@/components/layout/header-mobile-menu";
 import { Container } from "@/components/ui/container";
 import { getSiteSettings } from "@/domains/settings";
+import { signOut } from "@/server/auth/actions";
+import { getCurrentUser } from "@/server/auth/guards";
 
 const NAV_LINKS: readonly HeaderNavLink[] = [
   { href: "/", label: "Inicio" },
@@ -13,7 +15,9 @@ const NAV_LINKS: readonly HeaderNavLink[] = [
 ];
 
 export async function Header() {
-  const settings = await getSiteSettings();
+  // getCurrentUser resolves to null rather than redirecting, so the header stays usable for
+  // signed-out visitors.
+  const [settings, user] = await Promise.all([getSiteSettings(), getCurrentUser()]);
 
   return (
     <header className="sticky top-0 z-50 shadow-sm shadow-blue-950/5">
@@ -54,13 +58,32 @@ export async function Header() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden rounded-full border border-brand-line bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue sm:block"
-            >
-              Iniciar sesión
-            </Link>
-            <HeaderMobileMenu links={NAV_LINKS} />
+            {user ? (
+              <div className="hidden items-center gap-3 sm:flex">
+                <Link
+                  href="/cuenta"
+                  className="rounded-full border border-brand-line bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue"
+                >
+                  Mi cuenta
+                </Link>
+                <form action={signOut}>
+                  <button
+                    type="submit"
+                    className="text-xs font-black uppercase tracking-widest text-brand-muted transition hover:text-brand-blue"
+                  >
+                    Cerrar sesión
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="hidden rounded-full border border-brand-line bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue sm:block"
+              >
+                Iniciar sesión
+              </Link>
+            )}
+            <HeaderMobileMenu links={NAV_LINKS} isSignedIn={Boolean(user)} />
           </div>
         </Container>
       </div>

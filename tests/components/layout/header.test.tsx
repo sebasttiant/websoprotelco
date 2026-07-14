@@ -3,8 +3,17 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import type { SiteSettings } from "@/domains/settings/schemas";
 
-const { mockGetSiteSettings } = vi.hoisted(() => ({
+const { mockGetSiteSettings, mockGetCurrentUser } = vi.hoisted(() => ({
   mockGetSiteSettings: vi.fn(),
+  mockGetCurrentUser: vi.fn(),
+}));
+
+vi.mock("@/server/auth/guards", () => ({
+  getCurrentUser: mockGetCurrentUser,
+}));
+
+vi.mock("@/server/auth/actions", () => ({
+  signOut: vi.fn(),
 }));
 
 // Declared here rather than imported from the service: the domain is mocked below, and the
@@ -31,8 +40,9 @@ vi.mock("@/domains/settings", () => ({
 
 const { Header } = await import("@/components/layout/header");
 
-async function renderHeader(overrides: Partial<SiteSettings> = {}) {
+async function renderHeader(overrides: Partial<SiteSettings> = {}, user: unknown = null) {
   mockGetSiteSettings.mockResolvedValue({ ...SETTINGS, ...overrides });
+  mockGetCurrentUser.mockResolvedValue(user);
   render(await Header());
 }
 
@@ -84,9 +94,24 @@ describe("Header", () => {
     expect(within(nav).getByRole("link", { name: "Contacto" })).toHaveAttribute("href", "/contacto");
   });
 
-  test("keeps the login entry point", async () => {
-    await renderHeader();
+  test("offers login to a signed-out visitor", async () => {
+    await renderHeader({}, null);
 
     expect(screen.getByRole("link", { name: /iniciar sesión/i })).toHaveAttribute("href", "/login");
+    expect(screen.queryByRole("link", { name: /mi cuenta/i })).not.toBeInTheDocument();
+  });
+
+  test("swaps login for the account link once a visitor is signed in", async () => {
+    // A signed-in customer was still being told to "Iniciar sesión", with no way out.
+    await renderHeader({}, { id: "user-1", email: "ana@empresa.com", role: "customer" });
+
+    expect(screen.getByRole("link", { name: /mi cuenta/i })).toHaveAttribute("href", "/cuenta");
+    expect(screen.queryByRole("link", { name: /iniciar sesión/i })).not.toBeInTheDocument();
+  });
+
+  test("gives a signed-in visitor a way to sign out", async () => {
+    await renderHeader({}, { id: "user-1", email: "ana@empresa.com", role: "customer" });
+
+    expect(screen.getByRole("button", { name: /cerrar sesión/i })).toBeInTheDocument();
   });
 });

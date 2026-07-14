@@ -3,12 +3,20 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { signOut } from "@/server/auth/actions";
+
 export interface HeaderNavLink {
   href: string;
   label: string;
 }
 
-export function HeaderMobileMenu({ links }: { links: readonly HeaderNavLink[] }) {
+export function HeaderMobileMenu({
+  links,
+  isSignedIn = false,
+}: {
+  links: readonly HeaderNavLink[];
+  isSignedIn?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -63,15 +71,35 @@ export function HeaderMobileMenu({ links }: { links: readonly HeaderNavLink[] })
             ))}
           </ul>
 
-          {/* The header's login button is hidden below the sm breakpoint, so this is the only
-              way into the account on a phone. */}
-          <Link
-            href="/login"
-            onClick={() => setIsOpen(false)}
-            className="mt-3 block rounded-full bg-brand-navy px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-white transition hover:bg-brand-blue"
-          >
-            Iniciar sesión
-          </Link>
+          {/* The header's account controls are hidden below the sm breakpoint, so this is the
+              only way into (or out of) the account on a phone. */}
+          {isSignedIn ? (
+            <>
+              <Link
+                href="/cuenta"
+                onClick={() => setIsOpen(false)}
+                className="mt-3 block rounded-full bg-brand-navy px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-white transition hover:bg-brand-blue"
+              >
+                Mi cuenta
+              </Link>
+              <form action={signOut} className="mt-2">
+                <button
+                  type="submit"
+                  className="w-full rounded-full border border-brand-line px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-brand-muted transition hover:border-brand-accent hover:text-brand-blue"
+                >
+                  Cerrar sesión
+                </button>
+              </form>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              onClick={() => setIsOpen(false)}
+              className="mt-3 block rounded-full bg-brand-navy px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-white transition hover:bg-brand-blue"
+            >
+              Iniciar sesión
+            </Link>
+          )}
         </nav>
       ) : null}
     </div>

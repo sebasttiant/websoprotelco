@@ -1,0 +1,106 @@
+schema: spec-driven
+
+project: websoprotelco
+artifact_store: hybrid
+detected_at: 2026-07-02
+
+context: |
+  Target repository is initialized locally on main and points to https://github.com/sebasttiant/websoprotelco.git.
+  Local main is based on origin/main at commit a230055, which currently contains README.md only.
+  Current project folder contains the remote README.md plus uncommitted SDD/bootstrap artifacts only.
+  Legacy source is at /home/sebastian/Documentos/DEV/SOPROTELCO/web/web_completo/web.
+  Legacy stack: Next.js 16.1.6 App Router, React 19.2.3, TypeScript strict, Tailwind CSS 4, npm, Docker, nginx.
+  Legacy dependencies include Supabase auth/storage/client, RabbitMQ via amqplib, and Resend.
+  User goal: rebuild/migrate to Docker-first ecommerce/admin on latest PostgreSQL while preserving graphics/images/colors.
+
+git:
+  branch: main
+  remote: https://github.com/sebasttiant/websoprotelco.git
+  upstream: origin/main
+  based_on_origin_main: true
+  base_commit: a230055
+  remote_contents: README.md only
+  local_uncommitted_bootstrap_artifacts:
+    - .atl/
+    - .gitignore
+    - openspec/
+
+delivery:
+  docker_first: true
+  target_database: PostgreSQL latest stable
+  source_database_to_replace: Supabase
+  chained_pr_strategy: force-chained
+  review_budget_changed_lines: 400
+
+testing:
+  strict_tdd: false
+  strict_tdd_reason: Strict TDD was disabled for PR 1 apply because the target repository had no package.json or test runner before the foundation slice started; future feature slices now have Vitest and Playwright available.
+  detected_at: 2026-07-02
+  test_runner:
+    available: true
+    framework: Vitest
+    command: pnpm test
+  layers:
+    unit:
+      available: true
+      tool: Vitest
+    integration:
+      available: true
+      tool: PostgreSQL helpers via tests/helpers
+    e2e:
+      available: true
+      tool: Playwright
+  coverage:
+    available: true
+    command: pnpm vitest run --coverage
+  quality:
+    linter:
+      available: true
+      command: pnpm lint
+      source: target package.json
+    type_checker:
+      available: true
+      command: pnpm typecheck
+      source: target package.json
+    formatter:
+      available: false
+      command: null
+    build:
+      available: true
+      command: pnpm build
+      source: target package.json
+    docker_build:
+      available: true
+      command: docker build --target runner -t websoprotelco:local .
+      source: target Dockerfile
+
+rules:
+  proposal:
+    - Keep the ecommerce rebuild scoped into chained PR work units under the 400 changed-line review budget.
+    - Include rollback and data migration risk for every persistence-related proposal.
+    - Preserve existing graphics, images, brand colors, and visual identity unless explicitly changed by the user.
+  specs:
+    - Use Given/When/Then scenarios and RFC 2119 keywords.
+    - Separate storefront, admin, catalog, checkout/order, inventory, auth, and migration requirements when the change touches those domains.
+  design:
+    - Prefer Docker-first local, CI, and deploy parity.
+    - Use PostgreSQL as the target persistence layer; do not keep Supabase as the long-term application dependency.
+    - Document auth, admin authorization, data ownership, migrations, and operational safety explicitly.
+  tasks:
+    - Split tasks into reviewable work units that can become chained PRs.
+    - Keep tests and documentation with the work unit they verify.
+  apply:
+    tdd: false
+    test_command: "pnpm test"
+    notes:
+      - Do not implement before an accepted SDD proposal/spec/design/tasks set exists.
+      - Avoid host-only assumptions; containerized paths must be first-class.
+  verify:
+    test_command: "pnpm test"
+    build_command: "pnpm build"
+    coverage_threshold: 0
+    notes:
+      - Do not claim production readiness without command output evidence.
+  archive:
+    - Preserve audit trail under openspec/changes/archive/.
+    - Warn before merging destructive data migration deltas.

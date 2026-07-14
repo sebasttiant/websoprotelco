@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #0c1a2a;
+  --color-brand-primary: #0f4c81;
+  --color-brand-blue: #1b6eac;
+  --color-brand-accent: #06d3f9;
+  --color-brand-accent-soft: #7cf3ff;
+  --color-brand-ice: #f8fafc;
+  --color-brand-muted: #5e6c80;
+  --color-brand-line: #dbe6f3;
+
+  --shadow-glow: 0 0 24px -4px color-mix(in oklab, var(--color-brand-accent) 45%, transparent);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* These resets must stay layered. Unlayered CSS outranks every cascade layer regardless of
+   specificity, so an unlayered `a { color: inherit }` silently defeats Tailwind's .text-*
+   utilities and every coloured link renders as inherited text instead. */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-brand-ice);
+    color: var(--color-brand-navy);
+    font-family: var(--font-sans);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}

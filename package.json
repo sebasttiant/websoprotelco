@@ -1,0 +1,52 @@
+{
+  "name": "websoprotelco",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": "24.16.0",
+    "pnpm": "11.9.0"
+  },
+  "scripts": {
+    "dev": "next dev -p 8585",
+    "build": "next build",
+    "start": "next start -p 8585",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:db:reset": "tsx tests/helpers/reset-database.ts",
+    "test:db:seed": "tsx tests/helpers/seed-database.ts",
+    "db:migrate": "tsx scripts/db-migrate.ts",
+    "db:create-admin": "tsx scripts/create-admin.ts",
+    "seed:users": "tsx db/seeds/001-users.ts"
+  },
+  "dependencies": {
+    "next": "16.2.10",
+    "pg": "8.22.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@tailwindcss/postcss": "4.3.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "24.13.2",
+    "@types/pg": "8.20.0",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.3",
+    "@vitest/coverage-v8": "4.1.9",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.10",
+    "jsdom": "29.1.1",
+    "tailwindcss": "4.3.2",
+    "tsx": "4.22.5",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  }
+}

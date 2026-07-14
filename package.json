@@ -19,7 +19,8 @@
     "test:db:reset": "tsx tests/helpers/reset-database.ts",
     "test:db:seed": "tsx tests/helpers/seed-database.ts",
     "db:migrate": "tsx scripts/db-migrate.ts",
-    "db:create-admin": "tsx scripts/create-admin.ts"
+    "db:create-admin": "tsx scripts/create-admin.ts",
+    "seed:users": "tsx db/seeds/001-users.ts"
   },
   "dependencies": {
     "next": "16.2.10",

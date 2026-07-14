@@ -45,12 +45,18 @@ services:
       db:
         condition: service_healthy
 
-  # One-shot: creates the default admin/staff accounts. Runs after migrate because it needs
-  # the users table to exist. NODE_ENV is deliberately left unset — the seed script ships
-  # committed credentials and refuses to run when NODE_ENV=production.
+  # Development tooling container. Two jobs, and the difference matters:
   #
-  # The "tools" profile keeps it out of `docker compose up`, which would otherwise create the
-  # default accounts on every start. It is opt-in: `docker compose run --rm seed`.
+  #   docker compose run --rm seed                       -> the DEV accounts (default CMD)
+  #   docker compose run --rm seed pnpm db:create-admin  -> a real admin from ADMIN_* in .env
+  #
+  # db/seeds/001-users.ts carries committed credentials, and this repository is public. It
+  # refuses to run when NODE_ENV=production, so NODE_ENV is passed through here rather than
+  # left unset: setting NODE_ENV=production in a server's .env makes that guard actually fire.
+  # deploy.sh never invokes the seed — it creates the admin from ADMIN_EMAIL/ADMIN_PASSWORD,
+  # which live only in the server's .env and are never committed.
+  #
+  # The "tools" profile keeps this out of `docker compose up`.
   seed:
     profiles: ["tools"]
     build:
@@ -58,9 +64,12 @@ services:
       target: seed
     restart: "no"
     environment:
+      NODE_ENV: ${NODE_ENV:-development}
       DATABASE_URL: postgresql://${POSTGRES_USER:-local_dev_user}:${POSTGRES_PASSWORD:-local_dev_password_change_me}@db:5432/${POSTGRES_DB:-websoprotelco}
       DATABASE_SSL: ${DATABASE_SSL:-disable}
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy

@@ -1,5 +1,16 @@
 name: websoprotelco
 
+# The single compose file for this project. Docker resolves compose.yaml ahead of
+# docker-compose.yml, so a second file would be silently ignored — which is exactly what
+# happened before: deploy.sh asked for services that only existed in the shadowed file.
+#
+# Full flow (or just run ./deploy.sh):
+#   docker compose build migrate seed web
+#   docker compose up -d db
+#   docker compose run --rm migrate
+#   docker compose run --rm seed
+#   docker compose up -d web
+
 services:
   db:
     image: postgres:18
@@ -8,6 +19,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-websoprotelco}
       POSTGRES_USER: ${POSTGRES_USER:-local_dev_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_password_change_me}
+    # Bound to loopback so `pnpm dev` on the host can reach the database.
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -27,9 +39,29 @@ services:
     restart: "no"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-local_dev_user}:${POSTGRES_PASSWORD:-local_dev_password_change_me}@db:5432/${POSTGRES_DB:-websoprotelco}
+      DATABASE_SSL: ${DATABASE_SSL:-disable}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
     depends_on:
       db:
         condition: service_healthy
+
+  # One-shot: creates the default admin/staff accounts. Runs after migrate because it needs
+  # the users table to exist. NODE_ENV is deliberately left unset — the seed script ships
+  # committed credentials and refuses to run when NODE_ENV=production.
+  seed:
+    build:
+      context: .
+      target: seed
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-local_dev_user}:${POSTGRES_PASSWORD:-local_dev_password_change_me}@db:5432/${POSTGRES_DB:-websoprotelco}
+      DATABASE_SSL: ${DATABASE_SSL:-disable}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   web:
     build:
@@ -40,8 +72,12 @@ services:
       NODE_ENV: production
       PORT: 8585
       DATABASE_URL: postgresql://${POSTGRES_USER:-local_dev_user}:${POSTGRES_PASSWORD:-local_dev_password_change_me}@db:5432/${POSTGRES_DB:-websoprotelco}
+      DATABASE_SSL: ${DATABASE_SSL:-disable}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+    # 127.0.0.1 by default: a VPS must opt in with WEB_HOST=0.0.0.0, as .env.example spells out.
     ports:
       - "${WEB_HOST:-127.0.0.1}:${WEB_PORT:-8585}:8585"
+    # Deliberately not dependent on `seed`: the site works without the default accounts.
     depends_on:
       db:
         condition: service_healthy

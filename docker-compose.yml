@@ -1,0 +1,81 @@
+# SOPROTELCO — Docker Compose
+#
+# Services:
+#   postgres  — PostgreSQL database with persistent volume
+#   migrate   — one-shot: runs all pending migrations (docker compose run --rm migrate)
+#   seed      — one-shot: creates default admin/staff accounts (docker compose run --rm seed)
+#   web       — Next.js standalone server on port 8585
+#
+# Usage:
+#   cp .env.example .env   # edit values for your environment
+#   docker compose build migrate seed web
+#   docker compose up -d postgres
+#   docker compose run --rm migrate
+#   docker compose run --rm seed
+#   docker compose up -d web
+#
+# Or use deploy.sh for the full automated flow.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-websoprotelco}
+      POSTGRES_USER: ${POSTGRES_USER:-websoprotelco}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-websoprotelco} -d $${POSTGRES_DB:-websoprotelco}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-websoprotelco}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-websoprotelco}
+      DATABASE_SSL: ${DATABASE_SSL:-disable}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  seed:
+    build:
+      context: .
+      target: seed
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-websoprotelco}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-websoprotelco}
+      DATABASE_SSL: ${DATABASE_SSL:-disable}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-websoprotelco}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-websoprotelco}
+      DATABASE_SSL: ${DATABASE_SSL:-disable}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+    ports:
+      - "${WEB_HOST:-0.0.0.0}:${WEB_PORT:-8585}:8585"
+    volumes:
+      - uploads:/app/public/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  uploads:

@@ -21,6 +21,12 @@ FROM builder AS migrator
 USER node
 CMD ["pnpm", "db:migrate"]
 
+# Seed creates the default admin and staff accounts. It refuses to run when
+# NODE_ENV=production, so the deploy script must not set that variable on this target.
+FROM builder AS seed
+USER node
+CMD ["pnpm", "seed:users"]
+
 FROM base AS runner
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0

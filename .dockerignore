@@ -1,6 +1,7 @@
 .git
 .github
 .next
+backups
 coverage
 node_modules
 playwright-report
@@ -12,3 +13,6 @@ test-results
 README.md
 openspec
 .atl
+deploy.sh
+docker-compose.yml
+docker-compose*.yml

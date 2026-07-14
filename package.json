@@ -2,10 +2,10 @@
   "name": "websoprotelco",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@11.13.0",
   "engines": {
-    "node": "24.16.0",
-    "pnpm": "11.9.0"
+    "node": "24.18.0",
+    "pnpm": "11.13.0"
   },
   "scripts": {
     "dev": "next dev -p 8585",
@@ -35,18 +35,18 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "24.13.2",
+    "@types/node": "24.13.3",
     "@types/pg": "8.20.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.3",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/coverage-v8": "4.1.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.10",
     "jsdom": "29.1.1",
     "tailwindcss": "4.3.2",
-    "tsx": "4.22.5",
+    "tsx": "4.23.1",
     "typescript": "6.0.3",
-    "vitest": "4.1.9"
+    "vitest": "4.1.10"
   }
 }

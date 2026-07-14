@@ -1,4 +1,4 @@
-FROM node:24.16.0-trixie-slim AS base
+FROM node:24.18.0-trixie-slim AS base
 
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app

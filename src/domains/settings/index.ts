@@ -2,8 +2,8 @@
 // components) must import from here rather than reaching into ./schemas,
 // ./repository, ./service, or ./actions directly.
 
-export type { SettingSummary, SettingUpdateInput } from "./schemas";
+export type { SettingSummary, SettingUpdateInput, SiteSettings } from "./schemas";
 
-export { getAllSettings } from "./service";
+export { DEFAULT_SITE_SETTINGS, getAllSettings, getSiteSettings } from "./service";
 
 export { updateSetting, type SettingsActionState } from "./actions";

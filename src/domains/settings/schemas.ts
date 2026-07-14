@@ -14,6 +14,24 @@ export const settingSummarySchema = z.object({
 
 export type SettingSummary = z.infer<typeof settingSummarySchema>;
 
+// Public read model assembled from the key/value rows. It exists so consumers (header,
+// footer, WhatsApp CTA) depend on a typed shape instead of knowing the storage keys.
+// Social URLs are nullable because the seed ships them blank and the UI hides the icon.
+export const siteSettingsSchema = z.object({
+  siteName: z.string(),
+  siteDescription: z.string(),
+  contactEmail: z.string(),
+  contactPhone: z.string(),
+  address: z.string(),
+  businessHours: z.string(),
+  facebookUrl: z.string().nullable(),
+  instagramUrl: z.string().nullable(),
+  linkedinUrl: z.string().nullable(),
+  whatsappNumber: z.string(),
+});
+
+export type SiteSettings = z.infer<typeof siteSettingsSchema>;
+
 // --- Mutation input ------------------------------------------------------------
 
 // Admin-only mutation input. `key` is restricted to the same lower_snake_case

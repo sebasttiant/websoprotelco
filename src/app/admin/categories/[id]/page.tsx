@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { getCategoryByIdForAdmin, getCategoryOptionsExcluding, updateCategory } from "@/domains/catalog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { requirePermission } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ interface EditCategoryPageProps {
 type FormAction = (formData: FormData) => Promise<void>;
 
 export default async function EditCategoryPage({ params }: EditCategoryPageProps) {
+  await requirePermission("catalog:write");
   const { id } = await params;
   const [category, categories] = await Promise.all([getCategoryByIdForAdmin(id), getCategoryOptionsExcluding(id)]);
 

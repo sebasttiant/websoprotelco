@@ -5,6 +5,7 @@ import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { SearchInput } from "@/components/admin/search-input";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { deleteProduct, getProductsForAdmin, type ProductAdminSummary } from "@/domains/catalog";
+import { requirePermission } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ function formatCurrency(cents: number, currency: string): string {
 }
 
 export default async function AdminProductsPage({ searchParams }: ProductsPageProps) {
+  await requirePermission("catalog:read");
   const params = await searchParams;
   const search = firstParam(params.q).trim();
   const status = firstParam(params.status).trim();

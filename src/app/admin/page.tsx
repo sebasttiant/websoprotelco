@@ -8,7 +8,10 @@ import { getCurrentUser } from "@/server/auth/guards";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  // The layout has already enforced admin:access, so this read is only for the greeting.
+  // Deliberately session-only: this is the admin landing page, and every count below maps to a
+  // read that both roles already hold (catalog, quote, leads, inventory). Guarding it on any one
+  // permission would be arbitrary, and guarding it on admin:access would 404 staff on the page
+  // they land on. Anything added here that staff may NOT read needs its own permission check.
   const [user, products, quotes, leads, lowStock] = await Promise.all([
     getCurrentUser(),
     getProductsForAdmin({}),

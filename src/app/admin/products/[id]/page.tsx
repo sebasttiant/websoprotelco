@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { getCategoryOptions, getProductByIdForAdmin, updateProduct } from "@/domains/catalog";
+import { requirePermission } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ interface EditProductPageProps {
 type FormAction = (formData: FormData) => Promise<void>;
 
 export default async function EditProductPage({ params }: EditProductPageProps) {
+  await requirePermission("catalog:write");
   const { id } = await params;
   const [product, categories] = await Promise.all([getProductByIdForAdmin(id), getCategoryOptions()]);
 

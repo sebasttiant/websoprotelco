@@ -3,12 +3,14 @@ import Link from "next/link";
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { deleteCategory, getCategoriesForAdmin, type CategoryAdminSummary } from "@/domains/catalog";
+import { requirePermission } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 type FormAction = (formData: FormData) => Promise<void>;
 
 export default async function AdminCategoriesPage() {
+  await requirePermission("catalog:read");
   const rows = await getCategoriesForAdmin();
   const columns: DataTableColumn<CategoryAdminSummary>[] = [
     { key: "name", header: "Name", render: (row) => <div><p className="font-black text-slate-950">{row.name}</p><p className="text-xs font-bold text-slate-500">{row.slug}</p></div> },

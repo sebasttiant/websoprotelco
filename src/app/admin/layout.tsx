@@ -4,13 +4,16 @@ import type { ReactNode } from "react";
 
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { signOut } from "@/server/auth/actions";
-import { getCurrentUser, requirePermission } from "@/server/auth/guards";
+import { requireSession } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: Readonly<{ children: ReactNode }>) {
-  await requirePermission("admin:access");
-  const user = await getCurrentUser();
+  // Only a session is required here. Gating the chrome on "admin:access" ran before every page
+  // guard and 404'd staff out of the whole admin, which made the per-page permissions — the
+  // things that actually distinguish the roles — unreachable. Authorization belongs on the
+  // pages, each of which declares the permission it needs.
+  const user = await requireSession();
 
   return (
     <div className="min-h-screen bg-brand-ice md:grid md:grid-cols-[15rem_1fr]">

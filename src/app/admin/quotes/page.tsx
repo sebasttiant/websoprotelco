@@ -7,6 +7,7 @@ import {
   updateQuoteStatus,
   type QuoteSummary,
 } from "@/domains/quote-order";
+import { requirePermission } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export default async function AdminQuotesPage({ searchParams }: QuotesPageProps) {
+  await requirePermission("quote:read");
   const params = await searchParams;
   const status = firstParam(params.status).trim();
   const rows = await getQuotes(isQuoteStatus(status) ? { status } : {});

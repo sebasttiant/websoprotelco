@@ -2,12 +2,14 @@ import Link from "next/link";
 
 import { createProduct, getCategoryOptions, type CategoryOption } from "@/domains/catalog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { requirePermission } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 type FormAction = (formData: FormData) => Promise<void>;
 
 export default async function NewProductPage() {
+  await requirePermission("catalog:write");
   const categories = await getCategoryOptions();
 
   return (

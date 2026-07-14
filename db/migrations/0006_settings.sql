@@ -26,6 +26,3 @@ INSERT INTO settings (key, value, description) VALUES
   ('linkedin_url', '', 'LinkedIn page URL'),
   ('whatsapp_number', '+573001234567', 'WhatsApp number for contact button')
 ON CONFLICT (key) DO NOTHING;
-
--- Migration guard
-INSERT INTO schema_migrations (version, applied_at) VALUES ('0006', NOW());

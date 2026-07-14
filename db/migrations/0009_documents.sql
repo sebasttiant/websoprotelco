@@ -21,6 +21,3 @@ CREATE TABLE IF NOT EXISTS documents (
 CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category);
 CREATE INDEX IF NOT EXISTS idx_documents_product_id ON documents(product_id);
 CREATE INDEX IF NOT EXISTS idx_documents_created_at ON documents(created_at DESC);
-
--- Migration guard
-INSERT INTO schema_migrations (version, applied_at) VALUES ('0009', NOW());

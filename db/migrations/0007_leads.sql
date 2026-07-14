@@ -28,6 +28,3 @@ CREATE TABLE IF NOT EXISTS lead_notes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_lead_notes_lead_id ON lead_notes(lead_id);
-
--- Migration guard
-INSERT INTO schema_migrations (version, applied_at) VALUES ('0007', NOW());

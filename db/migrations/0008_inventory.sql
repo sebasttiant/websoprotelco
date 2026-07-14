@@ -13,6 +13,3 @@ CREATE TABLE IF NOT EXISTS stock_movements (
 
 CREATE INDEX IF NOT EXISTS idx_stock_movements_product_id ON stock_movements(product_id);
 CREATE INDEX IF NOT EXISTS idx_stock_movements_created_at ON stock_movements(created_at DESC);
-
--- Migration guard
-INSERT INTO schema_migrations (version, applied_at) VALUES ('0008', NOW());

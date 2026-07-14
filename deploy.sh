@@ -4,11 +4,16 @@ set -Eeuo pipefail
 # ==========================================================================
 # SOPROTELCO — deploy en VPS
 #
-# Flujo: backup → pull → build → db up → migrate → seed → web up → verify
+# Flujo: backup → pull → build → db up → migrate → crear admin → web up → verify
 #
-# IMPORTANTE: los contenedores `migrate` y `seed` son one-shot targets del
-# Dockerfile. El seed se niega a correr si NODE_ENV=production (tiene
-# credenciales commiteadas), así que nunca setear esa variable en ese target.
+# IMPORTANTE: este script NUNCA corre el seed de desarrollo. db/seeds/001-users.ts
+# tiene credenciales commiteadas en un repositorio público; sembrarlas en un
+# servidor equivale a publicar el login de administrador. El admin se crea desde
+# ADMIN_EMAIL y ADMIN_PASSWORD, que viven solo en el .env del servidor.
+#
+# Poné NODE_ENV=production en el .env del servidor: el seed de desarrollo se
+# niega a correr con esa variable, así que ni siquiera a mano se puede sembrar.
+#
 # El contenedor `web` es Next.js standalone y NO incluye tsx ni migraciones.
 #
 # Acceso final:  http://<ip-vps>:8585
@@ -58,8 +63,10 @@ if [ ! -f "$APP_DIR/.env" ]; then
   exit 1
 fi
 
-# Fail fast on missing critical variables.
-required_vars=(POSTGRES_PASSWORD DATABASE_URL)
+# Fail fast on missing critical variables. ADMIN_* are required because this script creates
+# the administrator from them: the dev seed's credentials are committed to a public repo and
+# must never provision a real server.
+required_vars=(POSTGRES_PASSWORD DATABASE_URL ADMIN_EMAIL ADMIN_PASSWORD)
 for var in "${required_vars[@]}"; do
   if ! grep -q "^${var}=" "$APP_DIR/.env"; then
     echo "ERROR: $var not set in .env"
@@ -99,12 +106,15 @@ echo "==> Running database migrations..."
 docker compose run --rm --no-deps "$MIGRATE_SERVICE"
 
 # --------------------------------------------------------------------------
-# 7. Run seed (default admin/staff accounts)
+# 7. Create the administrator
 # --------------------------------------------------------------------------
-echo "==> Seeding default users..."
-docker compose run --rm --no-deps "$SEED_SERVICE" || {
-  echo "    ⚠ Seed failed or skipped (may already exist). Continuing — web doesn't depend on seed."
-}
+# NOT the dev seed. db/seeds/001-users.ts hardcodes credentials that are committed to a
+# public repository, so running it here would publish a working admin login for this server.
+# The account is created from ADMIN_EMAIL/ADMIN_PASSWORD, which exist only in this server's
+# .env. The command is idempotent: it upserts, so re-deploying resets the password to the
+# value in .env rather than failing.
+echo "==> Creating administrator from .env..."
+docker compose run --rm --no-deps "$SEED_SERVICE" pnpm db:create-admin
 
 # --------------------------------------------------------------------------
 # 8. Start web

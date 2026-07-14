@@ -48,7 +48,11 @@ services:
   # One-shot: creates the default admin/staff accounts. Runs after migrate because it needs
   # the users table to exist. NODE_ENV is deliberately left unset — the seed script ships
   # committed credentials and refuses to run when NODE_ENV=production.
+  #
+  # The "tools" profile keeps it out of `docker compose up`, which would otherwise create the
+  # default accounts on every start. It is opt-in: `docker compose run --rm seed`.
   seed:
+    profiles: ["tools"]
     build:
       context: .
       target: seed

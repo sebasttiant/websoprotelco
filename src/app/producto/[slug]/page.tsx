@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { WhatsAppCta } from "@/components/catalog/whatsapp-cta";
+import { ProductCard } from "@/components/catalog/product-card";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
-import { getProductBySlug } from "@/domains/catalog";
+import { getProductBySlug, getProducts } from "@/domains/catalog";
+import { getSiteSettings } from "@/domains/settings";
 
 export const dynamic = "force-dynamic";
+
+const RELATED_LIMIT = 4;
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -43,6 +48,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) {
     notFound();
   }
+
+  // The catalog has no "related" query, so the same-category listing is reused and the product
+  // being viewed is filtered out of its own recommendations.
+  const [settings, categoryProducts] = await Promise.all([
+    getSiteSettings(),
+    getProducts({ categorySlug: product.categorySlug }),
+  ]);
+  const related = categoryProducts.filter((item) => item.slug !== product.slug).slice(0, RELATED_LIMIT);
 
   return (
     <main className="min-h-screen bg-brand-ice">
@@ -81,15 +94,34 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <p className="text-lg font-medium leading-8 text-brand-muted">{product.description || "Producto profesional para redes, fibra óptica y proyectos de conectividad empresarial."}</p>
             <p className="text-4xl font-black text-brand-navy">{formatCurrency(product.priceCents, product.currency)}</p>
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Link href="/contacto" className="rounded-full bg-brand-blue px-8 py-4 text-center text-sm font-black uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 transition hover:bg-blue-700">
+              <Link href="/contacto" className="rounded-full bg-brand-blue px-8 py-4 text-center text-sm font-black uppercase tracking-widest text-white shadow-glow transition hover:bg-brand-primary">
                 Solicitar cotización
               </Link>
-              <Link href="/productos" className="rounded-full border border-brand-line px-8 py-4 text-center text-sm font-black uppercase tracking-widest text-brand-muted transition hover:border-brand-blue hover:text-brand-blue">
-                Volver al catálogo
-              </Link>
+              <WhatsAppCta
+                whatsappNumber={settings.whatsappNumber}
+                productName={product.name}
+                sku={product.sku}
+              />
             </div>
+            <Link href="/productos" className="text-sm font-bold text-brand-blue hover:text-brand-primary">
+              ← Volver al catálogo
+            </Link>
           </div>
         </section>
+
+        {related.length > 0 ? (
+          <section aria-label="Productos relacionados" className="mt-16">
+            <h2 className="text-3xl font-black text-brand-navy">Productos relacionados</h2>
+            <p className="mt-2 text-sm font-medium text-brand-muted">
+              Otros equipos de la categoría {product.categoryName}.
+            </p>
+            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {related.map((item) => (
+                <ProductCard key={item.id} product={item} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </Container>
       <Footer />
     </main>

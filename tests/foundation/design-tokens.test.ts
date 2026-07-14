@@ -43,3 +43,20 @@ describe("design tokens", () => {
     expect(globalsCss).not.toMatch(/font-family:\s*Arial/i);
   });
 });
+
+describe("base element resets", () => {
+  // Unlayered CSS outranks every cascade layer, so an unlayered `a { color: inherit }`
+  // silently beats Tailwind's `.text-*` utilities and every coloured link renders as
+  // inherited text. The reset has to sit inside @layer base for utilities to win.
+  test("keeps the anchor reset inside @layer base so text utilities still win", () => {
+    const baseLayer = globalsCss.match(/@layer\s+base\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+
+    expect(baseLayer).toMatch(/\ba\s*\{[^}]*color:\s*inherit/);
+  });
+
+  test("declares no unlayered element rules that could outrank the utilities", () => {
+    const withoutAtRules = globalsCss.replace(/@[a-z-]+[^{]*\{[\s\S]*?\n\}/g, "");
+
+    expect(withoutAtRules).not.toMatch(/^\s*(a|body|h[1-6]|p|button)\s*(,|\{)/m);
+  });
+});

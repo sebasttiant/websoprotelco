@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { toTelHref } from "@/components/layout/contact-href";
 import { HeaderMobileMenu, type HeaderNavLink } from "@/components/layout/header-mobile-menu";
 import { Container } from "@/components/ui/container";
 import { getSiteSettings } from "@/domains/settings";
@@ -10,11 +11,6 @@ const NAV_LINKS: readonly HeaderNavLink[] = [
   { href: "/productos", label: "Productos" },
   { href: "/contacto", label: "Contacto" },
 ];
-
-// tel: URIs must not contain spaces, which the stored phone number is formatted with.
-function toTelHref(phone: string): string {
-  return `tel:${phone.replace(/[^\d+]/g, "")}`;
-}
 
 export async function Header() {
   const settings = await getSiteSettings();

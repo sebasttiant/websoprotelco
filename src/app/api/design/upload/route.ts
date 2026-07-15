@@ -14,11 +14,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return NextResponse.json({ error: "Se requiere iniciar sesión." }, { status: 401 });
   }
 
   if (!hasPermission(user.role, "design:write")) {
-    return NextResponse.json({ error: "Design write permission required." }, { status: 403 });
+    return NextResponse.json({ error: "Necesitás permiso para editar el diseño." }, { status: 403 });
   }
 
   const formData = await request.formData();
@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const validation = await validateUploadFile(file);
 
   if (!validation.valid || !file) {
-    return NextResponse.json({ error: validation.error ?? "Invalid image file." }, { status: 400 });
+    return NextResponse.json({ error: validation.error ?? "El archivo de imagen no es válido." }, { status: 400 });
   }
 
   const storage = await createDesignImageStorageAdapter();

@@ -63,21 +63,21 @@ function hasValidImageSignature(bytes: Uint8Array, type: AllowedImageType): bool
 
 export async function validateUploadFile(file: File | null): Promise<UploadValidationResult> {
   if (!file || file.size === 0) {
-    return { valid: false, error: "Image file is required." };
+    return { valid: false, error: "Tenés que subir un archivo de imagen." };
   }
 
   if (!allowedImageTypes.has(file.type)) {
-    return { valid: false, error: "Only JPG, PNG, and WebP images are allowed." };
+    return { valid: false, error: "Solo se admiten imágenes JPG, PNG y WebP." };
   }
 
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
-    return { valid: false, error: "Image must be 5MB or smaller." };
+    return { valid: false, error: "La imagen debe pesar 5MB o menos." };
   }
 
   const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
 
   if (!hasValidImageSignature(bytes, file.type as AllowedImageType)) {
-    return { valid: false, error: "Image content does not match the declared file type." };
+    return { valid: false, error: "El contenido de la imagen no coincide con el tipo declarado." };
   }
 
   return { valid: true };
@@ -94,21 +94,21 @@ const PDF_SIGNATURE = [0x25, 0x50, 0x44, 0x46, 0x2d] as const;
 
 export async function validateDocumentFile(file: File | null): Promise<UploadValidationResult> {
   if (!file || file.size === 0) {
-    return { valid: false, error: "Document file is required." };
+    return { valid: false, error: "Tenés que subir un documento." };
   }
 
   if (file.type !== ALLOWED_DOCUMENT_TYPES.PDF) {
-    return { valid: false, error: "Only PDF documents are allowed." };
+    return { valid: false, error: "Solo se admiten documentos PDF." };
   }
 
   if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
-    return { valid: false, error: "Document must be 10MB or smaller." };
+    return { valid: false, error: "El documento debe pesar 10MB o menos." };
   }
 
   const bytes = new Uint8Array(await file.slice(0, PDF_SIGNATURE.length).arrayBuffer());
 
   if (!hasSignature(bytes, PDF_SIGNATURE)) {
-    return { valid: false, error: "Document content does not match the declared file type." };
+    return { valid: false, error: "El contenido del documento no coincide con el tipo declarado." };
   }
 
   return { valid: true };

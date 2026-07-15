@@ -12,11 +12,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    return NextResponse.json({ error: "Se requiere iniciar sesión." }, { status: 401 });
   }
 
   if (!hasPermission(user.role, "documents:write")) {
-    return NextResponse.json({ error: "Documents write permission required." }, { status: 403 });
+    return NextResponse.json({ error: "Necesitás permiso para editar documentos." }, { status: 403 });
   }
 
   // Cheap early-out, not the authoritative guard: `content-length` can be spoofed or omitted
@@ -26,7 +26,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const contentLength = Number(request.headers.get("content-length"));
 
   if (Number.isFinite(contentLength) && contentLength > MAX_DOCUMENT_SIZE_BYTES) {
-    return NextResponse.json({ error: "Document must be 10MB or smaller." }, { status: 413 });
+    return NextResponse.json({ error: "El documento debe pesar 10MB o menos." }, { status: 413 });
   }
 
   const formData = await request.formData();
@@ -36,7 +36,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const validation = await validateDocumentFile(file);
 
   if (!validation.valid || !file) {
-    return NextResponse.json({ error: validation.error ?? "Invalid document file." }, { status: 400 });
+    return NextResponse.json({ error: validation.error ?? "El documento no es válido." }, { status: 400 });
   }
 
   const storage = await createDocumentStorageAdapter();

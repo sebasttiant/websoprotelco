@@ -45,7 +45,7 @@ describe("POST /api/upload", () => {
 
     const response = await POST(request);
 
-    await expect(response.json()).resolves.toEqual({ error: "Authentication required." });
+    await expect(response.json()).resolves.toEqual({ error: "Se requiere iniciar sesión." });
     expect(response.status).toBe(401);
     expect(mockSave).not.toHaveBeenCalled();
   });
@@ -56,7 +56,7 @@ describe("POST /api/upload", () => {
 
     const response = await POST(request);
 
-    await expect(response.json()).resolves.toEqual({ error: "Catalog write permission required." });
+    await expect(response.json()).resolves.toEqual({ error: "Necesitás permiso para editar el catálogo." });
     expect(response.status).toBe(403);
     expect(mockSave).not.toHaveBeenCalled();
   });
@@ -80,7 +80,7 @@ describe("POST /api/upload", () => {
 
     const response = await POST(uploadRequest(file));
 
-    await expect(response.json()).resolves.toEqual({ error: "Image content does not match the declared file type." });
+    await expect(response.json()).resolves.toEqual({ error: "El contenido de la imagen no coincide con el tipo declarado." });
     expect(response.status).toBe(400);
     expect(mockSave).not.toHaveBeenCalled();
   });

@@ -47,7 +47,7 @@ describe("POST /api/documents/upload", () => {
 
     const response = await POST(request);
 
-    await expect(response.json()).resolves.toEqual({ error: "Authentication required." });
+    await expect(response.json()).resolves.toEqual({ error: "Se requiere iniciar sesión." });
     expect(response.status).toBe(401);
     expect(mockSaveDocument).not.toHaveBeenCalled();
   });
@@ -58,7 +58,7 @@ describe("POST /api/documents/upload", () => {
 
     const response = await POST(request);
 
-    await expect(response.json()).resolves.toEqual({ error: "Documents write permission required." });
+    await expect(response.json()).resolves.toEqual({ error: "Necesitás permiso para editar documentos." });
     expect(response.status).toBe(403);
     expect(mockSaveDocument).not.toHaveBeenCalled();
   });
@@ -72,7 +72,7 @@ describe("POST /api/documents/upload", () => {
 
     const response = await POST(request);
 
-    await expect(response.json()).resolves.toEqual({ error: "Document must be 10MB or smaller." });
+    await expect(response.json()).resolves.toEqual({ error: "El documento debe pesar 10MB o menos." });
     expect(response.status).toBe(413);
     expect(formDataSpy).not.toHaveBeenCalled();
     expect(mockSaveDocument).not.toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe("POST /api/documents/upload", () => {
 
     const response = await POST(uploadRequest(file));
 
-    await expect(response.json()).resolves.toEqual({ error: "Document content does not match the declared file type." });
+    await expect(response.json()).resolves.toEqual({ error: "El contenido del documento no coincide con el tipo declarado." });
     expect(response.status).toBe(400);
     expect(mockSaveDocument).not.toHaveBeenCalled();
   });

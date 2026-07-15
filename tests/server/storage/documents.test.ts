@@ -16,7 +16,7 @@ describe("validateDocumentFile", () => {
   test("rejects a missing file", async () => {
     await expect(validateDocumentFile(null)).resolves.toEqual({
       valid: false,
-      error: "Document file is required.",
+      error: "Tenés que subir un documento.",
     });
   });
 
@@ -25,7 +25,7 @@ describe("validateDocumentFile", () => {
 
     await expect(validateDocumentFile(file)).resolves.toEqual({
       valid: false,
-      error: "Document file is required.",
+      error: "Tenés que subir un documento.",
     });
   });
 
@@ -34,7 +34,7 @@ describe("validateDocumentFile", () => {
 
     await expect(validateDocumentFile(file)).resolves.toEqual({
       valid: false,
-      error: "Only PDF documents are allowed.",
+      error: "Solo se admiten documentos PDF.",
     });
   });
 
@@ -45,7 +45,7 @@ describe("validateDocumentFile", () => {
 
     await expect(validateDocumentFile(file)).resolves.toEqual({
       valid: false,
-      error: "Document must be 10MB or smaller.",
+      error: "El documento debe pesar 10MB o menos.",
     });
   });
 
@@ -54,7 +54,7 @@ describe("validateDocumentFile", () => {
 
     await expect(validateDocumentFile(file)).resolves.toEqual({
       valid: false,
-      error: "Document content does not match the declared file type.",
+      error: "El contenido del documento no coincide con el tipo declarado.",
     });
   });
 });

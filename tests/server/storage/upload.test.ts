@@ -25,13 +25,13 @@ describe("validateUploadFile", () => {
   test("rejects unsupported file types", async () => {
     const file = new File(["svg"], "image.svg", { type: "image/svg+xml" });
 
-    await expect(validateUploadFile(file)).resolves.toEqual({ valid: false, error: "Only JPG, PNG, and WebP images are allowed." });
+    await expect(validateUploadFile(file)).resolves.toEqual({ valid: false, error: "Solo se admiten imágenes JPG, PNG y WebP." });
   });
 
   test("rejects images larger than 5MB", async () => {
     const file = new File([new Uint8Array(MAX_IMAGE_SIZE_BYTES + 1)], "large.png", { type: "image/png" });
 
-    await expect(validateUploadFile(file)).resolves.toEqual({ valid: false, error: "Image must be 5MB or smaller." });
+    await expect(validateUploadFile(file)).resolves.toEqual({ valid: false, error: "La imagen debe pesar 5MB o menos." });
   });
 
   test("rejects spoofed image content when the MIME type is allowed", async () => {
@@ -39,7 +39,7 @@ describe("validateUploadFile", () => {
 
     await expect(validateUploadFile(file)).resolves.toEqual({
       valid: false,
-      error: "Image content does not match the declared file type.",
+      error: "El contenido de la imagen no coincide con el tipo declarado.",
     });
   });
 });

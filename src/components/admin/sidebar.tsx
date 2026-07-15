@@ -5,61 +5,109 @@ import { usePathname } from "next/navigation";
 
 import { hasPermission, type Permission, type Role } from "@/server/auth/rbac";
 
-// `permission` mirrors the guard on each page, so a link is only offered when opening it would
-// actually succeed. Keep the two in step: a link whose permission drifts from its page's guard
-// either hides a reachable section or advertises a 404.
+// Each item's `permission` mirrors the guard on its page, so a link is only offered when opening
+// it would actually succeed. Keep the two in step: a link whose permission drifts from its page's
+// guard either hides a reachable section or advertises a 404.
 //
 // Filtering here is usability, NOT the security boundary — the pages enforce it server-side.
-// rbac.ts is a pure module with no server-only imports, so the real matrix is reused rather
-// than a second copy of the rules being maintained in the UI.
-const SECTIONS: readonly { href: string; label: string; permission: Permission | null }[] = [
-  { href: "/admin", label: "Dashboard", permission: null },
-  { href: "/admin/products", label: "Products", permission: "catalog:read" },
-  { href: "/admin/categories", label: "Categories", permission: "catalog:read" },
-  { href: "/admin/quotes", label: "Quotes", permission: "quote:read" },
-  { href: "/admin/leads", label: "Leads", permission: "leads:read" },
-  { href: "/admin/inventory", label: "Inventory", permission: "inventory:read" },
-  { href: "/admin/documents", label: "Documents", permission: "documents:read" },
-  { href: "/admin/design", label: "Design", permission: "design:read" },
-  { href: "/admin/users", label: "Users", permission: "admin:access" },
-  { href: "/admin/settings", label: "Settings", permission: "settings:read" },
+// rbac.ts is a pure module with no server-only imports, so the real matrix is reused rather than
+// a second copy of the rules being maintained in the UI.
+interface NavItem {
+  href: string;
+  label: string;
+  permission: Permission | null;
+}
+
+interface NavGroup {
+  // `title` is null for the top-level dashboard, which stands alone without a heading.
+  title: string | null;
+  items: readonly NavItem[];
+}
+
+const GROUPS: readonly NavGroup[] = [
+  {
+    title: null,
+    items: [{ href: "/admin", label: "Panel de control", permission: null }],
+  },
+  {
+    title: "Catálogo",
+    items: [
+      { href: "/admin/products", label: "Productos", permission: "catalog:read" },
+      { href: "/admin/categories", label: "Categorías", permission: "catalog:read" },
+    ],
+  },
+  {
+    title: "Operaciones",
+    items: [
+      { href: "/admin/quotes", label: "Cotizaciones", permission: "quote:read" },
+      { href: "/admin/leads", label: "Clientes potenciales", permission: "leads:read" },
+      { href: "/admin/inventory", label: "Inventario", permission: "inventory:read" },
+    ],
+  },
+  {
+    title: "Contenido",
+    items: [
+      { href: "/admin/documents", label: "Documentos", permission: "documents:read" },
+      { href: "/admin/design", label: "Diseño del sitio", permission: "design:read" },
+    ],
+  },
+  {
+    title: "Administración",
+    items: [
+      { href: "/admin/users", label: "Usuarios", permission: "admin:access" },
+      { href: "/admin/settings", label: "Configuración", permission: "settings:read" },
+    ],
+  },
 ];
 
-// "/admin" prefixes every other admin route, so it only counts as active on an exact match;
-// the rest stay active across their nested routes (e.g. /admin/products/<id>).
+// "/admin" prefixes every other admin route, so it only counts as active on an exact match; the
+// rest stay active across their nested routes (e.g. /admin/products/<id>).
 function isActive(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 }
 
 export function AdminSidebar({ role }: { role: Role }) {
   const pathname = usePathname();
-  const sections = SECTIONS.filter(
-    (section) => section.permission === null || hasPermission(role, section.permission),
-  );
+
+  const visibleGroups = GROUPS.map((group) => ({
+    title: group.title,
+    items: group.items.filter(
+      (item) => item.permission === null || hasPermission(role, item.permission),
+    ),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <nav
-      aria-label="Admin sections"
-      className="flex gap-1 overflow-x-auto border-b border-white/10 p-4 md:h-full md:w-60 md:flex-col md:overflow-visible md:border-b-0 md:border-r"
+      aria-label="Secciones de administración"
+      className="flex gap-4 overflow-x-auto border-b border-white/10 p-4 md:h-full md:w-60 md:flex-col md:gap-5 md:overflow-visible md:border-b-0 md:border-r"
     >
-      {sections.map((section) => {
-        const active = isActive(pathname, section.href);
+      {visibleGroups.map((group) => (
+        <div key={group.title ?? "principal"} className="flex gap-1 md:flex-col md:gap-1">
+          {group.title ? (
+            <p className="hidden px-3 pb-1 text-[0.65rem] font-black uppercase tracking-widest text-white/40 md:block">
+              {group.title}
+            </p>
+          ) : null}
+          {group.items.map((item) => {
+            const active = isActive(pathname, item.href);
 
-        return (
-          <Link
-            key={section.href}
-            href={section.href}
-            aria-current={active ? "page" : undefined}
-            className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-              active
-                ? "bg-brand-blue text-white"
-                : "text-white/60 hover:bg-white/5 hover:text-brand-accent"
-            }`}
-          >
-            {section.label}
-          </Link>
-        );
-      })}
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+                  active
+                    ? "bg-brand-blue text-white"
+                    : "text-white/60 hover:bg-white/5 hover:text-brand-accent"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 }

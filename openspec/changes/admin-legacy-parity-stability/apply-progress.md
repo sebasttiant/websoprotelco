@@ -30,6 +30,7 @@ Status: complete for tasks 0.1-0.3; 0.4 not used; 0.5 deferred because the integ
 - `d0be8fd` `fix(catalog): reject unsafe admin image paths`
 - `5ca1cb7` `feat(admin): group Spanish admin navigation`
 - `4cb7815` `feat(admin): localize admin list workflows`
+- `87e06d2` `docs(sdd): record slice zero apply progress`
 
 ## Verification
 
@@ -38,7 +39,7 @@ Status: complete for tasks 0.1-0.3; 0.4 not used; 0.5 deferred because the integ
 - `pnpm test` — passed, 64 files / 518 tests.
 - `pnpm build` — passed.
 - `git diff --check feat/admin-legacy-parity-stability...HEAD` — passed.
-- `git status --short --branch` — clean before progress artifact update.
+- `git status --short --branch` — clean after progress artifact push.
 
 ## Review Budget
 

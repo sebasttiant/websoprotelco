@@ -60,7 +60,11 @@ describe("catalog product actions", () => {
       description: "Professional tool",
       priceCents: "120000",
       currency: "cop",
-      imageUrl: "https://example.test/tool.png",
+      // Only an adapter-generated local path is accepted; unsafe image URLs (remote
+      // URL, data URI, traversal, legacy string) are rejected with a Spanish validation
+      // error and are never silently nulled or persisted. A safe path here proves the
+      // happy path still persists.
+      imageUrl: "/uploads/2026-03-08-3f2504e0-4f89-41d3-9a0c-0305e82c3301.webp",
       brand: "SOPROTELCO",
       stockQuantity: "4",
       isActive: "on",
@@ -76,7 +80,7 @@ describe("catalog product actions", () => {
       "Professional tool",
       120000,
       "COP",
-      "https://example.test/tool.png",
+      "/uploads/2026-03-08-3f2504e0-4f89-41d3-9a0c-0305e82c3301.webp",
       "SOPROTELCO",
       4,
       true,

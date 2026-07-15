@@ -31,6 +31,8 @@ Status: complete for tasks 0.1-0.3; 0.4 not used; 0.5 deferred because the integ
 - `5ca1cb7` `feat(admin): group Spanish admin navigation`
 - `4cb7815` `feat(admin): localize admin list workflows`
 - `87e06d2` `docs(sdd): record slice zero apply progress`
+- `8aef176` `docs(sdd): update slice zero progress receipt`
+- `ec79967` `ci: align workflow runtime versions`
 
 ## Verification
 
@@ -40,6 +42,7 @@ Status: complete for tasks 0.1-0.3; 0.4 not used; 0.5 deferred because the integ
 - `pnpm build` — passed.
 - `git diff --check feat/admin-legacy-parity-stability...HEAD` — passed.
 - `git status --short --branch` — clean after progress artifact push.
+- GitHub Actions first failed before commands ran because workflow pnpm/node versions lagged `package.json`; fixed in `ec79967` by aligning CI to pnpm 11.13.0 and Node 24.18.0.
 
 ## Review Budget
 

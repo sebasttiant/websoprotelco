@@ -1,4 +1,5 @@
 import { StatCard } from "@/components/admin/stat-card";
+import { roleLabel } from "@/lib/presentation";
 import { getProductsForAdmin } from "@/domains/catalog";
 import { getLowStockProducts } from "@/domains/inventory";
 import { getLeads } from "@/domains/leads";
@@ -29,30 +30,30 @@ export default async function AdminDashboardPage() {
   return (
     <section className="space-y-8">
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administration</p>
-        <h1 className="text-3xl font-black text-brand-navy">Dashboard</h1>
+        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administración</p>
+        <h1 className="text-3xl font-black text-brand-navy">Panel de control</h1>
         {user ? (
           <p className="mt-2 text-sm font-medium text-brand-muted">
-            Signed in as <span className="font-black text-brand-navy">{user.email}</span> ({user.role})
+            Sesión iniciada como <span className="font-black text-brand-navy">{user.email}</span> ({roleLabel(user.role)})
           </p>
         ) : null}
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Products" value={products.total} href="/admin/products" hint="In the catalog" />
+        <StatCard label="Productos" value={products.total} href="/admin/products" hint="En el catálogo" />
         <StatCard
-          label="Open quotes"
+          label="Cotizaciones abiertas"
           value={openQuotes}
           href="/admin/quotes"
-          hint="Received or in review"
+          hint="Recibidas o en revisión"
           alert
         />
-        <StatCard label="Leads" value={leads.length} href="/admin/leads" hint="Captured so far" />
+        <StatCard label="Clientes potenciales" value={leads.length} href="/admin/leads" hint="Capturados hasta ahora" />
         <StatCard
-          label="Low stock"
+          label="Stock bajo"
           value={lowStock.length}
           href="/admin/inventory"
-          hint="At or below the threshold"
+          hint="En o bajo el umbral"
           alert
         />
       </div>

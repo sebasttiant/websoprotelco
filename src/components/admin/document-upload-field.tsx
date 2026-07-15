@@ -28,7 +28,7 @@ export function DocumentUploadField({ label }: DocumentUploadFieldProps) {
     }
 
     setIsUploading(true);
-    setStatus("Uploading document...");
+    setStatus("Subiendo documento...");
 
     // Read the sibling `category` select's current value from the same form so the file
     // is stored under the folder matching the metadata the admin is about to submit.
@@ -44,16 +44,16 @@ export function DocumentUploadField({ label }: DocumentUploadFieldProps) {
       const payload = (await response.json()) as DocumentUploadResponse;
 
       if (!response.ok || !payload.filePath) {
-        setStatus(payload.error ?? "Document upload failed.");
+        setStatus(payload.error ?? "No se pudo subir el documento.");
         return;
       }
 
       setFilePath(payload.filePath);
       setFileName(payload.fileName ?? file.name);
       setFileSize(String(payload.fileSize ?? file.size));
-      setStatus("Document uploaded.");
+      setStatus("El documento se subió correctamente.");
     } catch {
-      setStatus("Document upload failed.");
+      setStatus("No se pudo subir el documento.");
     } finally {
       setIsUploading(false);
     }
@@ -64,10 +64,10 @@ export function DocumentUploadField({ label }: DocumentUploadFieldProps) {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-black text-slate-800">{label}</p>
-          <p className="text-xs font-semibold text-slate-500">PDF only. Maximum 10MB.</p>
+          <p className="text-xs font-semibold text-slate-500">Solo PDF. Máximo 10 MB.</p>
         </div>
         <label className="inline-flex cursor-pointer items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white">
-          {isUploading ? "Uploading..." : "Upload PDF"}
+          {isUploading ? "Subiendo..." : "Subir PDF"}
           <input
             type="file"
             accept="application/pdf"
@@ -80,7 +80,7 @@ export function DocumentUploadField({ label }: DocumentUploadFieldProps) {
       <input type="hidden" name="filePath" value={filePath} />
       <input type="hidden" name="fileName" value={fileName} />
       <input type="hidden" name="fileSize" value={fileSize} />
-      {fileName ? <p className="text-xs font-bold text-slate-600">Selected: {fileName}</p> : null}
+      {fileName ? <p className="text-xs font-bold text-slate-600">Seleccionado: {fileName}</p> : null}
       {status ? <p className="text-xs font-bold text-slate-600">{status}</p> : null}
     </div>
   );

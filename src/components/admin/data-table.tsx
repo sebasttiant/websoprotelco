@@ -54,14 +54,14 @@ export function DataTable<Row>({ rows, columns, emptyMessage, page = 1, totalPag
 
       {pageHref && totalPages > 1 ? (
         <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4 text-sm font-bold text-slate-600">
-          <Link aria-disabled={page <= 1} href={pageHref(Math.max(1, page - 1))} className="rounded-full border border-slate-200 px-4 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40">
-            Previous
+          <Link aria-label="Página anterior" aria-disabled={page <= 1} href={pageHref(Math.max(1, page - 1))} className="rounded-full border border-slate-200 px-4 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40">
+            Anterior
           </Link>
           <span>
-            Page {page} of {totalPages}
+            Página {page} de {totalPages}
           </span>
-          <Link aria-disabled={page >= totalPages} href={pageHref(Math.min(totalPages, page + 1))} className="rounded-full border border-slate-200 px-4 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40">
-            Next
+          <Link aria-label="Página siguiente" aria-disabled={page >= totalPages} href={pageHref(Math.min(totalPages, page + 1))} className="rounded-full border border-slate-200 px-4 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40">
+            Siguiente
           </Link>
         </div>
       ) : null}

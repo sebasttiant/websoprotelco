@@ -44,36 +44,36 @@ export default async function AdminProductsPage({ searchParams }: ProductsPagePr
   });
 
   const columns: DataTableColumn<ProductAdminSummary>[] = [
-    { key: "product", header: "Product", render: (row) => <div><p className="font-black text-slate-950">{row.name}</p><p className="text-xs font-bold text-slate-500">{row.sku} · {row.slug}</p></div> },
-    { key: "category", header: "Category", render: (row) => row.categoryName ?? "Uncategorized" },
-    { key: "brand", header: "Brand", render: (row) => row.brand ?? "—" },
-    { key: "price", header: "Price", render: (row) => formatCurrency(row.priceCents, row.currency) },
+    { key: "product", header: "Producto", render: (row) => <div><p className="font-black text-slate-950">{row.name}</p><p className="text-xs font-bold text-slate-500">{row.sku} · {row.slug}</p></div> },
+    { key: "category", header: "Categoría", render: (row) => row.categoryName ?? "Sin categoría" },
+    { key: "brand", header: "Marca", render: (row) => row.brand ?? "—" },
+    { key: "price", header: "Precio", render: (row) => formatCurrency(row.priceCents, row.currency) },
     { key: "stock", header: "Stock", render: (row) => row.stockQuantity },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.isActive ? "active" : "inactive"} /> },
-    { key: "actions", header: "Actions", render: (row) => <div className="flex gap-2"><Link href={`/admin/products/${row.id}`} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700">Edit</Link><form action={deleteProduct as unknown as FormAction}><input type="hidden" name="id" value={row.id} /><ConfirmDialog message={`Delete ${row.name}?`}>Delete</ConfirmDialog></form></div> },
+    { key: "status", header: "Estado", render: (row) => <StatusBadge status={row.isActive ? "active" : "inactive"} /> },
+    { key: "actions", header: "Acciones", render: (row) => <div className="flex gap-2"><Link href={`/admin/products/${row.id}`} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700">Editar</Link><form action={deleteProduct as unknown as FormAction}><input type="hidden" name="id" value={row.id} /><ConfirmDialog message={`¿Eliminar el producto "${row.name}"? Esta acción no se puede deshacer.`}>Eliminar</ConfirmDialog></form></div> },
   ];
 
   return (
     <section className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Catalog</p>
-          <h1 className="text-3xl font-black text-slate-950">Products</h1>
+          <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
+          <h1 className="text-3xl font-black text-slate-950">Productos</h1>
         </div>
-        <Link href="/admin/products/new" className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white">New product</Link>
+        <Link href="/admin/products/new" className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white">Nuevo producto</Link>
       </div>
 
       <form className="grid gap-3 rounded-[28px] bg-white p-4 shadow-xl shadow-blue-950/5 md:grid-cols-[1fr_180px_auto]">
-        <SearchInput defaultValue={search} placeholder="Search products" />
+        <SearchInput defaultValue={search} placeholder="Buscar productos" />
         <select name="status" defaultValue={status} className="rounded-full border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700">
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="inactive">Inactivo</option>
         </select>
-        <button type="submit" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white">Filter</button>
+        <button type="submit" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white">Filtrar</button>
       </form>
 
-      <DataTable rows={rows} columns={columns} emptyMessage="No products found." page={page} totalPages={totalPages} pageHref={(nextPage) => buildProductsHref(nextPage, search, status)} />
+      <DataTable rows={rows} columns={columns} emptyMessage="No se encontraron productos." page={page} totalPages={totalPages} pageHref={(nextPage) => buildProductsHref(nextPage, search, status)} />
     </section>
   );
 }

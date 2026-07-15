@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { formatDateTime, movementTypeLabel } from "@/lib/presentation";
 import {
   DEFAULT_LOW_STOCK_THRESHOLD,
   getLowStockProducts,
@@ -52,16 +53,16 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
   return (
     <section className="space-y-10">
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administration</p>
-        <h1 className="text-3xl font-black text-slate-950">Inventory</h1>
+        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administración</p>
+        <h1 className="text-3xl font-black text-slate-950">Inventario</h1>
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-black text-slate-950">Low stock</h2>
+        <h2 className="text-lg font-black text-slate-950">Stock bajo</h2>
         <form method="get" className="flex items-end gap-2">
           <div>
             <label htmlFor="threshold" className="block text-xs font-bold text-slate-500">
-              Threshold
+              Umbral
             </label>
             <input
               id="threshold"
@@ -72,7 +73,7 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
             />
           </div>
           <button type="submit" className="rounded bg-brand-blue px-4 py-2 text-sm font-bold text-white">
-            Apply
+            Aplicar
           </button>
         </form>
         <div className="overflow-hidden rounded-lg border border-slate-200">
@@ -80,8 +81,8 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
             <thead className="bg-slate-50 text-left text-xs font-black uppercase tracking-widest text-slate-500">
               <tr>
                 <th className="px-4 py-3">SKU</th>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Current stock</th>
+                <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Stock actual</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -103,7 +104,7 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
               ) : (
                 <tr>
                   <td colSpan={3} className="px-4 py-6 text-center font-medium text-slate-500">
-                    No products below the threshold.
+                    No hay productos bajo el umbral.
                   </td>
                 </tr>
               )}
@@ -113,11 +114,11 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-lg font-black text-slate-950">Record movement</h2>
+        <h2 className="text-lg font-black text-slate-950">Registrar movimiento</h2>
         <form action={recordStockMovement as unknown as FormAction} className="max-w-xl space-y-3 rounded-lg border border-slate-200 p-4">
           <div>
             <label htmlFor="productId" className="block text-xs font-bold text-slate-500">
-              Product ID
+              ID del producto
             </label>
             <input
               id="productId"
@@ -129,7 +130,7 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
           </div>
           <div>
             <label htmlFor="movementType" className="block text-xs font-bold text-slate-500">
-              Movement type
+              Tipo de movimiento
             </label>
             <select
               id="movementType"
@@ -138,14 +139,14 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
             >
               {MOVEMENT_TYPES.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {movementTypeLabel(option)}
                 </option>
               ))}
             </select>
           </div>
           <div>
             <label htmlFor="quantity" className="block text-xs font-bold text-slate-500">
-              Quantity (negative for outgoing movements)
+              Cantidad (negativa para salidas)
             </label>
             <input
               id="quantity"
@@ -156,7 +157,7 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
           </div>
           <div>
             <label htmlFor="notes" className="block text-xs font-bold text-slate-500">
-              Notes
+              Notas
             </label>
             <input
               id="notes"
@@ -166,38 +167,38 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
             />
           </div>
           <button type="submit" className="rounded bg-brand-blue px-4 py-2 text-sm font-bold text-white">
-            Save
+            Guardar
           </button>
         </form>
       </div>
 
       {history ? (
         <div className="space-y-4">
-          <h2 className="text-lg font-black text-slate-950">History</h2>
+          <h2 className="text-lg font-black text-slate-950">Historial</h2>
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50 text-left text-xs font-black uppercase tracking-widest text-slate-500">
                 <tr>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Quantity</th>
-                  <th className="px-4 py-3">Notes</th>
-                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Cantidad</th>
+                  <th className="px-4 py-3">Notas</th>
+                  <th className="px-4 py-3">Fecha</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {history.movements.length > 0 ? (
                   history.movements.map((movement) => (
                     <tr key={movement.id}>
-                      <td className="px-4 py-3">{movement.movementType}</td>
+                      <td className="px-4 py-3">{movementTypeLabel(movement.movementType)}</td>
                       <td className="px-4 py-3">{movement.quantity}</td>
                       <td className="px-4 py-3">{movement.notes ?? "—"}</td>
-                      <td className="px-4 py-3">{new Date(movement.createdAt).toLocaleString("en-US")}</td>
+                      <td className="px-4 py-3">{formatDateTime(movement.createdAt)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan={4} className="px-4 py-6 text-center font-medium text-slate-500">
-                      No movements recorded for this product.
+                      No hay movimientos registrados para este producto.
                     </td>
                   </tr>
                 )}
@@ -206,21 +207,23 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
           </div>
           <div className="flex items-center justify-between text-sm font-bold text-slate-600">
             <Link
+              aria-label="Página anterior"
               aria-disabled={page <= 1}
               href={`/admin/inventory?threshold=${threshold}&productId=${productId}&page=${Math.max(1, page - 1)}`}
               className="rounded-full border border-slate-200 px-4 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40"
             >
-              Previous
+              Anterior
             </Link>
             <span>
-              Page {history.page} of {Math.max(1, Math.ceil(history.total / history.pageSize))}
+              Página {history.page} de {Math.max(1, Math.ceil(history.total / history.pageSize))}
             </span>
             <Link
+              aria-label="Página siguiente"
               aria-disabled={page * history.pageSize >= history.total}
               href={`/admin/inventory?threshold=${threshold}&productId=${productId}&page=${page + 1}`}
               className="rounded-full border border-slate-200 px-4 py-2 aria-disabled:pointer-events-none aria-disabled:opacity-40"
             >
-              Next
+              Siguiente
             </Link>
           </div>
         </div>

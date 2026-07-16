@@ -109,6 +109,11 @@ export const productAdminInputSchema = z.object({
 
 export type ProductAdminInput = z.infer<typeof productAdminInputSchema>;
 
+export type ProductAdminUpdateInput = Omit<ProductAdminInput, "imageUrl"> & {
+  id: string;
+  imageUrl?: ProductAdminInput["imageUrl"];
+};
+
 export const categoryAdminInputSchema = z.object({
   id: z.uuid().optional(),
   parentId: z.preprocess((value) => (value === "" ? null : value), z.uuid().nullable()),
@@ -119,6 +124,11 @@ export const categoryAdminInputSchema = z.object({
 });
 
 export type CategoryAdminInput = z.infer<typeof categoryAdminInputSchema>;
+
+export type CategoryAdminUpdateInput = Omit<CategoryAdminInput, "imageUrl"> & {
+  id: string;
+  imageUrl?: CategoryAdminInput["imageUrl"];
+};
 
 export const catalogDeleteInputSchema = z.object({ id: z.uuid() });
 

@@ -4,11 +4,13 @@ import { PRODUCT_ADMIN_PAGE_SIZE, productAdminPageSchema } from "./schemas";
 import type {
   CategoryAdminDetail,
   CategoryAdminInput,
+  CategoryAdminUpdateInput,
   CategoryAdminSummary,
   CategoryOption,
   CategorySummary,
   ProductAdminDetail,
   ProductAdminInput,
+  ProductAdminUpdateInput,
   ProductAdminListFilters,
   ProductAdminListResult,
   ProductAdminSummary,
@@ -185,7 +187,7 @@ export async function createProduct(input: ProductAdminInput): Promise<void> {
   await repository.insertProduct(input);
 }
 
-export async function updateProduct(input: ProductAdminInput & { id: string }): Promise<void> {
+export async function updateProduct(input: ProductAdminUpdateInput): Promise<void> {
   await repository.updateProductById(input);
 }
 
@@ -197,7 +199,7 @@ export async function createCategory(input: CategoryAdminInput): Promise<void> {
   await repository.insertCategory(input);
 }
 
-export async function updateCategory(input: CategoryAdminInput & { id: string }): Promise<void> {
+export async function updateCategory(input: CategoryAdminUpdateInput): Promise<void> {
   await repository.updateCategoryById(input);
 }
 

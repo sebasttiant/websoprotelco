@@ -10,11 +10,12 @@ export const dynamic = "force-dynamic";
 
 interface EditCategoryPageProps {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ error?: string }>;
 }
 
 type FormAction = (formData: FormData) => Promise<void>;
 
-export default async function EditCategoryPage({ params }: EditCategoryPageProps) {
+export default async function EditCategoryPage({ params, searchParams }: EditCategoryPageProps) {
   await requirePermission("catalog:write");
   const { id } = await params;
 
@@ -25,6 +26,7 @@ export default async function EditCategoryPage({ params }: EditCategoryPageProps
   }
 
   const [category, categories] = await Promise.all([getCategoryByIdForAdmin(id), getCategoryOptionsExcluding(id)]);
+  const error = (await searchParams)?.error;
 
   if (!category) {
     notFound();
@@ -39,6 +41,7 @@ export default async function EditCategoryPage({ params }: EditCategoryPageProps
         <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
         <h1 className="text-3xl font-black text-slate-950">Editar categoría</h1>
       </div>
+      {error ? <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">No se pudo actualizar la categoría. Revisá los datos e intentá de nuevo.</p> : null}
       <form action={updateCategory as unknown as FormAction} className="grid gap-4 rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
         <input type="hidden" name="id" value={category.id} />
         <label className="grid gap-2 text-sm font-bold text-slate-700">Nombre<input name="name" required defaultValue={category.name} className={inputClass} /></label>

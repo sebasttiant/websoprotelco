@@ -10,11 +10,12 @@ export const dynamic = "force-dynamic";
 
 interface EditProductPageProps {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ error?: string }>;
 }
 
 type FormAction = (formData: FormData) => Promise<void>;
 
-export default async function EditProductPage({ params }: EditProductPageProps) {
+export default async function EditProductPage({ params, searchParams }: EditProductPageProps) {
   await requirePermission("catalog:write");
   const { id } = await params;
 
@@ -25,6 +26,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
   }
 
   const [product, categories] = await Promise.all([getProductByIdForAdmin(id), getCategoryOptions()]);
+  const error = (await searchParams)?.error;
 
   if (!product) {
     notFound();
@@ -39,6 +41,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
         <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
         <h1 className="text-3xl font-black text-slate-950">Editar producto</h1>
       </div>
+      {error ? <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">No se pudo actualizar el producto. Revisá los datos e intentá de nuevo.</p> : null}
       <form action={updateProduct as unknown as FormAction} className="grid gap-4 rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
         <input type="hidden" name="id" value={product.id} />
         <label className="grid gap-2 text-sm font-bold text-slate-700">Nombre<input name="name" required defaultValue={product.name} className={inputClass} /></label>

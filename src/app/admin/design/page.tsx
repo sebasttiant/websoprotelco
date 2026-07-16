@@ -13,10 +13,11 @@ function formatDate(value: string | null): string {
   return value ? value.slice(0, 10) : "—";
 }
 
-export default async function AdminDesignPage() {
+export default async function AdminDesignPage({ searchParams }: { searchParams?: Promise<{ error?: string }> } = {}) {
   await requirePermission("design:read");
 
   const [banners, hero] = await Promise.all([getAdminBanners(), getHeroSettings()]);
+  const error = (await searchParams)?.error;
 
   return (
     <section className="space-y-10">
@@ -24,6 +25,7 @@ export default async function AdminDesignPage() {
         <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administración</p>
         <h1 className="text-3xl font-black text-slate-950">Diseño del sitio</h1>
       </div>
+      {error ? <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">No se pudo guardar el diseño. Usá una ruta interna o una URL http(s).</p> : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <form action={updateHeroSettings as unknown as FormAction} className="space-y-4 rounded-lg border border-slate-200 p-4">
@@ -92,7 +94,7 @@ export default async function AdminDesignPage() {
               <label htmlFor="linkUrl" className="block text-xs font-bold text-slate-500">
                 URL de enlace
               </label>
-              <input id="linkUrl" name="linkUrl" type="url" className="w-full rounded border border-slate-300 px-3 py-2 text-sm" />
+              <input id="linkUrl" name="linkUrl" type="text" className="w-full rounded border border-slate-300 px-3 py-2 text-sm" />
             </div>
           </div>
           <div className="grid gap-3 md:grid-cols-2">

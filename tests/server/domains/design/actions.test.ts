@@ -105,6 +105,15 @@ describe("updateHeroSettings", () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/design");
     expect(mockRedirect).toHaveBeenCalledWith("/admin/design?success=hero-updated");
   });
+
+  test("redirects validation errors so unsafe CTA links are visible on the page", async () => {
+    mockRequirePermission.mockResolvedValue({ id: adminId, email: "admin@soprotelco.test", role: "admin" });
+
+    await expect(updateHeroSettings(formData({ backgroundImage: "", title: "Hero", subtitle: "Subtitle", ctaText: "Ver", ctaLink: "javascript:alert(1)" }))).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockRedirect).toHaveBeenCalledWith("/admin/design?error=validation");
+  });
 });
 
 describe("deleteBanner", () => {

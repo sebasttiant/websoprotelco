@@ -1,6 +1,6 @@
 import * as repository from "./repository";
 import type { BannerRow, HeroSettingsRow } from "./repository";
-import type { BannerCreateInput, BannerSummary, BannerUpdateInput, HeroSettings, HeroSettingsUpdateInput } from "./schemas";
+import { isSafeDesignLink, type BannerCreateInput, type BannerSummary, type BannerUpdateInput, type HeroSettings, type HeroSettingsUpdateInput } from "./schemas";
 
 const DEFAULT_HERO_SETTINGS: HeroSettings = {
   id: null,
@@ -24,7 +24,7 @@ function mapBanner(row: BannerRow): BannerSummary {
     title: row.title,
     subtitle: row.subtitle,
     imagePath: row.image_path,
-    linkUrl: row.link_url,
+    linkUrl: isSafeDesignLink(row.link_url) ? row.link_url : null,
     displayOrder: row.display_order,
     isActive: row.is_active,
     startDate: row.start_date,
@@ -42,7 +42,7 @@ function mapHeroSettings(row: HeroSettingsRow): HeroSettings {
     title: row.title,
     subtitle: row.subtitle,
     ctaText: row.cta_text,
-    ctaLink: row.cta_link,
+    ctaLink: isSafeDesignLink(row.cta_link) ? row.cta_link : DEFAULT_HERO_SETTINGS.ctaLink,
     updatedBy: row.updated_by,
     updatedAt: row.updated_at,
   };

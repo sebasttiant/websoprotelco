@@ -4,6 +4,8 @@ export const PUBLIC_BANNER_LIMIT = 5;
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DESIGN_IMAGE_PATH_PATTERN = /^\/uploads\/(banners|hero)\/[0-9a-fA-F-]{36}_[A-Za-z0-9._-]+\.(jpg|png|webp)$/;
+const INTERNAL_LINK_PATTERN = /^\/(?!\/)(?!.*\\)[^\s]*$/;
+const ALLOWED_EXTERNAL_LINK_PROTOCOLS = new Set(["http:", "https:"]);
 
 const optionalText = (max: number) =>
   z
@@ -26,12 +28,35 @@ const optionalDateSchema = z
   .optional()
   .transform((value) => (value === "" || value === undefined ? undefined : value));
 
+const designLinkSchema = z.string().trim().max(500).refine(isSafeDesignLink, {
+  error: "Link URL must be an internal path or an http(s) URL.",
+});
+
 const optionalUrlSchema = z
-  .union([z.string().trim().url({ error: "Link URL must be a valid URL." }).max(500), z.literal("")])
+  .union([designLinkSchema, z.literal("")])
   .optional()
   .transform((value) => (value === "" || value === undefined ? undefined : value));
 
-const ctaLinkSchema = z.string().trim().min(1, { error: "CTA link is required." }).max(500);
+const ctaLinkSchema = designLinkSchema.min(1, { error: "CTA link is required." });
+
+export function isSafeDesignLink(link: string | null | undefined): link is string {
+  if (!link) {
+    return false;
+  }
+
+  const candidate = link.trim();
+
+  if (INTERNAL_LINK_PATTERN.test(candidate)) {
+    return true;
+  }
+
+  try {
+    const url = new URL(candidate);
+    return ALLOWED_EXTERNAL_LINK_PROTOCOLS.has(url.protocol);
+  } catch {
+    return false;
+  }
+}
 
 function hasValidDateRange(input: { startDate?: string; endDate?: string }): boolean {
   return !input.startDate || !input.endDate || input.startDate <= input.endDate;

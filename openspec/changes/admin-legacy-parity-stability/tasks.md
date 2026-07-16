@@ -51,6 +51,11 @@ Each slice MUST pass this gate before starting the next slice:
 - [ ] 0.4 NAMED-STASH FALLBACK (only if 0.2/0.3 cannot proceed): `git stash push -u -m "p1-p5-checkpoint-restore"`; record `git stash list` + stash hash; on restore verify hash matches and `git stash pop`; re-verify untracked files present (never lose untracked files). **Owner: chore**. **Dep: 0.3**. **Rollback: pop verifies hash; guaranteed restoration**
 - [ ] 0.5 PREP: open draft/no-merge tracker PR describing branch + split (PREPARATION ONLY — PR body only; no execution beyond branch). **Test: checkpoint gate passes on main and tracker**
 
+### Slice 0 Review Remediation (PR #3 merge blockers)
+
+- [x] 0.R1 DESIGN LINK SAFETY: validate design-domain links with an internal-path/http(s) allowlist before they can persist or render through Next `<Link href>`; sanitize persisted unsafe legacy values at render mapping/component boundaries; surface design validation errors accessibly and use text input for internal paths. **Owner: design-domain**. **Dep: PR #3 review**. **Trace: Admin stability/accessibility safe rendering**. **Rollback: revert design schema/service/component tests**
+- [x] 0.R2 CATALOG LEGACY IMAGE EDIT SAFETY: omit absent image fields at the action boundary; allow unrelated product/category edits when an unchanged legacy unsafe image value is resubmitted based on server-read DB state; keep the existing DB image unchanged; preserve explicit blank removal as `NULL`; reject forged/new unsafe image values; and surface edit errors accessibly. **Owner: catalog-domain**. **Dep: PR #3 review**. **Trace: Slice rollback bounded, admin stability**. **Rollback: revert catalog action/repository/schema/component tests**
+
 ## Phase 1: Foundation Infrastructure (Slices 1-2)
 
 - [ ] 1.1 RED: `tests/server/db/pool.test.ts` — `withTransaction<T>` rolls back on throw; commits on success; no global query calls inside active txn. **Owner: db**. **Dep: 0**. **Trace: Failed action no partial stock (orders/inventory-spec)**

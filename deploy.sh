@@ -24,12 +24,18 @@ APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 BACKUP_DIR="$APP_DIR/backups"
 LAST_DEPLOYED_SHA_FILE="$BACKUP_DIR/last-deployed-sha"
 MANIFEST_FILE="$BACKUP_DIR/rollback-manifest"
+MANUAL_DOCUMENTS_RUNBOOK="docs/operations/legacy-documents-migration.md"
 BRANCH="${BRANCH:-main}"
 WEB_SERVICE="${WEB_SERVICE:-web}"
 DB_SERVICE="${DB_SERVICE:-db}"
 MIGRATE_SERVICE="${MIGRATE_SERVICE:-migrate}"
 SEED_SERVICE="${SEED_SERVICE:-seed}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
+
+# Shared with rollback.sh, and exercised directly by tests/deploy/ with a stub docker on PATH.
+# These helpers decide whether user files live or die, so they must be testable off the VPS.
+# shellcheck source=deploy-lib.sh
+. "$APP_DIR/deploy-lib.sh"
 
 cd "$APP_DIR"
 
@@ -100,6 +106,107 @@ done
 echo "    .env OK"
 
 # --------------------------------------------------------------------------
+# 3.3 Legacy documents preflight
+# --------------------------------------------------------------------------
+# This must run before build/recreate. If documents still live only in the current container's
+# writable layer, `docker compose up --build` can destroy them. Migration is intentionally
+# manual: this script never restores an old documents archive or infers intent from an empty
+# volume.
+echo "==> Checking legacy documents storage..."
+if ! preflight_web_state="$(web_container_state "$WEB_SERVICE")"; then
+  echo "ERROR: could not query '$WEB_SERVICE'. Deploy aborted before build/recreate."
+  exit 1
+fi
+echo "    '$WEB_SERVICE' container state: $preflight_web_state"
+
+preflight_manifest_nonempty=0
+[ -s "$MANIFEST_FILE" ] && preflight_manifest_nonempty=1
+
+if [ "$preflight_web_state" != "absent" ]; then
+  preflight_web_id="$(web_container_id "$WEB_SERVICE")"
+  if ! container_has_mount "$preflight_web_id" /app/public/documents; then
+    case "$preflight_web_state" in
+      running)
+        if ! preflight_documents_status="$(docker compose exec -T "$WEB_SERVICE" sh -lc '
+            if [ ! -d /app/public/documents ]; then echo absent;
+            elif find /app/public/documents -mindepth 1 ! -type d | read _; then echo present;
+            else echo empty; fi' 2>&1)"; then
+          echo "ERROR: could not inspect legacy /app/public/documents in '$WEB_SERVICE'."
+          echo "       Deploy aborted before build/recreate. Follow: $MANUAL_DOCUMENTS_RUNBOOK"
+          echo "       docker said: $preflight_documents_status"
+          exit 1
+        fi
+        preflight_documents_status="$(printf '%s' "$preflight_documents_status" | tr -d '\r\n')"
+        if [ "$preflight_documents_status" = "present" ]; then
+          echo "ERROR: legacy documents still live only in the '$WEB_SERVICE' container writable layer."
+          echo "       Deploy aborted before build/recreate so those files are not destroyed."
+          echo "       Run the manual one-time migration with the web service intentionally stopped:"
+          echo "         $MANUAL_DOCUMENTS_RUNBOOK"
+          exit 1
+        fi
+        if [ "$preflight_documents_status" != "empty" ] && [ "$preflight_documents_status" != "absent" ]; then
+          echo "ERROR: unexpected legacy documents probe result: $preflight_documents_status"
+          echo "       Deploy aborted before build/recreate. Follow: $MANUAL_DOCUMENTS_RUNBOOK"
+          exit 1
+        fi
+        echo "    Legacy documents directory is $preflight_documents_status; no automatic migration will run."
+        ;;
+      stopped)
+        echo "ERROR: '$WEB_SERVICE' is stopped and still lacks the documents-data mount."
+        echo "       Deploy aborted before build/recreate because legacy documents cannot be proven"
+        echo "       safe or absent while the container is stopped. Follow: $MANUAL_DOCUMENTS_RUNBOOK"
+        exit 1
+        ;;
+    esac
+  fi
+elif [ "$preflight_manifest_nonempty" -eq 1 ]; then
+  echo "ERROR: '$WEB_SERVICE' no longer exists on a host that has previous deploy backups."
+  echo "       Deploy aborted before build/recreate because legacy writable-layer documents"
+  echo "       cannot be proven safe or absent. Follow: $MANUAL_DOCUMENTS_RUNBOOK"
+  exit 1
+fi
+
+# --------------------------------------------------------------------------
+# 3.4 Backup retention
+# --------------------------------------------------------------------------
+# Runs BEFORE anything is written: the point of retention is to keep the disk from filling,
+# and a full disk is exactly what makes tar and pg_dump produce truncated files. Pruning
+# afterwards would never run on the very failure it exists to prevent.
+#
+# Never prunes a file still referenced by the manifest, so retention cannot delete a snapshot
+# that rollback.sh depends on. This run's own files are always the newest, so they survive.
+BACKUP_RETENTION="${BACKUP_RETENTION:-10}"
+case "$BACKUP_RETENTION" in
+  ''|*[!0-9]*)
+    echo "ERROR: BACKUP_RETENTION must be a non-negative integer (got '$BACKUP_RETENTION')."
+    exit 1
+    ;;
+esac
+if [ "$BACKUP_RETENTION" -lt 1 ]; then
+  echo "ERROR: BACKUP_RETENTION must keep at least 1 backup (got '$BACKUP_RETENTION')."
+  exit 1
+fi
+
+# manifest_referenced_files and prune_backups live in deploy-lib.sh so tests/deploy/ can
+# exercise the selection logic against a fixture directory.
+echo "==> Pruning old backups (keeping $BACKUP_RETENTION)..."
+# Each family is pruned separately so one kind cannot starve another. The pre-rollback-*
+# families are rollback.sh's safety copies: they must be bounded too, and they must be bounded
+# TOGETHER — pruning the safety dump while keeping its matching file archives would leave the
+# operator with files and no database to match them.
+prune_backups 'db-*.dump'
+prune_backups 'db-*.dump.partial'
+prune_backups 'uploads-*.tar.gz'
+prune_backups 'uploads-*.tar.gz.partial'
+prune_backups 'documents-*.tar.gz'
+prune_backups 'documents-*.tar.gz.partial'
+prune_backups 'pre-rollback-*.dump'
+prune_backups 'pre-rollback-uploads-*.tar.gz'
+prune_backups 'pre-rollback-documents-*.tar.gz'
+prune_backups 'pre-rollback-*.partial'
+prune_backups 'soprotelco-before-deploy-*.tar.gz'
+
+# --------------------------------------------------------------------------
 # 4. Build images
 # --------------------------------------------------------------------------
 echo "==> Building Docker images..."
@@ -124,47 +231,6 @@ done
 echo "    '$DB_SERVICE' is $db_status"
 
 # --------------------------------------------------------------------------
-# 5.5 Backup retention
-# --------------------------------------------------------------------------
-# Runs BEFORE the dump: the point of retention is to keep the disk from filling, and a disk
-# that is already full makes pg_dump produce a truncated file. Pruning afterwards would never
-# run on the very failure it exists to prevent.
-#
-# Never prunes a file still referenced by the manifest, so retention cannot delete the dump
-# that rollback.sh depends on.
-BACKUP_RETENTION="${BACKUP_RETENTION:-10}"
-case "$BACKUP_RETENTION" in
-  ''|*[!0-9]*)
-    echo "ERROR: BACKUP_RETENTION must be a non-negative integer (got '$BACKUP_RETENTION')."
-    exit 1
-    ;;
-esac
-if [ "$BACKUP_RETENTION" -lt 1 ]; then
-  echo "ERROR: BACKUP_RETENTION must keep at least 1 backup (got '$BACKUP_RETENTION')."
-  exit 1
-fi
-
-prune_backups() {
-  local pattern="$1" kept=0 file
-  while IFS= read -r file; do
-    # A referenced file is the rollback target. Retention must never win over recoverability.
-    if [ -f "$MANIFEST_FILE" ] && cut -f3 "$MANIFEST_FILE" | grep -Fxq "$file"; then
-      continue
-    fi
-    kept=$((kept + 1))
-    if [ "$kept" -gt "$BACKUP_RETENTION" ]; then
-      rm -f "$file"
-      echo "    Pruned old backup: $(basename "$file")"
-    fi
-  done < <(find "$BACKUP_DIR" -maxdepth 1 -name "$pattern" -printf '%T@ %p\n' 2>/dev/null \
-             | sort -rn | cut -d' ' -f2-)
-}
-echo "==> Pruning old backups (keeping $BACKUP_RETENTION)..."
-prune_backups 'db-*.dump'
-prune_backups 'db-*.dump.partial'
-prune_backups 'soprotelco-before-deploy-*.tar.gz'
-
-# --------------------------------------------------------------------------
 # 5.6 Database backup
 # --------------------------------------------------------------------------
 # Placed here on purpose: the database is healthy (so pg_dump can connect) and no migration
@@ -179,6 +245,8 @@ prune_backups 'soprotelco-before-deploy-*.tar.gz'
 # assignment, which would make the error messages here unreachable and leave the operator
 # with a bare non-zero exit and no diagnosis.
 echo "==> Backing up database..."
+db_backup_recorded=""
+database_exists=0
 
 if ! backup_db_name="$(docker compose exec -T "$DB_SERVICE" printenv POSTGRES_DB 2>/dev/null)"; then
   echo "ERROR: could not read POSTGRES_DB from '$DB_SERVICE'. Refusing to migrate without a backup."
@@ -204,6 +272,7 @@ if ! printf '%s\n' "$db_list" | cut -d'|' -f1 | grep -Fxq "$backup_db_name"; the
   echo "    Database '$backup_db_name' does not exist yet — first deploy, nothing to back up."
   echo "    Continuing; migrations will create it."
 else
+  database_exists=1
   db_backup_stamp="$(date +%Y%m%d-%H%M%S)"
   db_backup_file="$BACKUP_DIR/db-${backup_db_name}-${db_backup_stamp}.dump"
   db_backup_partial="${db_backup_file}.partial"
@@ -253,13 +322,228 @@ else
 
   mv "$db_backup_partial" "$db_backup_file"
   trap - EXIT INT TERM
+  db_backup_recorded="$db_backup_file"
   echo "    Backup verified: $db_backup_file (${toc_tables} tables)"
+fi
 
-  # Manifest maps the last successfully deployed code to the matching data snapshot.
-  # rollback.sh reads the last entry. Tab-separated: timestamp, SHA, dump path, database.
-  printf '%s\t%s\t%s\t%s\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$PRE_DEPLOY_SHA" "$db_backup_file" "$backup_db_name" \
-    >> "$MANIFEST_FILE"
+# --------------------------------------------------------------------------
+# 5.65 File backups (uploads and documents)
+# --------------------------------------------------------------------------
+# Placed immediately after the database dump and before the first destructive step. Two reasons
+# it is here rather than earlier:
+#   - the container is only RECREATED at step 8, so nothing before that destroys the files;
+#   - anything between the dump and these archives is a window where a file can be uploaded,
+#     get a row in the dump, and be missing from the archive. A later replace-not-merge restore
+#     would then delete it and leave image_url pointing at nothing.
+# `docker compose build` used to sit in that window and could take minutes on a live site.
+#
+# Restoring products.image_url without these bytes leaves the database correct and pointing at
+# images that are gone. The database dump alone is not a backup of this application.
+file_backup_uploads=""
+file_backup_documents=""
+documents_are_legacy=0
+legacy_documents_status="not-legacy"
+
+# Reads a path from the live container. Distinguishes "directory absent" (safe to skip) from
+# "exec failed" (NOT safe: the files may exist and a rebuild is about to destroy them); a bare
+# `test -d` cannot tell those apart because both just exit non-zero.
+archive_from_running() {
+  local label="$1" container_path="$2" out_file="$3"
+  local partial="${out_file}.partial" probe rc
+
+  if ! probe="$(docker compose exec -T "$WEB_SERVICE" sh -lc \
+        "if [ -d '$container_path' ]; then echo PRESENT; else echo ABSENT; fi" 2>&1)"; then
+    echo "ERROR: could not inspect '$container_path' in '$WEB_SERVICE'. Deploy aborted before any change."
+    echo "       docker said: $probe"
+    exit 1
+  fi
+  case "$probe" in
+    *PRESENT*) ;;
+    *ABSENT*)
+      echo "    No '$container_path' in the container — nothing to back up for $label."
+      return 1
+      ;;
+    *)
+      echo "ERROR: unexpected probe result for '$container_path': $probe"
+      exit 1
+      ;;
+  esac
+
+  # tar exits 1 for "file changed as we read it", routine when archiving a directory a live
+  # site is writing to. Only >= 2 is fatal; the archive is validated below either way.
+  set +e
+  docker compose exec -T "$WEB_SERVICE" sh -lc "tar -czf - -C '$container_path' ." \
+    > "$partial" 2>"${partial}.err"
+  rc=$?
+  set -e
+  finish_archive "$label" "$out_file" "$rc"
+}
+
+# Reads a path from the VOLUMES without a running container. `run --rm` mounts what the service
+# declares, so this covers a stopped or removed container as long as the data is in a volume.
+archive_from_volumes() {
+  local label="$1" container_path="$2" out_file="$3"
+  local partial="${out_file}.partial" rc
+
+  set +e
+  docker compose run --rm --no-deps -T --entrypoint sh "$WEB_SERVICE" \
+    -c "tar -czf - -C '$container_path' ." > "$partial" 2>"${partial}.err"
+  rc=$?
+  set -e
+  finish_archive "$label" "$out_file" "$rc"
+}
+
+finish_archive() {
+  local label="$1" out_file="$2" rc="$3"
+  local partial="${out_file}.partial"
+
+  if [ "$rc" -ge 2 ]; then
+    echo "ERROR: could not archive $label. Deploy aborted before any change."
+    echo "       tar said: $(head -3 "${partial}.err" 2>/dev/null)"
+    rm -f "$partial" "${partial}.err"
+    exit 1
+  fi
+  [ "$rc" -eq 1 ] && echo "    Note: files changed while archiving $label (site is live); archive still validated."
+  rm -f "${partial}.err"
+
+  # An empty directory still produces a valid archive; that is fine and must not abort.
+  if ! tar -tzf "$partial" >/dev/null 2>&1; then
+    rm -f "$partial"
+    echo "ERROR: $label archive failed validation (tar -tzf). Deploy aborted before any change."
+    exit 1
+  fi
+  mv "$partial" "$out_file"
+  echo "    $label backup verified: $out_file ($(archive_entry_count "$out_file") file(s))"
+  return 0
+}
+
+echo "==> Backing up uploaded files..."
+if ! web_state="$(web_container_state "$WEB_SERVICE")"; then
+  echo "ERROR: could not query '$WEB_SERVICE'. Deploy aborted before any change."
+  exit 1
+fi
+echo "    '$WEB_SERVICE' container state: $web_state"
+
+# Whether documents are already on a volume decides everything below: if they are, a rebuild is
+# harmless and they are reachable without a running container. If they are not, they sit on the
+# container's writable layer and step 8 destroys them. Answered by docker inspect, not assumed.
+web_id=""
+if [ "$web_state" != "absent" ]; then
+  web_id="$(web_container_id "$WEB_SERVICE")"
+  if ! container_has_mount "$web_id" /app/public/documents; then
+    documents_are_legacy=1
+    legacy_documents_status="unknown"
+    if [ "$web_state" = "running" ]; then
+      if ! legacy_documents_status="$(docker compose exec -T "$WEB_SERVICE" sh -lc '
+          if [ ! -d /app/public/documents ]; then echo absent;
+          elif find /app/public/documents -mindepth 1 ! -type d | read _; then echo present;
+          else echo empty; fi' 2>&1)"; then
+        echo "ERROR: could not inspect legacy /app/public/documents in '$WEB_SERVICE'."
+        echo "       Deploy aborted before build/recreate. Follow: $MANUAL_DOCUMENTS_RUNBOOK"
+        echo "       docker said: $legacy_documents_status"
+        exit 1
+      fi
+      legacy_documents_status="$(printf '%s' "$legacy_documents_status" | tr -d '\r\n')"
+      if [ "$legacy_documents_status" = "present" ]; then
+        echo "ERROR: legacy documents still live only in the '$WEB_SERVICE' container writable layer."
+        echo "       Deploy aborted before build/recreate so those files are not destroyed."
+        echo "       Run the manual one-time migration with the web service intentionally stopped:"
+        echo "         $MANUAL_DOCUMENTS_RUNBOOK"
+        exit 1
+      fi
+      if [ "$legacy_documents_status" != "empty" ] && [ "$legacy_documents_status" != "absent" ]; then
+        echo "ERROR: unexpected legacy documents probe result: $legacy_documents_status"
+        echo "       Deploy aborted before build/recreate. Follow: $MANUAL_DOCUMENTS_RUNBOOK"
+        exit 1
+      fi
+      echo "    Legacy documents directory is $legacy_documents_status; no automatic migration will run."
+    fi
+  fi
+fi
+
+manifest_nonempty=0
+[ -s "$MANIFEST_FILE" ] && manifest_nonempty=1
+
+file_stamp="$(date +%Y%m%d-%H%M%S)"
+candidate_uploads="$BACKUP_DIR/uploads-${file_stamp}.tar.gz"
+candidate_documents="$BACKUP_DIR/documents-${file_stamp}.tar.gz"
+cleanup_file_partials() {
+  rm -f "${candidate_uploads}.partial" "${candidate_uploads}.partial.err" \
+        "${candidate_documents}.partial" "${candidate_documents}.partial.err"
+}
+trap cleanup_file_partials EXIT INT TERM
+
+case "$(file_backup_plan "$web_state" "$documents_are_legacy" "$manifest_nonempty")" in
+  archive_running)
+    archive_from_running "uploads" "/app/public/uploads" "$candidate_uploads" \
+      && file_backup_uploads="$candidate_uploads"
+    archive_from_running "documents" "/app/public/documents" "$candidate_documents" \
+      && file_backup_documents="$candidate_documents"
+    ;;
+
+  archive_volumes)
+    echo "    Reading files from the volumes directly."
+    archive_from_volumes "uploads" "/app/public/uploads" "$candidate_uploads" \
+      && file_backup_uploads="$candidate_uploads"
+    archive_from_volumes "documents" "/app/public/documents" "$candidate_documents" \
+      && file_backup_documents="$candidate_documents"
+    ;;
+
+  abort_stopped_legacy)
+    echo "ERROR: '$WEB_SERVICE' is stopped and still stores documents on its writable layer."
+    echo "       Deploy aborted before build/recreate because the script cannot prove whether"
+    echo "       legacy documents exist while the container is stopped. Follow the manual runbook:"
+    echo "         $MANUAL_DOCUMENTS_RUNBOOK"
+    exit 1
+    ;;
+
+  abort_legacy_unknown)
+    echo "ERROR: '$WEB_SERVICE' no longer exists on a host that has previous deploy backups."
+    echo "       Deploy aborted before build/recreate because legacy writable-layer documents"
+    echo "       cannot be proven safe or absent. The script will not select an old archive"
+    echo "       or infer safety from an empty volume. Follow the manual runbook:"
+    echo "         $MANUAL_DOCUMENTS_RUNBOOK"
+    exit 1
+    ;;
+
+  *)
+    echo "ERROR: could not decide how to back up files (state='$web_state')."
+    exit 1
+    ;;
+esac
+trap - EXIT INT TERM
+
+# --------------------------------------------------------------------------
+# 5.7 Rollback manifest
+# --------------------------------------------------------------------------
+# One entry per deploy, tying the code that was live to ALL THREE snapshots taken from it.
+# Written once, here, rather than next to each backup: a half-written entry would let
+# rollback.sh restore a database without the files its image_url column points at.
+#
+# Tab-separated, six columns:
+#   1 timestamp   2 last-deployed SHA   3 db dump    4 database name
+#   5 uploads tar 6 documents tar
+# Absent snapshots are recorded as "-" only for helper compatibility. deploy.sh never writes
+# a partial rollback point: existing deployments require database + uploads + documents together.
+existing_deployment=0
+if [ -f "$LAST_DEPLOYED_SHA_FILE" ] || [ "$database_exists" -eq 1 ] || [ "$web_state" != "absent" ] || [ "$manifest_nonempty" -eq 1 ]; then
+  existing_deployment=1
+fi
+
+if [ "$existing_deployment" -eq 1 ]; then
+  if [ -z "$db_backup_recorded" ] || [ -z "$file_backup_uploads" ] || [ -z "$file_backup_documents" ]; then
+    echo "ERROR: existing deployment requires a complete rollback snapshot."
+    echo "       db='${db_backup_recorded:--}' uploads='${file_backup_uploads:--}' documents='${file_backup_documents:--}'"
+    echo "       Empty directories are valid only as verified empty tar archives, never as '-'."
+    echo "       Deploy aborted before migrations/recreate so rollback cannot be partial."
+    exit 1
+  fi
+
+  manifest_append "$PRE_DEPLOY_SHA" "$db_backup_recorded" "$backup_db_name" \
+    "$file_backup_uploads" "$file_backup_documents"
+  echo "    Recorded rollback point in $MANIFEST_FILE"
+else
+  echo "    First deploy with no prior web/database state — no rollback point recorded."
 fi
 
 # --------------------------------------------------------------------------
@@ -297,6 +581,7 @@ until status="$(docker compose ps -q "$WEB_SERVICE" | xargs -r docker inspect -f
 done
 echo "    '$WEB_SERVICE' is healthy."
 
+# --------------------------------------------------------------------------
 # ==========================================================================
 # POST-DEPLOY VERIFICATION
 # ==========================================================================
@@ -310,6 +595,7 @@ db_query() {
 }
 
 schema_ok=1
+verification_ok=1
 
 check_table() {
   local table="$1"
@@ -317,6 +603,7 @@ check_table() {
   if ! exists="$(db_query "select to_regclass('public.$table') is not null;")"; then
     echo "    ⚠ Could not verify table '$table'."
     schema_ok=0
+    verification_ok=0
     return
   fi
   if [ "$exists" = "t" ]; then
@@ -324,20 +611,43 @@ check_table() {
   else
     echo "    ⚠ Missing table '$table' — check migration step above."
     schema_ok=0
+    verification_ok=0
   fi
 }
 
 check_endpoint() {
   local path="$1"
   local label="$2"
+  local expected="$3"
   local http_status
   if http_status="$(docker compose exec -T "$WEB_SERVICE" node -e \
-       "fetch('http://127.0.0.1:8585${path}',{redirect:'manual'}).then(r=>{console.log(r.status);process.exit(r.status>=500?1:0)}).catch(()=>{console.log('no-response');process.exit(1)})" \
+       "fetch('http://127.0.0.1:8585${path}',{redirect:'manual'}).then(r=>{console.log(r.status)}).catch(()=>{console.log('no-response');process.exit(1)})" \
        2>/dev/null)"; then
-    echo "    ✓ $label responds (HTTP $http_status)."
+    http_status="$(printf '%s' "$http_status" | tr -d '\r\n ')"
+    case "$http_status" in
+      ''|*[!0-9]*)
+        echo "    ✗ $label returned an unparsable HTTP status: ${http_status:-<empty>}."
+        verification_ok=0
+        return
+        ;;
+    esac
+    case "$expected" in
+      2xx)
+        if [ "$http_status" -ge 200 ] && [ "$http_status" -le 299 ]; then
+          echo "    ✓ $label responds with expected HTTP $http_status ($expected)."
+        else
+          echo "    ✗ $label returned HTTP $http_status; expected $expected."
+          verification_ok=0
+        fi
+        ;;
+      *)
+        echo "    ✗ Unsupported endpoint expectation '$expected' for $label."
+        verification_ok=0
+        ;;
+    esac
   else
     echo "    ⚠ $label returned an error (HTTP ${http_status:-no-response})."
-    schema_ok=0
+    verification_ok=0
   fi
 }
 
@@ -347,6 +657,7 @@ check_endpoint() {
 echo "==> Post-deploy: verifying database schema..."
 if ! db_query "select 1;" >/dev/null; then
   echo "    (schema verification skipped — cannot query database; '$WEB_SERVICE' is healthy)"
+  verification_ok=0
 else
   # 0001 — initial schema
   check_table "users"
@@ -372,8 +683,7 @@ else
   if [ "$schema_ok" -eq 1 ]; then
     echo "    ✓ All 13 tables present."
   else
-    echo "    ⚠ Schema incomplete. Deploy continues because '$WEB_SERVICE' is healthy,"
-    echo "      but some features may fail at runtime."
+    echo "    ✗ Schema incomplete. Deploy will not be marked successful."
   fi
 fi
 
@@ -383,13 +693,19 @@ fi
 echo "==> Post-deploy: verifying critical endpoints..."
 
 # /api/health?check=db — verifies DB connectivity from the app layer
-check_endpoint "/api/health?check=db" "/api/health (with DB check)"
+check_endpoint "/api/health?check=db" "/api/health (with DB check)" "2xx"
 
 # /login — public page, should render without errors
-check_endpoint "/login" "/login (public storefront)"
+check_endpoint "/login" "/login (public storefront)" "2xx"
 
 # /productos — SSR page that queries the catalog
-check_endpoint "/productos" "/productos (SSR catalog)"
+check_endpoint "/productos" "/productos (SSR catalog)" "2xx"
+
+if [ "$verification_ok" -ne 1 ]; then
+  echo "ERROR: post-deploy verification failed."
+  echo "       LAST_DEPLOYED_SHA_FILE was NOT updated; inspect logs and roll back if needed."
+  exit 1
+fi
 
 # --------------------------------------------------------------------------
 # Seed verification (informational, never aborts)

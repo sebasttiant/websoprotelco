@@ -12,25 +12,25 @@ set -Eeuo pipefail
 #
 # ALCANCE — LEER ANTES DE USAR
 #
-#   REVIERTE:
+#   REVIERTE, de forma conjunta:
 #     - el codigo (git reset --hard al SHA del ultimo deploy exitoso);
-#     - la base de datos completa (se elimina y se recrea desde el dump).
+#     - la base de datos completa (se elimina y se recrea desde el dump);
+#     - las imagenes subidas (volumen `uploads-data` -> /app/public/uploads);
+#     - los documentos subidos (volumen `documents-data` -> /app/public/documents).
 #
-#   NO REVIERTE, y no existe backup de esto:
-#     - las imagenes subidas (volumen docker `uploads-data`, montado en
-#       /app/public/uploads). NO estan en el tar de deploy.sh: ese tar se arma
-#       desde el host, y en el host public/uploads solo contiene .gitkeep.
-#     - los documentos subidos (public/documents): no tienen volumen, viven en la
-#       capa de escritura del contenedor. El `docker compose up --build` de este
-#       script RECREA el contenedor web y los destruye.
+#   Los tres van juntos a proposito: restaurar products.image_url / categories.image_url
+#   sin restaurar los archivos deja la base "correcta" apuntando a imagenes que no
+#   existen. Por eso este script aborta si el manifiesto no trae los tres snapshots.
 #
-#   Consecuencia concreta: products.image_url y categories.image_url vuelven a su
-#   valor anterior, pero si el archivo al que apuntan ya no esta en disco, la
-#   referencia queda rota. Restaurar la base NO devuelve los bytes de las imagenes.
+#   NO REVIERTE:
+#     - el tar de codigo/config de deploy.sh (paso 1), que es otra cosa;
+#     - los datos y archivos cargados por operadores despues del despliegue: los
+#       snapshots son anteriores a ellos y se pierden. Por eso este script toma un
+#       backup de seguridad del estado ACTUAL (base + archivos) antes de destruir nada.
 #
-#   Tampoco revierte los datos cargados por operadores despues del despliegue: el
-#   dump es anterior a ellos y se pierden. Por eso este script toma un dump de
-#   seguridad del estado actual antes de destruir nada.
+#   Se rechaza toda entrada que no traiga los tres snapshots: menos de 6 columnas,
+#   o un "-" en base / uploads / documents. Restaurar solo una parte deja image_url
+#   apuntando a archivos que no corresponden, que es justo lo que hay que evitar.
 # ==========================================================================
 
 APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
@@ -39,6 +39,10 @@ MANIFEST="$BACKUP_DIR/rollback-manifest"
 WEB_SERVICE="${WEB_SERVICE:-web}"
 DB_SERVICE="${DB_SERVICE:-db}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
+MANIFEST_FILE="$MANIFEST"
+
+# shellcheck source=deploy-lib.sh
+. "$APP_DIR/deploy-lib.sh"
 
 cd "$APP_DIR"
 mkdir -p "$BACKUP_DIR"
@@ -66,35 +70,97 @@ entry_date="$(printf '%s' "$entry" | cut -f1)"
 target_sha="$(printf '%s' "$entry" | cut -f2)"
 dump_file="$(printf '%s' "$entry" | cut -f3)"
 dump_db="$(printf '%s' "$entry" | cut -f4)"
+uploads_tar="$(printf '%s' "$entry" | cut -f5)"
+documents_tar="$(printf '%s' "$entry" | cut -f6)"
 
-if [ -z "$entry_date" ] || [ -z "$target_sha" ] || [ -z "$dump_file" ] || [ -z "$dump_db" ]; then
+if [ -z "$entry_date" ] || [ -z "$target_sha" ]; then
   echo "ERROR: last manifest entry is malformed:"
   echo "       $entry"
   exit 1
 fi
 
+# Entries written before the six-column format have no file columns at all.
+entry_columns="$(printf '%s' "$entry" | awk -F'\t' '{print NF}')"
+if [ "$entry_columns" -lt 6 ]; then
+  echo "ERROR: manifest entry predates file backups (only ${entry_columns} columns)."
+  echo "       Restoring the database from it would leave image_url pointing at files this"
+  echo "       script cannot restore. Roll back by hand or use a newer entry."
+  exit 1
+fi
+
+# A six-column entry can still carry "-" for a snapshot that was never taken. Counting columns
+# is not the same as having the three snapshots: restoring the database while leaving uploads
+# and documents at their current state produces exactly the mismatch this script exists to
+# prevent, so the "-" is rejected rather than quietly skipped.
+for column in "dump:$dump_file" "uploads:$uploads_tar" "documents:$documents_tar"; do
+  if [ "${column##*:}" = "-" ]; then
+    echo "ERROR: the last deploy recorded no ${column%%:*} snapshot (column is '-')."
+    echo "       Rolling back only part of the state would leave the database and the files"
+    echo "       out of step. Refusing. Inspect $MANIFEST and recover by hand."
+    exit 1
+  fi
+done
+
 echo "    Backup taken:  $entry_date"
 echo "    Code target:   $target_sha"
-echo "    Database:      $dump_db"
-echo "    Dump file:     $dump_file"
+echo "    Database:      ${dump_db:-<none>}"
+echo "    Dump file:     ${dump_file:-<none>}"
+echo "    Uploads:       ${uploads_tar:-<none>}"
+echo "    Documents:     ${documents_tar:-<none>}"
 
 # --------------------------------------------------------------------------
 # 2. Validate everything before touching anything
 # --------------------------------------------------------------------------
 echo "==> Validating rollback target..."
 
-if [ ! -f "$dump_file" ]; then
+if [ -n "$dump_file" ] && [ ! -f "$dump_file" ]; then
   echo "ERROR: dump file is missing: $dump_file"
   echo "       Aborting. Older entries exist in $MANIFEST but this script only"
   echo "       restores the most recent one; recover it by hand if you must."
   exit 1
 fi
 
+# Every archive is validated up front, before anything is destroyed. tar -tzf reads the whole
+# stream, so a truncated or corrupt archive fails here rather than half-way through a restore.
+for archive in "$uploads_tar" "$documents_tar"; do
+  [ -n "$archive" ] || continue
+  if [ ! -f "$archive" ]; then
+    echo "ERROR: archive referenced by the manifest is missing: $archive"
+    echo "       Refusing to restore the database without the files it points at."
+    exit 1
+  fi
+  if ! tar -tzf "$archive" >/dev/null 2>&1; then
+    echo "ERROR: archive failed validation (tar -tzf): $archive"
+    echo "       Refusing to destroy live files for a backup that cannot be restored."
+    exit 1
+  fi
+  echo "    Archive validated: $(basename "$archive") ($(tar -tzf "$archive" | grep -cv '/$' || true) file(s))"
+done
+
 if ! git cat-file -e "${target_sha}^{commit}" 2>/dev/null; then
   echo "ERROR: commit $target_sha is not in this repository."
   echo "       Try 'git fetch --all' first. Aborting without changes."
   exit 1
 fi
+
+# Files are restored into the volumes the CURRENT compose.yaml declares, but step 7 resets the
+# code to $target_sha and step 8 rebuilds from ITS compose.yaml. If the target predates
+# documents-data, web would come back up with no documents mount: the restored files would sit
+# in a volume the app cannot see, while this script reported "documents restored". Refuse
+# rather than silently undo our own restore.
+for required_mount in "uploads-data:/app/public/uploads" "documents-data:/app/public/documents"; do
+  # Anchored on the mount line itself via commit_mounts_volume. An unanchored grep for the
+  # volume name also matches compose.yaml's own explanatory comment, so a commit that dropped
+  # the volume but kept the comment would pass the check meant to catch exactly that.
+  if ! commit_mounts_volume "$target_sha" "$required_mount"; then
+    echo "ERROR: the rollback target $target_sha does not mount '$required_mount' in compose.yaml."
+    echo "       Rolling back to it would unmount that volume and hide the files this script"
+    echo "       is about to restore, while reporting success. Refusing."
+    echo "       That commit predates persistent file storage: roll back by hand, and keep"
+    echo "       the archives from $MANIFEST safe while you do."
+    exit 1
+  fi
+done
 
 # git reset --hard destroys uncommitted work. Refuse rather than silently discard.
 # (backups/ is gitignored, so deploy.sh's own dumps do not trip this.)
@@ -156,12 +222,13 @@ cat <<WARNING
  Database:  '$dump_db' will be DROPPED and recreated from
             $(basename "$dump_file")
 
- Every change made to the database after $entry_date will be LOST,
- including data entered by operators since the deploy. A safety dump of
- the CURRENT database is taken first.
+ Files:     /app/public/uploads   <- $(basename "${uploads_tar:-<none>}")
+            /app/public/documents <- $(basename "${documents_tar:-<none>}")
+            Current contents are REPLACED, not merged.
 
- Uploaded images and documents are NOT rolled back and have NO backup.
- See the header of this script before continuing.
+ Everything created after $entry_date will be LOST: database rows AND
+ uploaded files. A safety backup of the CURRENT database and files is
+ taken first, and its location is printed before anything is destroyed.
 --------------------------------------------------------------------------
 
 WARNING
@@ -187,17 +254,68 @@ docker compose stop "$WEB_SERVICE"
 # --------------------------------------------------------------------------
 # The rollback is about to destroy the current database. If the operator rolled back by
 # mistake, or the restore turns out to be the wrong target, this is the only way back.
-safety_dump="$BACKUP_DIR/pre-rollback-${dump_db}-$(date +%Y%m%d-%H%M%S).dump"
+safety_stamp="$(date +%Y%m%d-%H%M%S)"
+safety_dump="$BACKUP_DIR/pre-rollback-${dump_db}-${safety_stamp}.dump"
+safety_uploads="$BACKUP_DIR/pre-rollback-uploads-${safety_stamp}.tar.gz"
+safety_documents="$BACKUP_DIR/pre-rollback-documents-${safety_stamp}.tar.gz"
+
+# Every recovery message in this script points the operator at these files, so an interrupted
+# run must not leave a truncated one lying around looking usable.
+cleanup_safety_partials() {
+  rm -f "${safety_dump}.partial" "${safety_uploads}.partial" "${safety_documents}.partial"
+}
+trap cleanup_safety_partials INT TERM
+
 echo "==> Taking a safety dump of the current database..."
 if ! docker compose exec -T "$DB_SERVICE" sh -lc \
-      'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > "$safety_dump"; then
-  rm -f "$safety_dump"
+      'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > "${safety_dump}.partial"; then
+  rm -f "${safety_dump}.partial"
   echo "ERROR: could not dump the current database. Aborting BEFORE destroying anything."
   echo "       '$WEB_SERVICE' is stopped; restart it with:"
   echo "         docker compose start $WEB_SERVICE"
   exit 1
 fi
+
+# Validated the same way deploy.sh validates its dumps. This file is the only way back from a
+# mistaken rollback; trusting pg_dump's exit code alone would mean discovering it is truncated
+# at the worst possible moment.
+if ! docker compose exec -T "$DB_SERVICE" pg_restore --list < "${safety_dump}.partial" >/dev/null 2>&1; then
+  rm -f "${safety_dump}.partial"
+  echo "ERROR: the safety dump is unreadable. Aborting BEFORE destroying anything."
+  echo "       '$WEB_SERVICE' is stopped; restart it with:"
+  echo "         docker compose start $WEB_SERVICE"
+  exit 1
+fi
+mv "${safety_dump}.partial" "$safety_dump"
 echo "    Safety dump: $safety_dump"
+
+# `docker compose run --rm` rather than `exec`: web is already stopped, and run mounts the
+# same volumes the service declares, so the files are reachable without bringing it back up.
+# --no-deps keeps this from starting db/migrate as a side effect.
+archive_current_files() {
+  local container_path="$1" out_file="$2" label="$3"
+  local partial="${out_file}.partial"
+
+  if ! docker compose run --rm --no-deps -T --entrypoint sh "$WEB_SERVICE" \
+        -c "tar -czf - -C '$container_path' ." > "$partial" 2>/dev/null; then
+    rm -f "$partial"
+    echo "ERROR: could not archive current $label. Aborting BEFORE destroying anything."
+    echo "       '$WEB_SERVICE' is stopped; restart it with:"
+    echo "         docker compose start $WEB_SERVICE"
+    exit 1
+  fi
+  if ! tar -tzf "$partial" >/dev/null 2>&1; then
+    rm -f "$partial"
+    echo "ERROR: safety archive of $label failed validation. Aborting BEFORE destroying anything."
+    exit 1
+  fi
+  mv "$partial" "$out_file"
+  echo "    Safety $label: $out_file"
+}
+
+echo "==> Archiving current files before they are replaced..."
+archive_current_files "/app/public/uploads" "$safety_uploads" "uploads"
+archive_current_files "/app/public/documents" "$safety_documents" "documents"
 
 # --------------------------------------------------------------------------
 # 6. Restore database
@@ -210,11 +328,13 @@ echo "    Safety dump: $safety_dump"
 echo "==> Recreating database '$dump_db'..."
 if ! docker compose exec -T "$DB_SERVICE" sh -lc '
       set -e
+      target_db="$1"
       psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 \
-        -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '"'"'$POSTGRES_DB'"'"' AND pid <> pg_backend_pid();" >/dev/null
-      psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"$POSTGRES_DB\";"
-      psql -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$POSTGRES_DB\" OWNER \"$POSTGRES_USER\";"
-    '; then
+        -v dbname="$target_db" \
+        -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'"'"'dbname'"'"' AND pid <> pg_backend_pid();" >/dev/null
+      dropdb -U "$POSTGRES_USER" --if-exists "$target_db"
+      createdb -U "$POSTGRES_USER" -O "$POSTGRES_USER" "$target_db"
+    ' sh "$dump_db"; then
   echo "ERROR: could not recreate '$dump_db'. The database may be gone or partially dropped."
   echo "       Code is UNCHANGED (still $current_sha) and '$WEB_SERVICE' is stopped."
   echo "       Recover the current data with:"
@@ -237,6 +357,65 @@ if ! docker compose exec -T "$DB_SERVICE" sh -lc \
   exit 1
 fi
 echo "    Database restored."
+
+# --------------------------------------------------------------------------
+# 6.5 Restore files
+# --------------------------------------------------------------------------
+# Right after the database and before the rebuild, so code, rows and files land at the same
+# point in time. Contents are REPLACED, not merged: a file uploaded after the snapshot has no
+# row pointing at it once the database is back, and leaving it would only accumulate orphans.
+restore_files() {
+  local container_path="$1" archive="$2" label="$3" safety="$4" expected actual
+
+  echo "==> Restoring $label..."
+  # `find -mindepth 1 -delete` rather than `rm -rf dir/* dir/.[!.]*`: the glob form misses
+  # entries beginning with two dots, which would survive as orphans and inflate the count
+  # check below. `&&` rather than `;` so a failed wipe cannot be masked by tar's exit code,
+  # silently degrading replace-not-merge into merge.
+  if ! docker compose run --rm --no-deps -T --entrypoint sh "$WEB_SERVICE" \
+        -c "find '$container_path' -mindepth 1 -delete && tar -xzf - -C '$container_path'" \
+        < "$archive"; then
+    echo ""
+    echo "ERROR: could not restore $label. The database IS already rolled back."
+    echo "       $label may be partially replaced. To return to the pre-rollback state:"
+    echo "         git reset --hard $current_sha"
+    echo "         docker compose exec -T $DB_SERVICE sh -lc 'pg_restore -U \$POSTGRES_USER -d \$POSTGRES_DB --single-transaction --no-owner' < $safety_dump"
+    echo "         docker compose run --rm --no-deps -T --entrypoint sh $WEB_SERVICE -c 'tar -xzf - -C $container_path' < $safety"
+    echo "         docker compose up -d --build $WEB_SERVICE"
+    exit 1
+  fi
+
+  # tar's exit code does not prove the bytes landed. Count them, counting the same class of
+  # object on both sides: `tar -tzf` lists symlinks, `find -type f` does not.
+  expected="$(tar -tzf "$archive" | grep -cv '/$' || true)"
+  if ! actual="$(docker compose run --rm --no-deps -T --entrypoint sh "$WEB_SERVICE" \
+        -c "find '$container_path' -mindepth 1 ! -type d | wc -l" 2>/dev/null)"; then
+    echo "ERROR: $label restored but could not be verified."
+    echo "       Pre-rollback copy kept at: $safety"
+    exit 1
+  fi
+  actual="$(printf '%s' "$actual" | tr -d '\r\n ')"
+
+  # An empty value would make `[ "$a" -ne "$b" ]` exit 2, which `if` reads as false — the
+  # check that proves the restore worked would pass silently.
+  case "$expected$actual" in
+    ''|*[!0-9]*)
+      echo "ERROR: could not count $label reliably (archive='$expected', volume='$actual')."
+      echo "       Pre-rollback copy kept at: $safety"
+      exit 1
+      ;;
+  esac
+
+  if [ "$expected" -ne "$actual" ]; then
+    echo "ERROR: $label restore incomplete — archive holds ${expected} file(s), volume has ${actual}."
+    echo "       Pre-rollback copy kept at: $safety"
+    exit 1
+  fi
+  echo "    $label restored: ${actual} file(s)."
+}
+
+restore_files "/app/public/uploads" "$uploads_tar" "uploads" "$safety_uploads"
+restore_files "/app/public/documents" "$documents_tar" "documents" "$safety_documents"
 
 # --------------------------------------------------------------------------
 # 7. Restore code
@@ -301,10 +480,13 @@ done
 echo ""
 echo "=========================================================================="
 echo " Rollback completed."
-echo "   Code:     $target_sha"
-echo "   Database: restored from $(basename "$dump_file")"
-echo "   Safety:   $safety_dump (state from before this rollback)"
+echo "   Code:      $target_sha"
+echo "   Database:  restored from $(basename "$dump_file")"
+echo "   Uploads:   restored from $(basename "${uploads_tar:-<none>}")"
+echo "   Documents: restored from $(basename "${documents_tar:-<none>}")"
 echo ""
-echo " Uploaded images/documents were NOT rolled back and have no backup."
-echo " If image references point at missing files, that is why."
+echo " Pre-rollback state kept at:"
+echo "   $safety_dump"
+echo "   $safety_uploads"
+echo "   $safety_documents"
 echo "=========================================================================="

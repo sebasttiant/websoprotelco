@@ -66,3 +66,82 @@ The PR #3 remediation work unit is autonomous and under budget: design link safe
 
 - [ ] 0.5 Tracker PR to `main` remains deferred until the integration branch has content.
 - [ ] Slices 1-12 remain pending. Do not start Orders, migrations, inventory redesign, dashboard/E2E, or later slices until Slice 0 review/merge path is clear.
+
+## Deploy Backup/Rollback Follow-up: Manual Documents Migration Simplification
+
+Status: WIP simplified from the interrupted automatic documents migration state machine. No SDD task checkbox was advanced because this is an operational hardening follow-up to the deploy safety work, not a planned Orders slice.
+
+### Completed in this WIP
+
+- Removed automatic documents migration state/resume/fallback concepts from `deploy.sh`/`deploy-lib.sh`, including pending/completed state helpers and historical archive auto-selection.
+- Removed the now-unnecessary `deploy-state.sh` operator state mutator.
+- Kept `documents-data` persistence and Dockerfile mountpoint ownership model.
+- Kept verified `.partial` -> final PostgreSQL, uploads, and documents backups.
+- Kept six-column rollback manifest and rollback fail-closed checks for missing/incomplete database/uploads/documents snapshot columns.
+- Kept retention protection for the current rollback snapshot and rollback restore of database/uploads/documents from the same manifest entry.
+- Added fail-closed deploy preflight before build/recreate: if legacy `/app/public/documents` still lives only in the current `web` container writable layer, deploy aborts and points to the manual runbook.
+- Added `docs/operations/legacy-documents-migration.md` for the one-time manual migration with writes stopped, archive validation, exact restore, count/SHA/byte evidence, health check, and abort/recovery steps.
+- Replaced state-machine tests with behavior tests for fail-closed decisions, six-column manifest parsing, retention protection, complete rollback snapshot selection, and absence of historical documents archive auto-selection.
+
+### Verification in this WIP
+
+- `bash -n deploy.sh rollback.sh deploy-lib.sh tests/deploy/run.sh` — passed.
+- `bash tests/deploy/run.sh` — passed, 34/34 assertions.
+- `git diff --check` — passed.
+- `shellcheck deploy.sh rollback.sh deploy-lib.sh tests/deploy/run.sh` — not run: `shellcheck` is not installed in this environment.
+- Docker byte-for-byte/VPS validation — not run locally; no deploy, VPS mutation, or Docker daemon validation was performed in this WIP.
+
+### Review Boundary
+
+Current work unit is the deploy safety simplification only: no Orders, migrations, inventory, dashboard, app runtime, PR mutation, commit, push, merge, or deploy. Fresh independent reliability/resilience review is recommended before committing or running on the VPS.
+
+### Corrective Pass After Gate Review
+
+Status: completed one bounded corrective pass for the evidence-backed gate findings while preserving the no-state-machine design.
+
+- Made complete snapshots mandatory for existing deployments: `deploy.sh` aborts before migrations/recreate if database, uploads, or documents snapshot is missing. First-ever deploy with no prior web/database state may proceed without a rollback manifest entry; deploy no longer writes a manifest row that rollback would refuse.
+- Added a final post-deploy success gate before `LAST_DEPLOYED_SHA_FILE`: failed schema checks, skipped schema DB connectivity, or critical endpoint failures now exit non-zero and do not mark the commit successfully deployed.
+- Rewrote the manual legacy documents runbook to keep write isolation concrete: block ingress, stop `web`, capture with `docker cp` from the stopped legacy container, restore through a one-shot container before web serves traffic, compare source/destination manifests, then start web and ingress.
+- Strengthened migration evidence in the runbook: source and destination manifests record regular files by path + SHA-256 and symlinks by path + target; archive SHA/byte evidence is retained.
+- Added `tests/deploy/deploy-abort.sh`, a deploy-level fake command harness proving legacy writable-layer documents abort before `docker compose build`, `up`, or `run` can execute.
+
+### Corrective Verification
+
+- `bash -n deploy.sh rollback.sh deploy-lib.sh tests/deploy/run.sh tests/deploy/deploy-abort.sh` — passed.
+- `docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable deploy.sh rollback.sh deploy-lib.sh tests/deploy/run.sh tests/deploy/deploy-abort.sh` — passed.
+- `bash tests/deploy/run.sh && bash tests/deploy/deploy-abort.sh` — passed, 34/34 helper assertions and 2/2 deploy-abort assertions.
+- `git diff --check` — passed.
+- App/unit tests were not run because this corrective pass touched only deploy shell scripts, operational docs, SDD progress, and deploy shell tests; no TypeScript/runtime application code changed.
+
+### Final Bounded Correction for VPS Deploy Readiness
+
+Status: completed the three final review blockers without reintroducing automatic documents migration state, historical archive selection, or empty-volume inference.
+
+- Replaced Bash-only `read -d` manifest logic in the runbook with POSIX `sh` manifest generation. The manifest path handles spaces/non-ASCII, records regular files as path + SHA-256, records symlinks as path + target, and fails loudly for unsupported tab/newline names or command failures. Destination evidence runs under the runtime `/bin/sh`; bash is not assumed in the runtime image.
+- Tightened `deploy.sh` endpoint verification: `/api/health?check=db`, `/login`, and `/productos` now require explicit `2xx` statuses. `401`, `403`, `404`, node/fetch failures, and unparsable statuses fail closed and prevent `LAST_DEPLOYED_SHA_FILE` from being updated.
+- Added deploy-level regression coverage in `tests/deploy/deploy-verify-fail.sh` proving failed endpoint verification exits non-zero and leaves an existing `backups/last-deployed-sha` unchanged.
+- Added `tests/deploy/runtime-manifest.sh` to probe the manifest-generation logic against `node:24.18.0-trixie-slim` runtime shell behavior with spaces, non-ASCII paths, and symlinks.
+
+### Final Correction Verification
+
+- `bash -n deploy.sh rollback.sh deploy-lib.sh tests/deploy/run.sh tests/deploy/deploy-abort.sh tests/deploy/deploy-verify-fail.sh tests/deploy/runtime-manifest.sh` — passed.
+- `docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable deploy.sh rollback.sh deploy-lib.sh tests/deploy/run.sh tests/deploy/deploy-abort.sh tests/deploy/deploy-verify-fail.sh tests/deploy/runtime-manifest.sh` — passed.
+- `bash tests/deploy/run.sh && bash tests/deploy/deploy-abort.sh && bash tests/deploy/deploy-verify-fail.sh && bash tests/deploy/runtime-manifest.sh` — passed, 34/34 helper assertions, 2/2 deploy-abort assertions, 2/2 deploy-verification-failure assertions, and 3/3 runtime manifest assertions.
+- `pnpm test` — passed, 66 files / 542 tests.
+- `git diff --check` — passed.
+
+### Final Surgical Rollback Resilience Correction
+
+Status: completed the focused rollback blocker without redesigning deploy/rollback behavior.
+
+- Fixed `rollback.sh` database recreation so the target database name is passed as a positional argument to the container shell. PostgreSQL variables intended for the container (`POSTGRES_USER`, `POSTGRES_DB` where used by container commands) are no longer expanded by the host in the recreate command. `.env` is not sourced.
+- Audited nearby rollback recovery command strings; the remaining printed recovery commands intentionally escape `\$POSTGRES_USER`/`\$POSTGRES_DB` for the operator to run in the container shell, and the restore command already keeps container variables inside single-quoted `sh -lc` content.
+- Added `tests/deploy/rollback-unset-db.sh`, a rollback script-level external-contract regression with host `POSTGRES_DB` unset. It reaches the recreate/restore boundary through a fake Docker harness and asserts destructive ordering remains `stop web -> safety dump -> recreate database -> restore database`.
+
+### Rollback Resilience Verification
+
+- `bash -n deploy.sh rollback.sh deploy-lib.sh tests/deploy/run.sh tests/deploy/deploy-abort.sh tests/deploy/deploy-verify-fail.sh tests/deploy/runtime-manifest.sh tests/deploy/rollback-unset-db.sh` — passed.
+- `docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable deploy.sh rollback.sh deploy-lib.sh tests/deploy/run.sh tests/deploy/deploy-abort.sh tests/deploy/deploy-verify-fail.sh tests/deploy/runtime-manifest.sh tests/deploy/rollback-unset-db.sh` — passed.
+- `bash tests/deploy/run.sh && bash tests/deploy/deploy-abort.sh && bash tests/deploy/deploy-verify-fail.sh && bash tests/deploy/runtime-manifest.sh && bash tests/deploy/rollback-unset-db.sh` — passed, including 2/2 rollback-unset-db assertions.
+- `pnpm test` — passed, 66 files / 542 tests.
+- `git diff --check` — passed.

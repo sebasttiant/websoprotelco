@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Stub `docker` for tests/deploy/run.sh.
+#
+# Behaviour is driven by files under $FAKE_DOCKER_STATE so a test can set up any container
+# situation without a daemon:
+#   ps_all        containers `compose ps -aq` reports (empty file = none exist)
+#   ps_running    containers `compose ps -q` reports  (empty file = none running)
+#   mounts        one destination per line, what `inspect` reports for the container
+# Every invocation is appended to $FAKE_DOCKER_STATE/calls for assertions.
+set -u
+
+state="${FAKE_DOCKER_STATE:?FAKE_DOCKER_STATE not set}"
+printf '%s\n' "$*" >> "$state/calls"
+
+read_state() { [ -f "$state/$1" ] && cat "$state/$1" || true; }
+
+case "$1" in
+  compose)
+    shift
+    case "$1" in
+      ps)
+        shift
+        if [ "${1:-}" = "-aq" ]; then read_state ps_all; exit 0; fi
+        if [ "${1:-}" = "-q" ]; then read_state ps_running; exit 0; fi
+        exit 0
+        ;;
+      *) exit 0 ;;
+    esac
+    ;;
+  inspect)
+    # -f '{{range .Mounts}}{{println .Destination}}{{end}}' <id>
+    read_state mounts
+    exit 0
+    ;;
+  *) exit 0 ;;
+esac

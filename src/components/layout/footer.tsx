@@ -37,7 +37,7 @@ export async function Footer() {
           <div className="space-y-5 md:col-span-2">
             <Link href="/" className="inline-block" aria-label={`${settings.siteName} inicio`}>
               <Image
-                src="/assets/img/sp-logo-white.png"
+                src="/assets/brand/soprotelco-logo-white.png"
                 alt={settings.siteName}
                 width={2924}
                 height={1878}

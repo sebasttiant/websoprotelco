@@ -39,6 +39,12 @@ describe("design tokens", () => {
     expect(themeToken("font-sans")).toContain("var(--font-inter)");
   });
 
+  test("keeps the legacy heading scale available to the public shell", () => {
+    expect(themeToken("font-size-brand-xxl")).toBe("clamp(32px, 5vw, 52px)");
+    expect(themeToken("font-size-brand-xl")).toBe("clamp(26px, 3.5vw, 38px)");
+    expect(themeToken("font-size-brand-lg")).toBe("17.5px");
+  });
+
   test("lets body inherit typography from the theme instead of hardcoding it", () => {
     expect(globalsCss).not.toMatch(/font-family:\s*Arial/i);
   });
@@ -58,5 +64,14 @@ describe("base element resets", () => {
     const withoutAtRules = globalsCss.replace(/@[a-z-]+[^{]*\{[\s\S]*?\n\}/g, "");
 
     expect(withoutAtRules).not.toMatch(/^\s*(a|body|h[1-6]|p|button)\s*(,|\{)/m);
+  });
+
+  test("preserves the legacy heading hierarchy without overriding component colors", () => {
+    const baseLayer = globalsCss.match(/@layer\s+base\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+
+    expect(baseLayer).toMatch(/h1\s*\{[^}]*font-size:\s*var\(--font-size-brand-xxl\)/);
+    expect(baseLayer).toMatch(/h2\s*\{[^}]*font-size:\s*var\(--font-size-brand-xl\)/);
+    expect(baseLayer).toMatch(/h3\s*\{[^}]*font-size:\s*var\(--font-size-brand-lg\)/);
+    expect(baseLayer).not.toMatch(/h[1-3]\s*\{[^}]*color:/);
   });
 });

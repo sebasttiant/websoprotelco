@@ -17,6 +17,9 @@ describe("role labels", () => {
   test("maps every role to professional Spanish", () => {
     expect(roleLabel("admin")).toBe("Administrador");
     expect(roleLabel("staff")).toBe("Personal");
+    // `customer` is a first-party role since 0012_customer_role.sql; without an entry it
+    // fell through to the raw English identifier in Spanish admin surfaces.
+    expect(roleLabel("customer")).toBe("Cliente");
   });
 });
 

@@ -10,6 +10,7 @@
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrador",
   staff: "Personal",
+  customer: "Cliente",
 };
 
 const PRODUCT_STATUS_LABELS: Record<string, string> = {

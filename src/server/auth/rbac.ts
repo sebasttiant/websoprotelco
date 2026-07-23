@@ -1,4 +1,4 @@
-export const ROLES = ["admin", "staff"] as const;
+export const ROLES = ["admin", "staff", "customer"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const PERMISSIONS = [
@@ -35,6 +35,7 @@ const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
     "documents:read",
     "documents:write",
   ],
+  customer: [],
 };
 
 export function isRole(value: unknown): value is Role {

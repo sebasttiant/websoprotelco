@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const ALLOWED_IMAGE_TYPES = {
   JPEG: "image/jpeg",
   PNG: "image/png",
@@ -39,6 +41,56 @@ export interface DesignImageStorageAdapter {
 export interface UploadValidationResult {
   valid: boolean;
   error?: string;
+}
+
+export const STORAGE_PROVIDERS = {
+  LOCAL: "local",
+} as const;
+
+const storageEnvSchema = z.object({
+  STORAGE_PROVIDER: z.enum([STORAGE_PROVIDERS.LOCAL]),
+});
+
+export type StorageProvider = (typeof STORAGE_PROVIDERS)[keyof typeof STORAGE_PROVIDERS];
+
+// Production must declare STORAGE_PROVIDER so a misconfigured deploy fails closed instead
+// of silently writing customer uploads to container-local disk; the implicit local default
+// is a development/test convenience only.
+export function readStorageProvider(source: NodeJS.ProcessEnv = process.env): StorageProvider {
+  const declared = source.STORAGE_PROVIDER ?? (source.NODE_ENV === "production" ? undefined : STORAGE_PROVIDERS.LOCAL);
+  const result = storageEnvSchema.safeParse({ STORAGE_PROVIDER: declared });
+
+  if (!result.success) {
+    throw new Error(`Invalid storage environment configuration: STORAGE_PROVIDER must be one of: ${Object.values(STORAGE_PROVIDERS).join(", ")}`);
+  }
+
+  return result.data.STORAGE_PROVIDER;
+}
+
+type ConfiguredStorageAdapter = StorageAdapter & DocumentStorageAdapter & DesignImageStorageAdapter;
+
+async function createConfiguredStorageAdapter(): Promise<ConfiguredStorageAdapter> {
+  readStorageProvider();
+
+  const { createLocalStorageAdapter } = await import("./local");
+
+  return createLocalStorageAdapter();
+}
+
+// Deploy-time probe: the storage contract otherwise fails closed on the FIRST upload, which
+// is long after a bad deploy is live. Building the configured adapter here surfaces an
+// invalid STORAGE_PROVIDER while the deploy script can still abort.
+export async function checkStorageConfiguration(): Promise<{ ok: true; provider: StorageProvider } | { ok: false; error: string }> {
+  try {
+    await createConfiguredStorageAdapter();
+
+    return { ok: true, provider: readStorageProvider() };
+  } catch (error) {
+    // The message can echo the configured value, so it is logged and not returned.
+    console.error("Storage configuration check failed:", error);
+
+    return { ok: false, error: "Storage configuration check failed." };
+  }
 }
 
 const allowedImageTypes = new Set<string>(Object.values(ALLOWED_IMAGE_TYPES));
@@ -84,9 +136,7 @@ export async function validateUploadFile(file: File | null): Promise<UploadValid
 }
 
 export async function createStorageAdapter(): Promise<StorageAdapter> {
-  const { createLocalStorageAdapter } = await import("./local");
-
-  return createLocalStorageAdapter();
+  return createConfiguredStorageAdapter();
 }
 
 // %PDF- (the PDF file signature required by every valid PDF, regardless of version).
@@ -115,13 +165,9 @@ export async function validateDocumentFile(file: File | null): Promise<UploadVal
 }
 
 export async function createDocumentStorageAdapter(): Promise<DocumentStorageAdapter> {
-  const { createLocalStorageAdapter } = await import("./local");
-
-  return createLocalStorageAdapter();
+  return createConfiguredStorageAdapter();
 }
 
 export async function createDesignImageStorageAdapter(): Promise<DesignImageStorageAdapter> {
-  const { createLocalStorageAdapter } = await import("./local");
-
-  return createLocalStorageAdapter();
+  return createConfiguredStorageAdapter();
 }

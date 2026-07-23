@@ -1,7 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { isSafeCatalogImagePath } from "@/domains/catalog";
-// Input schemas are internal to the domain; the test exercises them white-box.
+import { getSafeCatalogImageUrl, isSafeCatalogImagePath } from "@/domains/catalog/schemas";
 import { categoryAdminInputSchema, productAdminInputSchema } from "@/domains/catalog/schemas";
 
 // A real upload produces exactly this shape via the local storage adapter.
@@ -20,6 +19,53 @@ describe("isSafeCatalogImagePath", () => {
     expect(isSafeCatalogImagePath("/uploads/../../etc/passwd")).toBe(false);
     expect(isSafeCatalogImagePath("/uploads/anything.svg")).toBe(false);
     expect(isSafeCatalogImagePath("")).toBe(false);
+  });
+});
+
+describe("getSafeCatalogImageUrl", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test("allows a canonical local path", () => {
+    expect(getSafeCatalogImageUrl(SAFE)).toBe(SAFE);
+  });
+
+  test("rejects every non-local value", () => {
+    const cases: Record<string, string> = {
+      "arbitrary remote host": "https://remote.invalid/x.png",
+      "supabase storage": "https://project.supabase.co/storage/v1/object/public/x.png",
+      "data base64": "data:image/png;base64,AAAA",
+      javascript: "javascript:alert(1)",
+      blob: "blob:https://cdn.example.test/2a2f",
+      file: "file:///etc/passwd",
+      "protocol-relative": "//attacker.test/image.png",
+      malformed: "not a url",
+      "misleading prefix": "https://cdn.example.test.attacker.test/x.png",
+      "embedded credentials": "https://user:pass@cdn.example.test/x.png",
+    };
+
+    for (const [label, value] of Object.entries(cases)) {
+      expect(getSafeCatalogImageUrl(value), label).toBeNull();
+    }
+  });
+
+  test("rejects matching remote URLs regardless of configured origin", () => {
+    const cases = {
+      supabase: "https://project.supabase.co/storage/v1/object/public/products/item.png",
+      https: "https://cdn.example.test/catalog/item.png",
+      credentials: "https://catalog:secret@cdn.example.test/catalog/item.png",
+    };
+
+    for (const [label, remoteUrl] of Object.entries(cases)) {
+      vi.stubEnv("NEXT_PUBLIC_CATALOG_IMAGE_ORIGIN", remoteUrl);
+      expect(getSafeCatalogImageUrl(remoteUrl), label).toBeNull();
+    }
+  });
+
+  test("does not let a hostile configured origin affect local-path rendering", () => {
+    vi.stubEnv("NEXT_PUBLIC_CATALOG_IMAGE_ORIGIN", "https://project.supabase.co");
+    expect(getSafeCatalogImageUrl(SAFE)).toBe(SAFE);
   });
 });
 

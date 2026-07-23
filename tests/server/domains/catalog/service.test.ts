@@ -58,6 +58,12 @@ describe("getProducts", () => {
     });
   });
 
+  test("removes unsafe stored image URLs before they reach storefront components", async () => {
+    mockQuery.mockResolvedValue([{ id: "11111111-1111-4111-8111-111111111111", slug: "unsafe", sku: "SP-2", name: "Tool", description: "", price_cents: "1000", currency: "COP", category_name: "Fiber", category_slug: "fiber", brand: "SP", image_url: "data:image/png;base64,AAAA", stock_quantity: 1 }]);
+
+    expect((await getProducts())[0]?.imageUrl).toBeNull();
+  });
+
   test("marks a product out of stock when stock_quantity is zero", async () => {
     mockQuery.mockResolvedValue([{
       id: "11111111-1111-4111-8111-111111111111",
@@ -113,7 +119,7 @@ describe("getProductBySlug", () => {
       category_name: "Fiber",
       category_slug: "fiber",
       brand: "SOPROTELCO",
-      image_url: "/uploads/splicer.png",
+      image_url: "/uploads/2026-01-01-3f2504e0-4f89-41d3-9a0c-0305e82c3301.png",
       stock_quantity: 3,
       created_at: "2026-01-01T00:00:00.000Z",
       updated_at: "2026-01-02T00:00:00.000Z",
@@ -124,7 +130,7 @@ describe("getProductBySlug", () => {
     expect(product).toMatchObject({
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
-      imageUrl: "/uploads/splicer.png",
+      imageUrl: "/uploads/2026-01-01-3f2504e0-4f89-41d3-9a0c-0305e82c3301.png",
     });
   });
 });

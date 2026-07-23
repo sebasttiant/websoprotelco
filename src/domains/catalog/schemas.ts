@@ -71,6 +71,15 @@ export function isSafeCatalogImagePath(path: string): boolean {
   return CATALOG_IMAGE_PATH_PATTERN.test(path);
 }
 
+/**
+ * Returns a renderable catalog image only for a canonical local upload path.
+ * Storefront rendering deliberately ignores remote-origin configuration: catalog assets are
+ * served from controlled VPS paths in this phase.
+ */
+export function getSafeCatalogImageUrl(value: string | null): string | null {
+  return value && isSafeCatalogImagePath(value) ? value : null;
+}
+
 // Validates a submitted image value:
 //   - blank/null  → null (an explicit, intentional removal of the image);
 //   - a safe adapter path (/uploads/<date>-<uuid>.<ext>) → kept as-is;

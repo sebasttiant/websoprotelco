@@ -1,6 +1,6 @@
 import * as repository from "./repository";
 import type { ProductRow } from "./repository";
-import { PRODUCT_ADMIN_PAGE_SIZE, productAdminPageSchema } from "./schemas";
+import { getSafeCatalogImageUrl, PRODUCT_ADMIN_PAGE_SIZE, productAdminPageSchema } from "./schemas";
 import type {
   CategoryAdminDetail,
   CategoryAdminInput,
@@ -40,7 +40,7 @@ function mapProductSummary(row: ProductRow): ProductSummary {
     categoryName: row.category_name ?? "Connectivity",
     categorySlug: row.category_slug ?? "connectivity",
     brand: row.brand ?? inferBrand(row.name, row.sku),
-    imageUrl: row.image_url,
+    imageUrl: getSafeCatalogImageUrl(row.image_url),
     inStock: row.stock_quantity > 0,
   };
 }

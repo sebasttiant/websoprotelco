@@ -86,22 +86,57 @@ git pull --ff-only origin "$BRANCH"
 # 3. Verify .env
 # --------------------------------------------------------------------------
 echo "==> Verifying .env..."
+# On a first deploy there is no .env yet. Rather than only erroring, scaffold one with the
+# correct keys and safe non-secret defaults, then stop so the operator fills in the secrets.
+# The scaffold carries CHANGE_ME placeholders and NO real credentials: .env is gitignored and
+# must never be committed. Port 8686 is exposed on the host; the container still listens on
+# 8585 internally, so this never touches the internal port.
 if [ ! -f "$APP_DIR/.env" ]; then
-  echo "ERROR: missing $APP_DIR/.env"
-  echo "       Copy from .env.example and fill in production values:"
-  echo "         cp .env.example .env && nano .env"
+  cat > "$APP_DIR/.env" <<'ENV_SCAFFOLD'
+# SOPROTELCO production environment.
+# Replace every CHANGE_ME value, then re-run ./deploy.sh. This file is gitignored:
+# never commit it. Keep POSTGRES_PASSWORD identical in DATABASE_URL.
+
+# Host exposure: 8686 on the host, container stays on 8585 internally.
+WEB_PORT=8686
+WEB_HOST=0.0.0.0
+
+# Storage: local disk (fails closed if unset). Do not leave blank.
+STORAGE_PROVIDER=local
+
+# Database.
+POSTGRES_DB=websoprotelco
+POSTGRES_USER=local_dev_user
+POSTGRES_PASSWORD=CHANGE_ME
+DATABASE_URL=postgresql://local_dev_user:CHANGE_ME@db:5432/websoprotelco
+DATABASE_SSL=disable
+
+# First super-admin, created automatically by this script on deploy.
+ADMIN_EMAIL=CHANGE_ME
+ADMIN_PASSWORD=CHANGE_ME
+ENV_SCAFFOLD
+  echo "    Created $APP_DIR/.env from a template."
+  echo "    Fill in every CHANGE_ME value (POSTGRES_PASSWORD, DATABASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD),"
+  echo "    then run ./deploy.sh again."
   exit 1
 fi
 
-# Fail fast on missing critical variables. ADMIN_* are required because this script creates
-# the administrator from them: the dev seed's credentials are committed to a public repo and
-# must never provision a real server.
+# Fail fast on missing OR still-placeholder critical variables. ADMIN_* are required because
+# this script creates the administrator from them: the dev seed's credentials are committed to
+# a public repo and must never provision a real server.
 required_vars=(POSTGRES_PASSWORD DATABASE_URL ADMIN_EMAIL ADMIN_PASSWORD STORAGE_PROVIDER)
 for var in "${required_vars[@]}"; do
-  if ! grep -q "^${var}=" "$APP_DIR/.env"; then
+  value="$(grep -E "^${var}=" "$APP_DIR/.env" | head -1 | cut -d= -f2-)"
+  if [ -z "$value" ]; then
     echo "ERROR: $var not set in .env"
     exit 1
   fi
+  case "$value" in
+    *CHANGE_ME*)
+      echo "ERROR: $var still holds the CHANGE_ME placeholder in .env. Set a real value first."
+      exit 1
+      ;;
+  esac
 done
 echo "    .env OK"
 

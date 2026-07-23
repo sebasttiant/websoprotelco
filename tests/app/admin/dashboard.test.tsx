@@ -44,7 +44,7 @@ describe("AdminDashboardPage", () => {
   test("counts the products in the catalog", async () => {
     await renderDashboard({ products: { total: 42, rows: [] } });
 
-    expect(statValue(/products/i)).toBe("42");
+    expect(statValue(/^productos$/i)).toBe("42");
   });
 
   test("counts only the quotes still awaiting a reply", async () => {
@@ -61,26 +61,26 @@ describe("AdminDashboardPage", () => {
       ],
     });
 
-    expect(statValue(/open quotes/i)).toBe("2");
+    expect(statValue(/cotizaciones abiertas/i)).toBe("2");
   });
 
   test("counts the leads", async () => {
     await renderDashboard({ leads: [{ id: "l1" }, { id: "l2" }, { id: "l3" }] });
 
-    expect(statValue(/leads/i)).toBe("3");
+    expect(statValue(/clientes potenciales/i)).toBe("3");
   });
 
   test("counts the products running low on stock", async () => {
     await renderDashboard({ lowStock: [{ id: "p1" }] });
 
-    expect(statValue(/low stock/i)).toBe("1");
+    expect(statValue(/stock bajo/i)).toBe("1");
   });
 
   test("shows zeros rather than blanks on an empty install", async () => {
     await renderDashboard();
 
-    expect(statValue(/products/i)).toBe("0");
-    expect(statValue(/leads/i)).toBe("0");
+    expect(statValue(/^productos$/i)).toBe("0");
+    expect(statValue(/clientes potenciales/i)).toBe("0");
   });
 
   test("names the signed-in administrator", async () => {

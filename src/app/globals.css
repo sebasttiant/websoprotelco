@@ -6,13 +6,24 @@
   --color-brand-blue: #1b6eac;
   --color-brand-accent: #06d3f9;
   --color-brand-accent-soft: #7cf3ff;
+  --color-brand-bg: #f4f7fc;
+  --color-brand-surface: #fff;
+  --color-brand-ink: #0a1728;
+  --color-brand-border: #e0e8f2;
   --color-brand-ice: #f8fafc;
   --color-brand-muted: #5e6c80;
   --color-brand-line: #dbe6f3;
 
+  --spacing-brand-3-5: 0.875rem;
+  --spacing-brand-4-5: 1.125rem;
+  --radius-brand: 16px;
+  --shadow-brand: 0 12px 28px rgb(11 15 26 / 12%);
   --shadow-glow: 0 0 24px -4px color-mix(in oklab, var(--color-brand-accent) 45%, transparent);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-size-brand-xxl: clamp(32px, 5vw, 52px);
+  --font-size-brand-xl: clamp(26px, 3.5vw, 38px);
+  --font-size-brand-lg: 17.5px;
 }
 
 /* These resets must stay layered. Unlayered CSS outranks every cascade layer regardless of
@@ -25,9 +36,36 @@
 
   body {
     margin: 0;
-    background: var(--color-brand-ice);
-    color: var(--color-brand-navy);
+    background: var(--color-brand-bg);
+    color: var(--color-brand-ink);
     font-family: var(--font-sans);
+    font-size: 16.5px;
+    font-weight: 500;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: var(--font-size-brand-xxl);
+    font-weight: 900;
+    line-height: 1.1;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: var(--font-size-brand-xl);
+    font-weight: 950;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  h3 {
+    margin: 0;
+    font-size: var(--font-size-brand-lg);
+    font-weight: 700;
+    line-height: 1.3;
   }
 
   * {

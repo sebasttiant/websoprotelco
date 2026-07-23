@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { formatDate, leadStatusLabel } from "@/lib/presentation";
 import {
   getLeads,
   LEAD_STATUSES,
@@ -38,17 +39,17 @@ export default async function AdminLeadsPage({ searchParams }: LeadsPageProps) {
   const columns: DataTableColumn<LeadSummary>[] = [
     {
       key: "name",
-      header: "Name",
+      header: "Nombre",
       render: (row) => (
         <div>
           <p className="font-black text-slate-950">{row.name}</p>
-          <p className="text-xs font-bold text-slate-500">{new Date(row.createdAt).toLocaleDateString("es-CO")}</p>
+          <p className="text-xs font-bold text-slate-500">{formatDate(row.createdAt)}</p>
         </div>
       ),
     },
     {
       key: "contact",
-      header: "Contact",
+      header: "Contacto",
       render: (row) => (
         <div>
           <p>{row.email}</p>
@@ -56,33 +57,33 @@ export default async function AdminLeadsPage({ searchParams }: LeadsPageProps) {
         </div>
       ),
     },
-    { key: "subject", header: "Subject", render: (row) => row.subject ?? "—" },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
+    { key: "subject", header: "Asunto", render: (row) => row.subject ?? "—" },
+    { key: "status", header: "Estado", render: (row) => <StatusBadge status={row.status} label={leadStatusLabel(row.status)} /> },
     {
       key: "change",
-      header: "Change status",
+      header: "Cambiar estado",
       render: (row) => (
         <form action={updateLeadStatus as unknown as FormAction} className="flex gap-2">
           <input type="hidden" name="id" value={row.id} />
           <select name="status" defaultValue={row.status} className="rounded-full border border-slate-200 px-3 py-2 text-xs font-bold">
             {LEAD_STATUSES.map((option) => (
               <option key={option} value={option}>
-                {option.replaceAll("_", " ")}
+                {leadStatusLabel(option)}
               </option>
             ))}
           </select>
           <button type="submit" className="rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white">
-            Save
+            Guardar
           </button>
         </form>
       ),
     },
     {
       key: "detail",
-      header: "Detail",
+      header: "Detalle",
       render: (row) => (
         <Link href={`/admin/leads/${row.id}`} className="font-bold text-brand-blue hover:underline">
-          View
+          Ver
         </Link>
       ),
     },
@@ -91,15 +92,15 @@ export default async function AdminLeadsPage({ searchParams }: LeadsPageProps) {
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Contact requests</p>
-        <h1 className="text-3xl font-black text-slate-950">Leads</h1>
+        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Solicitudes de contacto</p>
+        <h1 className="text-3xl font-black text-slate-950">Clientes potenciales</h1>
       </div>
       <nav className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-widest">
         <Link
           href="/admin/leads"
           className={`rounded-full px-4 py-2 ${status === "" ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}
         >
-          All
+          Todos
         </Link>
         {LEAD_STATUSES.map((option) => (
           <Link
@@ -107,11 +108,11 @@ export default async function AdminLeadsPage({ searchParams }: LeadsPageProps) {
             href={`/admin/leads?status=${option}`}
             className={`rounded-full px-4 py-2 ${status === option ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}
           >
-            {option.replaceAll("_", " ")}
+            {leadStatusLabel(option)}
           </Link>
         ))}
       </nav>
-      <DataTable rows={rows} columns={columns} emptyMessage="No leads found." />
+      <DataTable rows={rows} columns={columns} emptyMessage="No se encontraron clientes potenciales." />
     </section>
   );
 }

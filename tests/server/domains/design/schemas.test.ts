@@ -6,6 +6,7 @@ import {
   bannerDeleteInputSchema,
   bannerUpdateInputSchema,
   heroSettingsUpdateInputSchema,
+  isSafeDesignLink,
   isSafeDesignImagePath,
 } from "@/domains/design/schemas";
 
@@ -83,6 +84,15 @@ describe("bannerCreateInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  test.each(["javascript:alert(1)", "data:text/html,evil", "ftp://evil.example.com/file"])(
+    "rejects an unsafe linkUrl scheme: %s",
+    (linkUrl) => {
+      const result = bannerCreateInputSchema.safeParse({ title: "Banner", imagePath: bannerImagePath, linkUrl });
+
+      expect(result.success).toBe(false);
+    },
+  );
+
   test("rejects an end date before the start date", () => {
     const result = bannerCreateInputSchema.safeParse({
       title: "Scheduled banner",
@@ -134,6 +144,34 @@ describe("heroSettingsUpdateInputSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  test("rejects an unsafe CTA link scheme", () => {
+    const result = heroSettingsUpdateInputSchema.safeParse({
+      backgroundImage: "",
+      title: "Hero",
+      subtitle: "Subtitle",
+      ctaText: "Comprar",
+      ctaLink: "javascript:alert(1)",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("isSafeDesignLink", () => {
+  test.each(["/productos", "/productos?brand=sopro", "https://soprotelco.com/promo", "http://soprotelco.test/promo"])(
+    "accepts allowed links: %s",
+    (link) => {
+      expect(isSafeDesignLink(link)).toBe(true);
+    },
+  );
+
+  test.each(["javascript:alert(1)", "data:text/html,evil", "//evil.example.com/path", "ftp://evil.example.com/file"])(
+    "rejects unsafe links: %s",
+    (link) => {
+      expect(isSafeDesignLink(link)).toBe(false);
+    },
+  );
 });
 
 describe("bannerDeleteInputSchema", () => {

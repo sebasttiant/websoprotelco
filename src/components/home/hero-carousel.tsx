@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Container } from "@/components/ui/container";
+import { isSafeDesignLink } from "@/domains/design/schemas";
 
 export interface HeroSlide {
   id: string;
@@ -20,6 +21,7 @@ export function HeroCarousel({ slides }: { slides: readonly HeroSlide[] }) {
   // With one banner the arrows and dots have nowhere to go, so they are not rendered.
   const isNavigable = slides.length > 1;
   const slide = slides[index];
+  const linkUrl = isSafeDesignLink(slide.linkUrl) ? slide.linkUrl : null;
 
   function step(offset: number) {
     setIndex((current) => (current + offset + slides.length) % slides.length);
@@ -49,9 +51,9 @@ export function HeroCarousel({ slides }: { slides: readonly HeroSlide[] }) {
           {slide.subtitle ? (
             <p className="text-lg font-medium leading-8 text-blue-100/80">{slide.subtitle}</p>
           ) : null}
-          {slide.linkUrl ? (
+          {linkUrl ? (
             <Link
-              href={slide.linkUrl}
+              href={linkUrl}
               className="inline-block rounded-2xl bg-brand-blue px-8 py-4 text-sm font-black uppercase tracking-widest text-white shadow-glow transition hover:bg-brand-primary"
             >
               Ver más

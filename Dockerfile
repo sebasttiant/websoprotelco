@@ -39,7 +39,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-RUN mkdir -p /app/public/uploads && chown nextjs:nodejs /app/public/uploads
+# Both directories must exist in the image and be owned by the runtime user BEFORE a named
+# volume is mounted over them. Docker copies the image's content and ownership into a new
+# empty volume; if the path does not exist in the image, Docker creates the mountpoint owned
+# by root instead and the app (uid 1001) cannot write to it. documents/ is not in the repo,
+# so without this line adding documents-data to compose.yaml would silently break uploads.
+RUN mkdir -p /app/public/uploads /app/public/documents \
+  && chown nextjs:nodejs /app/public/uploads /app/public/documents
 
 USER nextjs
 EXPOSE 8585

@@ -102,6 +102,25 @@ The reset and seed helpers (`pnpm test:db:reset`, `pnpm test:db:seed`) refuse to
 
 `GET /api/health?check=db` additionally runs `SELECT 1` and returns `503` with `{"status":"degraded"}` when the database is unreachable.
 
+`GET /api/health?check=storage` builds the configured storage adapter and returns `503` with `{"status":"degraded"}` when `STORAGE_PROVIDER` is missing or unsupported. `deploy.sh` probes it after the container is healthy, so a misconfigured deploy fails there instead of on the first customer upload. The response never echoes the rejected value.
+
+## CI secrets
+
+The `quality` job provisions its own throwaway PostgreSQL service and reads two repository secrets. Both are required — the workflow has no fallback, so a missing secret fails the job instead of silently running against a default password:
+
+| Secret | Purpose |
+|---|---|
+| `CI_TEST_PASSWORD` | Password for the ephemeral `websoprotelco_ci_test` PostgreSQL service. |
+| `CI_DATABASE_URL` | Full connection string for that service. Must embed `CI_TEST_PASSWORD` and end with a `_test` database name. |
+
+Expected shape (never commit real values):
+
+```text
+CI_DATABASE_URL = postgresql://ci_test_user:<CI_TEST_PASSWORD>@127.0.0.1:5432/websoprotelco_ci_test
+```
+
+The database name must keep the `_test` suffix: the reset/seed helpers refuse to run against any other name.
+
 ## Authentication
 
 Bootstrap the first admin user after running migrations. Working from the repository:

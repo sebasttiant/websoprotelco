@@ -1,14 +1,16 @@
 import * as repository from "./repository";
 import type { ProductRow } from "./repository";
-import { PRODUCT_ADMIN_PAGE_SIZE, productAdminPageSchema } from "./schemas";
+import { getSafeCatalogImageUrl, PRODUCT_ADMIN_PAGE_SIZE, productAdminPageSchema } from "./schemas";
 import type {
   CategoryAdminDetail,
   CategoryAdminInput,
+  CategoryAdminUpdateInput,
   CategoryAdminSummary,
   CategoryOption,
   CategorySummary,
   ProductAdminDetail,
   ProductAdminInput,
+  ProductAdminUpdateInput,
   ProductAdminListFilters,
   ProductAdminListResult,
   ProductAdminSummary,
@@ -38,7 +40,7 @@ function mapProductSummary(row: ProductRow): ProductSummary {
     categoryName: row.category_name ?? "Connectivity",
     categorySlug: row.category_slug ?? "connectivity",
     brand: row.brand ?? inferBrand(row.name, row.sku),
-    imageUrl: row.image_url,
+    imageUrl: getSafeCatalogImageUrl(row.image_url),
     inStock: row.stock_quantity > 0,
   };
 }
@@ -185,7 +187,7 @@ export async function createProduct(input: ProductAdminInput): Promise<void> {
   await repository.insertProduct(input);
 }
 
-export async function updateProduct(input: ProductAdminInput & { id: string }): Promise<void> {
+export async function updateProduct(input: ProductAdminUpdateInput): Promise<void> {
   await repository.updateProductById(input);
 }
 
@@ -197,7 +199,7 @@ export async function createCategory(input: CategoryAdminInput): Promise<void> {
   await repository.insertCategory(input);
 }
 
-export async function updateCategory(input: CategoryAdminInput & { id: string }): Promise<void> {
+export async function updateCategory(input: CategoryAdminUpdateInput): Promise<void> {
   await repository.updateCategoryById(input);
 }
 

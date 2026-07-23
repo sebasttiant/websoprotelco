@@ -60,6 +60,47 @@ const optionalTextSchema = z.preprocess(
   z.string().trim().nullable(),
 );
 
+// Product and category images are always produced by the local storage adapter, which returns
+// paths of the shape "/uploads/<YYYY-MM-DD>-<uuid>.<ext>". Anything else — a remote URL, a
+// base64 data URI, a traversal attempt, a legacy value — must never reach next/image, which
+// would throw at render and crash the edit page. This is the single safe-source contract.
+const CATALOG_IMAGE_PATH_PATTERN =
+  /^\/uploads\/\d{4}-\d{2}-\d{2}-[0-9a-fA-F-]{36}\.(jpg|png|webp)$/;
+
+export function isSafeCatalogImagePath(path: string): boolean {
+  return CATALOG_IMAGE_PATH_PATTERN.test(path);
+}
+
+/**
+ * Returns a renderable catalog image only for a canonical local upload path.
+ * Storefront rendering deliberately ignores remote-origin configuration: catalog assets are
+ * served from controlled VPS paths in this phase.
+ */
+export function getSafeCatalogImageUrl(value: string | null): string | null {
+  return value && isSafeCatalogImagePath(value) ? value : null;
+}
+
+// Validates a submitted image value:
+//   - blank/null  → null (an explicit, intentional removal of the image);
+//   - a safe adapter path (/uploads/<date>-<uuid>.<ext>) → kept as-is;
+//   - anything else (remote URL, base64 data URI, javascript:, traversal, legacy string) →
+//     REJECTED with a Spanish validation error.
+//
+// The previous implementation silently coerced every unsafe value to null. That erased existing
+// image references whenever an unrelated field was edited: the form resubmitted the stored legacy
+// URL, the schema normalized it to null, and the update repository persisted null — silent data
+// loss with no signal to the operator. Rejecting the unsafe submission instead forces an explicit
+// decision: replace the image (upload a new one) or intentionally remove it (blank the field).
+// The read-side preview safety contract (next/image only ever receives a safe path) is unchanged.
+const catalogImageUrlSchema = z
+  .preprocess((value) => {
+    const candidate = typeof value === "string" ? value.trim() : "";
+    return candidate === "" ? null : candidate;
+  }, z.string().nullable())
+  .refine((value) => value === null || isSafeCatalogImagePath(value), {
+    error: "La URL de la imagen no es válida. Subí una imagen o dejá el campo en blanco para quitarla.",
+  });
+
 export const productAdminInputSchema = z.object({
   id: z.uuid().optional(),
   categoryId: z.uuid({ error: "Category is required." }),
@@ -69,7 +110,7 @@ export const productAdminInputSchema = z.object({
   description: z.string().trim().default(""),
   priceCents: z.coerce.number().int().min(0),
   currency: z.string().trim().length(3).transform((value) => value.toUpperCase()),
-  imageUrl: optionalTextSchema,
+  imageUrl: catalogImageUrlSchema,
   brand: optionalTextSchema,
   stockQuantity: z.coerce.number().int().min(0),
   isActive: z.coerce.boolean().default(false),
@@ -77,16 +118,26 @@ export const productAdminInputSchema = z.object({
 
 export type ProductAdminInput = z.infer<typeof productAdminInputSchema>;
 
+export type ProductAdminUpdateInput = Omit<ProductAdminInput, "imageUrl"> & {
+  id: string;
+  imageUrl?: ProductAdminInput["imageUrl"];
+};
+
 export const categoryAdminInputSchema = z.object({
   id: z.uuid().optional(),
   parentId: z.preprocess((value) => (value === "" ? null : value), z.uuid().nullable()),
   slug: z.string().trim().min(1, { error: "Slug is required." }).max(120),
   name: z.string().trim().min(1, { error: "Name is required." }).max(160),
-  imageUrl: optionalTextSchema,
+  imageUrl: catalogImageUrlSchema,
   displayOrder: z.coerce.number().int().min(0),
 });
 
 export type CategoryAdminInput = z.infer<typeof categoryAdminInputSchema>;
+
+export type CategoryAdminUpdateInput = Omit<CategoryAdminInput, "imageUrl"> & {
+  id: string;
+  imageUrl?: CategoryAdminInput["imageUrl"];
+};
 
 export const catalogDeleteInputSchema = z.object({ id: z.uuid() });
 

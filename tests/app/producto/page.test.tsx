@@ -39,8 +39,8 @@ function product(overrides: Record<string, unknown> = {}) {
   };
 }
 
-async function renderPage(related: unknown[] = []) {
-  mockGetProductBySlug.mockResolvedValue(product());
+async function renderPage(related: unknown[] = [], productOverrides: Record<string, unknown> = {}) {
+  mockGetProductBySlug.mockResolvedValue(product(productOverrides));
   mockGetProducts.mockResolvedValue(related);
   mockGetSiteSettings.mockResolvedValue({ whatsappNumber: "+573001234567" });
   render(await ProductPage({ params: Promise.resolve({ slug: "fusionadora-x" }) }));
@@ -56,6 +56,15 @@ describe("ProductPage", () => {
 
     const href = screen.getByRole("link", { name: /whatsapp/i }).getAttribute("href") ?? "";
     expect(new URL(href).searchParams.get("text")).toContain("Fusionadora X");
+  });
+
+  test("offers the visible quote request link with the encoded product slug", async () => {
+    await renderPage([], { slug: "fibra óptica" });
+
+    expect(screen.getByRole("link", { name: "Solicitar cotización" })).toHaveAttribute(
+      "href",
+      "/contacto?producto=fibra%20%C3%B3ptica",
+    );
   });
 
   test("looks for related products in the same category", async () => {

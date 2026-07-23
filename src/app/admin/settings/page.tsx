@@ -13,8 +13,8 @@ export default async function AdminSettingsPage() {
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administration</p>
-        <h1 className="text-3xl font-black text-slate-950">Settings</h1>
+        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administración</p>
+        <h1 className="text-3xl font-black text-slate-950">Configuración</h1>
       </div>
       <div className="space-y-4">
         {settings.map((setting) => (
@@ -42,7 +42,7 @@ export default async function AdminSettingsPage() {
               type="submit"
               className="rounded bg-brand-blue px-4 py-2 text-sm font-bold text-white"
             >
-              Save
+              Guardar
             </button>
           </form>
         ))}

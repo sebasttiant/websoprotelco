@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const ALLOWED_IMAGE_TYPES = {
   JPEG: "image/jpeg",
   PNG: "image/png",
@@ -41,6 +43,56 @@ export interface UploadValidationResult {
   error?: string;
 }
 
+export const STORAGE_PROVIDERS = {
+  LOCAL: "local",
+} as const;
+
+const storageEnvSchema = z.object({
+  STORAGE_PROVIDER: z.enum([STORAGE_PROVIDERS.LOCAL]),
+});
+
+export type StorageProvider = (typeof STORAGE_PROVIDERS)[keyof typeof STORAGE_PROVIDERS];
+
+// Production must declare STORAGE_PROVIDER so a misconfigured deploy fails closed instead
+// of silently writing customer uploads to container-local disk; the implicit local default
+// is a development/test convenience only.
+export function readStorageProvider(source: NodeJS.ProcessEnv = process.env): StorageProvider {
+  const declared = source.STORAGE_PROVIDER ?? (source.NODE_ENV === "production" ? undefined : STORAGE_PROVIDERS.LOCAL);
+  const result = storageEnvSchema.safeParse({ STORAGE_PROVIDER: declared });
+
+  if (!result.success) {
+    throw new Error(`Invalid storage environment configuration: STORAGE_PROVIDER must be one of: ${Object.values(STORAGE_PROVIDERS).join(", ")}`);
+  }
+
+  return result.data.STORAGE_PROVIDER;
+}
+
+type ConfiguredStorageAdapter = StorageAdapter & DocumentStorageAdapter & DesignImageStorageAdapter;
+
+async function createConfiguredStorageAdapter(): Promise<ConfiguredStorageAdapter> {
+  readStorageProvider();
+
+  const { createLocalStorageAdapter } = await import("./local");
+
+  return createLocalStorageAdapter();
+}
+
+// Deploy-time probe: the storage contract otherwise fails closed on the FIRST upload, which
+// is long after a bad deploy is live. Building the configured adapter here surfaces an
+// invalid STORAGE_PROVIDER while the deploy script can still abort.
+export async function checkStorageConfiguration(): Promise<{ ok: true; provider: StorageProvider } | { ok: false; error: string }> {
+  try {
+    await createConfiguredStorageAdapter();
+
+    return { ok: true, provider: readStorageProvider() };
+  } catch (error) {
+    // The message can echo the configured value, so it is logged and not returned.
+    console.error("Storage configuration check failed:", error);
+
+    return { ok: false, error: "Storage configuration check failed." };
+  }
+}
+
 const allowedImageTypes = new Set<string>(Object.values(ALLOWED_IMAGE_TYPES));
 
 const IMAGE_SIGNATURES: Readonly<Record<AllowedImageType, readonly number[]>> = {
@@ -63,30 +115,28 @@ function hasValidImageSignature(bytes: Uint8Array, type: AllowedImageType): bool
 
 export async function validateUploadFile(file: File | null): Promise<UploadValidationResult> {
   if (!file || file.size === 0) {
-    return { valid: false, error: "Image file is required." };
+    return { valid: false, error: "Tenés que subir un archivo de imagen." };
   }
 
   if (!allowedImageTypes.has(file.type)) {
-    return { valid: false, error: "Only JPG, PNG, and WebP images are allowed." };
+    return { valid: false, error: "Solo se admiten imágenes JPG, PNG y WebP." };
   }
 
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
-    return { valid: false, error: "Image must be 5MB or smaller." };
+    return { valid: false, error: "La imagen debe pesar 5MB o menos." };
   }
 
   const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
 
   if (!hasValidImageSignature(bytes, file.type as AllowedImageType)) {
-    return { valid: false, error: "Image content does not match the declared file type." };
+    return { valid: false, error: "El contenido de la imagen no coincide con el tipo declarado." };
   }
 
   return { valid: true };
 }
 
 export async function createStorageAdapter(): Promise<StorageAdapter> {
-  const { createLocalStorageAdapter } = await import("./local");
-
-  return createLocalStorageAdapter();
+  return createConfiguredStorageAdapter();
 }
 
 // %PDF- (the PDF file signature required by every valid PDF, regardless of version).
@@ -94,34 +144,30 @@ const PDF_SIGNATURE = [0x25, 0x50, 0x44, 0x46, 0x2d] as const;
 
 export async function validateDocumentFile(file: File | null): Promise<UploadValidationResult> {
   if (!file || file.size === 0) {
-    return { valid: false, error: "Document file is required." };
+    return { valid: false, error: "Tenés que subir un documento." };
   }
 
   if (file.type !== ALLOWED_DOCUMENT_TYPES.PDF) {
-    return { valid: false, error: "Only PDF documents are allowed." };
+    return { valid: false, error: "Solo se admiten documentos PDF." };
   }
 
   if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
-    return { valid: false, error: "Document must be 10MB or smaller." };
+    return { valid: false, error: "El documento debe pesar 10MB o menos." };
   }
 
   const bytes = new Uint8Array(await file.slice(0, PDF_SIGNATURE.length).arrayBuffer());
 
   if (!hasSignature(bytes, PDF_SIGNATURE)) {
-    return { valid: false, error: "Document content does not match the declared file type." };
+    return { valid: false, error: "El contenido del documento no coincide con el tipo declarado." };
   }
 
   return { valid: true };
 }
 
 export async function createDocumentStorageAdapter(): Promise<DocumentStorageAdapter> {
-  const { createLocalStorageAdapter } = await import("./local");
-
-  return createLocalStorageAdapter();
+  return createConfiguredStorageAdapter();
 }
 
 export async function createDesignImageStorageAdapter(): Promise<DesignImageStorageAdapter> {
-  const { createLocalStorageAdapter } = await import("./local");
-
-  return createLocalStorageAdapter();
+  return createConfiguredStorageAdapter();
 }

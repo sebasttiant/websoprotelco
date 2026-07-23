@@ -11,7 +11,9 @@ import { query } from "@/server/db/pool";
 import { PRODUCT_ADMIN_PAGE_SIZE } from "./schemas";
 import type {
   CategoryAdminInput,
+  CategoryAdminUpdateInput,
   ProductAdminInput,
+  ProductAdminUpdateInput,
   ProductAdminListFilters,
   ProductListFilters,
 } from "./schemas";
@@ -260,13 +262,15 @@ export async function insertProduct(input: ProductAdminInput): Promise<void> {
   );
 }
 
-export async function updateProductById(input: ProductAdminInput & { id: string }): Promise<void> {
+export async function updateProductById(input: ProductAdminUpdateInput): Promise<void> {
+  const shouldUpdateImage = Object.hasOwn(input, "imageUrl");
+
   await query(
     `UPDATE products
      SET category_id = $2, sku = $3, slug = $4, name = $5, description = $6, price_cents = $7,
-         currency = $8, image_url = $9, brand = $10, stock_quantity = $11, is_active = $12
+        currency = $8, image_url = CASE WHEN $9 THEN $10 ELSE image_url END, brand = $11, stock_quantity = $12, is_active = $13
      WHERE id = $1`,
-    [input.id, input.categoryId, input.sku, input.slug, input.name, input.description, input.priceCents, input.currency, input.imageUrl, input.brand, input.stockQuantity, input.isActive],
+    [input.id, input.categoryId, input.sku, input.slug, input.name, input.description, input.priceCents, input.currency, shouldUpdateImage, input.imageUrl, input.brand, input.stockQuantity, input.isActive],
   );
 }
 
@@ -284,12 +288,14 @@ export async function insertCategory(input: CategoryAdminInput): Promise<void> {
   );
 }
 
-export async function updateCategoryById(input: CategoryAdminInput & { id: string }): Promise<void> {
+export async function updateCategoryById(input: CategoryAdminUpdateInput): Promise<void> {
+  const shouldUpdateImage = Object.hasOwn(input, "imageUrl");
+
   await query(
     `UPDATE categories
-     SET parent_id = $2, slug = $3, name = $4, image_url = $5, display_order = $6, position = $6
+     SET parent_id = $2, slug = $3, name = $4, image_url = CASE WHEN $5 THEN $6 ELSE image_url END, display_order = $7, position = $7
      WHERE id = $1`,
-    [input.id, input.parentId, input.slug, input.name, input.imageUrl, input.displayOrder],
+    [input.id, input.parentId, input.slug, input.name, shouldUpdateImage, input.imageUrl, input.displayOrder],
   );
 }
 

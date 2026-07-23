@@ -29,12 +29,15 @@ function checkboxValue(formData: FormData, key: string): boolean {
   return formData.get(key) === "on";
 }
 
-function errorState(error: unknown): DesignActionState {
+function errorState(error: unknown, redirectPath?: string): DesignActionState {
   if (isRedirectError(error)) {
     throw error;
   }
 
   if (error instanceof z.ZodError) {
+    if (redirectPath) {
+      redirect(`${redirectPath}?error=validation`);
+    }
     return { success: false, message: error.issues[0]?.message ?? "Invalid input." };
   }
 
@@ -61,7 +64,7 @@ export async function createBanner(formData: FormData): Promise<DesignActionStat
     revalidatePath("/admin/design");
     redirect("/admin/design?success=banner-created");
   } catch (error) {
-    return errorState(error);
+    return errorState(error, "/admin/design");
   }
 }
 
@@ -81,7 +84,7 @@ export async function updateHeroSettings(formData: FormData): Promise<DesignActi
     revalidatePath("/admin/design");
     redirect("/admin/design?success=hero-updated");
   } catch (error) {
-    return errorState(error);
+    return errorState(error, "/admin/design");
   }
 }
 
@@ -105,7 +108,7 @@ export async function updateBanner(formData: FormData): Promise<DesignActionStat
     revalidatePath("/admin/design");
     redirect("/admin/design?success=banner-updated");
   } catch (error) {
-    return errorState(error);
+    return errorState(error, "/admin/design");
   }
 }
 

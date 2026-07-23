@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { formatDate, roleLabel } from "@/lib/presentation";
 import { getUsersForAdmin, type AdminUserSummary } from "@/domains/users";
 import { requirePermission } from "@/server/auth/guards";
 
@@ -13,19 +14,19 @@ export default async function AdminUsersPage() {
 
   const rows = await getUsersForAdmin();
   const columns: DataTableColumn<AdminUserSummary>[] = [
-    { key: "email", header: "Email", render: (row) => <span className="font-black text-slate-950">{row.email}</span> },
-    { key: "role", header: "Role", render: (row) => row.role },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.isActive ? "active" : "inactive"} /> },
-    { key: "created", header: "Created", render: (row) => new Date(row.createdAt).toLocaleDateString("es-CO") },
+    { key: "email", header: "Correo", render: (row) => <span className="font-black text-slate-950">{row.email}</span> },
+    { key: "role", header: "Rol", render: (row) => roleLabel(row.role) },
+    { key: "status", header: "Estado", render: (row) => <StatusBadge status={row.isActive ? "active" : "inactive"} /> },
+    { key: "created", header: "Creado", render: (row) => formatDate(row.createdAt) },
   ];
 
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administration</p>
-        <h1 className="text-3xl font-black text-slate-950">Users</h1>
+        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administración</p>
+        <h1 className="text-3xl font-black text-slate-950">Usuarios</h1>
       </div>
-      <DataTable rows={rows} columns={columns} emptyMessage="No users found." />
+      <DataTable rows={rows} columns={columns} emptyMessage="No se encontraron usuarios." />
     </section>
   );
 }

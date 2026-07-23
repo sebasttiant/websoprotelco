@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { LogIn, LogOut, Phone, User } from "lucide-react";
 
 import { toTelHref } from "@/components/layout/contact-href";
 import { HeaderMobileMenu, type HeaderNavLink } from "@/components/layout/header-mobile-menu";
@@ -11,6 +12,7 @@ import { getCurrentUser } from "@/server/auth/guards";
 const NAV_LINKS: readonly HeaderNavLink[] = [
   { href: "/", label: "Inicio" },
   { href: "/productos", label: "Productos" },
+  { href: "/carrito", label: "Carrito" },
   { href: "/contacto", label: "Contacto" },
 ];
 
@@ -25,8 +27,9 @@ export async function Header() {
         <Container className="flex items-center justify-between gap-4 py-2 text-xs font-bold">
           <a
             href={toTelHref(settings.contactPhone)}
-            className="transition-colors hover:text-brand-accent"
+            className="inline-flex items-center gap-2 transition-colors hover:text-brand-accent"
           >
+            <Phone aria-hidden="true" className="h-3.5 w-3.5" />
             {settings.contactPhone}
           </a>
           <span className="hidden text-white/70 sm:block">{settings.businessHours}</span>
@@ -62,15 +65,17 @@ export async function Header() {
               <div className="hidden items-center gap-3 sm:flex">
                 <Link
                   href="/cuenta"
-                  className="rounded-full border border-brand-line bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue"
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue"
                 >
+                  <User aria-hidden="true" className="h-4 w-4" />
                   Mi cuenta
                 </Link>
                 <form action={signOut}>
                   <button
                     type="submit"
-                    className="text-xs font-black uppercase tracking-widest text-brand-muted transition hover:text-brand-blue"
+                    className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-brand-muted transition hover:text-brand-blue"
                   >
+                    <LogOut aria-hidden="true" className="h-4 w-4" />
                     Cerrar sesión
                   </button>
                 </form>
@@ -78,8 +83,9 @@ export async function Header() {
             ) : (
               <Link
                 href="/login"
-                className="hidden rounded-full border border-brand-line bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue sm:block"
+                className="hidden items-center gap-2 rounded-full border border-brand-line bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue sm:inline-flex"
               >
+                <LogIn aria-hidden="true" className="h-4 w-4" />
                 Iniciar sesión
               </Link>
             )}

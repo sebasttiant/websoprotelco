@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { query } from "@/server/db/pool";
 import { verifyPassword } from "@/server/auth/password";
-import { isRole } from "@/server/auth/rbac";
+import { isRole, type Role } from "@/server/auth/rbac";
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/server/auth/guards";
 import { createSession, destroySession } from "@/server/auth/session";
 
@@ -33,6 +33,10 @@ interface UserRow {
   password_hash: string | null;
   role: string;
   is_active: boolean;
+}
+
+function landingPathForRole(role: Role): string {
+  return role === "customer" ? "/cuenta" : "/admin";
 }
 
 export async function signIn(_prev: SignInState, formData: FormData): Promise<SignInState> {
@@ -62,7 +66,7 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, sessionCookieOptions(expiresAt));
 
-  redirect("/admin");
+  redirect(landingPathForRole(user.role));
 }
 
 export async function signOut(): Promise<void> {

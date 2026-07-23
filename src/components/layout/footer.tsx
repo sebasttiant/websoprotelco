@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Clock, Mail, MapPin, Phone } from "lucide-react";
 
 import { toMailtoHref, toTelHref } from "@/components/layout/contact-href";
 import { Container } from "@/components/ui/container";
@@ -37,7 +38,7 @@ export async function Footer() {
           <div className="space-y-5 md:col-span-2">
             <Link href="/" className="inline-block" aria-label={`${settings.siteName} inicio`}>
               <Image
-                src="/assets/img/sp-logo-white.png"
+                src="/assets/brand/soprotelco-logo-white.png"
                 alt={settings.siteName}
                 width={2924}
                 height={1878}
@@ -64,20 +65,28 @@ export async function Footer() {
             <h2 className="text-xs font-black uppercase tracking-widest text-brand-accent">Contacto</h2>
             <ul className="space-y-3 text-sm font-medium">
               <li>
-                <a href={toTelHref(settings.contactPhone)} className="transition-colors hover:text-brand-accent">
+                <a href={toTelHref(settings.contactPhone)} className="inline-flex items-center gap-2 transition-colors hover:text-brand-accent">
+                  <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-accent" />
                   {settings.contactPhone}
                 </a>
               </li>
               <li>
                 <a
                   href={toMailtoHref(settings.contactEmail)}
-                  className="break-all transition-colors hover:text-brand-accent"
+                  className="inline-flex items-center gap-2 break-all transition-colors hover:text-brand-accent"
                 >
+                  <Mail aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-accent" />
                   {settings.contactEmail}
                 </a>
               </li>
-              <li>{settings.address}</li>
-              <li>{settings.businessHours}</li>
+              <li className="flex items-center gap-2">
+                <MapPin aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-accent" />
+                <span>{settings.address}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Clock aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-accent" />
+                <span>{settings.businessHours}</span>
+              </li>
             </ul>
 
             {socials.length > 0 ? (

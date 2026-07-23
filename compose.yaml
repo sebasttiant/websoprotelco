@@ -84,6 +84,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 8585
+      # No default on purpose; `:-local` would re-create the silent misconfiguration the
+      # runtime guard prevents. Contract: tests/deploy/compose-contract.sh.
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:?STORAGE_PROVIDER is required (set STORAGE_PROVIDER=local)}
       DATABASE_URL: postgresql://${POSTGRES_USER:-local_dev_user}:${POSTGRES_PASSWORD:-local_dev_password_change_me}@db:5432/${POSTGRES_DB:-websoprotelco}
       DATABASE_SSL: ${DATABASE_SSL:-disable}
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
@@ -96,9 +99,15 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    # Both paths hold user-uploaded files and MUST be volumes. Without documents-data,
+    # public/documents lives on the container's writable layer and every `up --build`
+    # destroys it. deploy.sh now aborts if legacy documents still live only in that layer;
+    # perform the one-time move with docs/operations/legacy-documents-migration.md first.
     volumes:
       - uploads-data:/app/public/uploads
+      - documents-data:/app/public/documents
 
 volumes:
   postgres-data:
   uploads-data:
+  documents-data:

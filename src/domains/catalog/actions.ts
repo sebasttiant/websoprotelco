@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { requirePermission } from "@/server/auth/guards";
 
-import { catalogDeleteInputSchema, categoryAdminInputSchema, productAdminInputSchema } from "./schemas";
+import { catalogDeleteInputSchema, categoryAdminInputSchema, isSafeCatalogImagePath, productAdminInputSchema } from "./schemas";
 import * as catalogService from "./service";
 
 export interface AdminActionState {
@@ -26,7 +26,7 @@ function stringValue(formData: FormData, key: string): string | undefined {
 }
 
 function productInput(formData: FormData): Record<string, unknown> {
-  return {
+  const input: Record<string, unknown> = {
     id: stringValue(formData, "id"),
     categoryId: stringValue(formData, "categoryId"),
     sku: stringValue(formData, "sku"),
@@ -35,22 +35,36 @@ function productInput(formData: FormData): Record<string, unknown> {
     description: stringValue(formData, "description") ?? "",
     priceCents: stringValue(formData, "priceCents"),
     currency: stringValue(formData, "currency") ?? "COP",
-    imageUrl: stringValue(formData, "imageUrl"),
     brand: stringValue(formData, "brand"),
     stockQuantity: stringValue(formData, "stockQuantity") ?? "0",
     isActive: formData.has("isActive"),
   };
+  if (formData.has("imageUrl")) input.imageUrl = stringValue(formData, "imageUrl");
+  return input;
 }
 
 function categoryInput(formData: FormData): Record<string, unknown> {
-  return {
+  const input: Record<string, unknown> = {
     id: stringValue(formData, "id"),
     parentId: stringValue(formData, "parentId") ?? null,
     slug: stringValue(formData, "slug"),
     name: stringValue(formData, "name"),
-    imageUrl: stringValue(formData, "imageUrl"),
     displayOrder: stringValue(formData, "displayOrder") ?? "0",
   };
+  if (formData.has("imageUrl")) input.imageUrl = stringValue(formData, "imageUrl");
+  return input;
+}
+
+function keepLegacyImageOnUnchangedUpdate(input: Record<string, unknown>, currentImageUrl: string | null | undefined): Record<string, unknown> {
+  const imageUrl = typeof input.imageUrl === "string" ? input.imageUrl.trim() : "";
+
+  if (imageUrl !== "" && imageUrl === currentImageUrl && !isSafeCatalogImagePath(imageUrl)) {
+    const withoutImageUrl = { ...input };
+    delete withoutImageUrl.imageUrl;
+    return withoutImageUrl;
+  }
+
+  return input;
 }
 
 function errorState(error: unknown): AdminActionState {
@@ -96,7 +110,8 @@ export async function updateProduct(formData: FormData): Promise<AdminActionStat
   const productId = stringValue(formData, "id");
 
   try {
-    const input = productAdminInputSchema.required({ id: true }).parse(productInput(formData));
+    const currentProduct = productId ? await catalogService.getProductByIdForAdmin(productId).catch(() => null) : null;
+    const input = productAdminInputSchema.required({ id: true }).partial({ imageUrl: true }).parse(keepLegacyImageOnUnchangedUpdate(productInput(formData), currentProduct?.imageUrl));
 
     await catalogService.updateProduct(input);
 
@@ -147,7 +162,8 @@ export async function updateCategory(formData: FormData): Promise<AdminActionSta
   const categoryId = stringValue(formData, "id");
 
   try {
-    const input = categoryAdminInputSchema.required({ id: true }).parse(categoryInput(formData));
+    const currentCategory = categoryId ? await catalogService.getCategoryByIdForAdmin(categoryId).catch(() => null) : null;
+    const input = categoryAdminInputSchema.required({ id: true }).partial({ imageUrl: true }).parse(keepLegacyImageOnUnchangedUpdate(categoryInput(formData), currentCategory?.imageUrl));
 
     await catalogService.updateCategory(input);
 

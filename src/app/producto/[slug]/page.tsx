@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/header";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { getProductBySlug, getProducts } from "@/domains/catalog";
+import { getSafeCatalogImageUrl } from "@/domains/catalog/schemas";
 import { getSiteSettings } from "@/domains/settings";
 
 export const dynamic = "force-dynamic";
@@ -56,12 +57,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
     getProducts({ categorySlug: product.categorySlug }),
   ]);
   const related = categoryProducts.filter((item) => item.slug !== product.slug).slice(0, RELATED_LIMIT);
+  const imageUrl = getSafeCatalogImageUrl(product.imageUrl);
 
   return (
     <main className="min-h-screen bg-brand-ice">
       <Header />
       <Container className="py-12">
-        <nav className="mb-8 text-sm font-bold text-brand-muted">
+        <nav aria-label="Ruta de navegación" className="mb-8 text-sm font-bold text-brand-muted">
           <Link href="/" className="hover:text-brand-blue">Inicio</Link>
           <span className="mx-2">/</span>
           <Link href="/productos" className="hover:text-brand-blue">Productos</Link>
@@ -71,9 +73,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
         <section className="grid gap-10 rounded-[40px] bg-white p-6 shadow-2xl shadow-blue-950/5 lg:grid-cols-2 lg:p-10">
           <div className="grid aspect-square place-items-center rounded-[32px] bg-brand-ice">
-            {product.imageUrl ? (
+            {imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={product.imageUrl} alt={product.name} className="h-full w-full object-contain p-10" />
+              <img src={imageUrl} alt={product.name} className="h-full w-full object-contain p-10" />
             ) : (
               <div className="text-center text-brand-blue/25">
                 <div className="mx-auto mb-4 grid h-28 w-28 place-items-center rounded-3xl border-2 border-current text-5xl font-black">SP</div>
@@ -94,7 +96,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <p className="text-lg font-medium leading-8 text-brand-muted">{product.description || "Producto profesional para redes, fibra óptica y proyectos de conectividad empresarial."}</p>
             <p className="text-4xl font-black text-brand-navy">{formatCurrency(product.priceCents, product.currency)}</p>
             <div className="flex flex-col gap-4 sm:flex-row">
-              <Link href="/contacto" className="rounded-full bg-brand-blue px-8 py-4 text-center text-sm font-black uppercase tracking-widest text-white shadow-glow transition hover:bg-brand-primary">
+              <Link href={`/contacto?producto=${encodeURIComponent(product.slug)}`} className="rounded-full bg-brand-blue px-8 py-4 text-center text-sm font-black uppercase tracking-widest text-white shadow-glow transition hover:bg-brand-primary">
                 Solicitar cotización
               </Link>
               <WhatsAppCta

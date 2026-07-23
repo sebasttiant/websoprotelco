@@ -23,6 +23,7 @@
     "seed:users": "tsx db/seeds/001-users.ts"
   },
   "dependencies": {
+    "lucide-react": "0.575.0",
     "next": "16.2.10",
     "pg": "8.22.0",
     "react": "19.2.7",

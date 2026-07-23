@@ -4,6 +4,7 @@ import Link from "next/link";
 import { HeroCarousel, type HeroSlide } from "@/components/home/hero-carousel";
 import { Container } from "@/components/ui/container";
 import { getHeroSettings, getPublicBanners } from "@/domains/design";
+import { isSafeDesignLink } from "@/domains/design/schemas";
 
 export async function Hero() {
   const [banners, settings] = await Promise.all([getPublicBanners(), getHeroSettings()]);
@@ -51,7 +52,7 @@ export async function Hero() {
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
             <Link
-              href={settings.ctaLink}
+              href={isSafeDesignLink(settings.ctaLink) ? settings.ctaLink : "/productos"}
               className="rounded-2xl bg-brand-blue px-8 py-4 text-sm font-black uppercase tracking-widest text-white shadow-glow transition hover:bg-brand-primary"
             >
               {settings.ctaText}

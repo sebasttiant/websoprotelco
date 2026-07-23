@@ -40,3 +40,8 @@ public/uploads/*
 *.tar.gz
 *.zip
 *.bak
+
+# Deploy backups, dumps and rollback manifest written on the server.
+# These MUST stay ignored: rollback.sh refuses to run on a dirty tree, so an
+# untracked backup directory would permanently block rollback.
+backups/

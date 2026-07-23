@@ -20,6 +20,8 @@ export type {
   ProductSummary,
 } from "./schemas";
 
+export { isSafeCatalogImagePath } from "./schemas";
+
 export {
   createCategory,
   createProduct,

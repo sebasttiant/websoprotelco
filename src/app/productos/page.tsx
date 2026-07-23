@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { CatalogFilters } from "@/components/catalog/catalog-filters";
-import { ProductCard } from "@/components/catalog/product-card";
+import { CartProductCard } from "@/components/cart/cart-product-card";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Container } from "@/components/ui/container";
@@ -48,7 +48,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
       <Header />
       <section className="bg-white py-12">
         <Container>
-          <nav className="mb-5 text-sm font-bold text-brand-muted">
+          <nav aria-label="Ruta de navegación" className="mb-5 text-sm font-bold text-brand-muted">
             <Link href="/" className="hover:text-brand-blue">Inicio</Link>
             <span className="mx-2">/</span>
             <span className="text-brand-navy">Catálogo de Productos</span>
@@ -83,9 +83,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
             </div>
 
             {products.length > 0 ? (
-              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-6 lg:grid-cols-3">
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  <CartProductCard key={product.id} product={product} />
                 ))}
               </div>
             ) : (

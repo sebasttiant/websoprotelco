@@ -40,13 +40,24 @@ Chain strategy: feature-branch-chain
   - Deviation: `db/schema.sql` was intentionally not created. Ordered migrations are the single source of truth; a parallel canonical dump would be a second source that silently drifts. Regenerate a dump with `pg_dump --schema-only` if one is ever needed.
   - Delivered: `0001_initial_schema.sql` (users, categories, products, quote_requests, quote_request_items), a checksum/ordering-guarded migration runner with an advisory lock, a validated env layer, a pooled client, and an opt-in DB health probe.
   - Not delivered: no repository/query layer reads these tables yet, and migrations are not run as part of container start-up.
-- [ ] 2.2 Create `src/server/auth/**` with sessions, password hashing, `requireSession()`, and `requirePermission()`; test invalid credentials and bypass denial.
-- [ ] 2.3 Create `src/server/storage/**` and `src/server/notifications/**` adapters for uploads metadata and `notification_outbox`.
+- [x] 2.2 Create `src/server/auth/**` with sessions, password hashing, `requireSession()`, and `requirePermission()`; test invalid credentials and bypass denial.
+  - Delivered: database-backed hashed sessions, scrypt password hashing, server-only session and permission guards, and behavior tests for invalid/disabled credentials and denied permissions.
+- [x] 2.3 Create `src/server/storage/**` and `src/server/notifications/**` adapters for uploads metadata and `notification_outbox`.
+  - Delivered: local upload/document/design-image adapters behind a schema-validated `STORAGE_PROVIDER` contract that fails closed in production and in Compose when the variable is absent, `0011_notification_outbox.sql`, and a validated outbox enqueue boundary that runs on the caller's transaction client without detaching its receiver.
+  - Deferred before notification handoff work: add a worker contract with `FOR UPDATE SKIP LOCKED` claiming, bounded exponential retry, stale-processing recovery, terminal failure handling, and idempotency keys/provider receipts. No worker or delivery behavior is claimed by this task.
 
 ## Phase 3: Storefront and Commerce
 
-- [ ] 3.1 Create `public/assets/brand/**` and `src/app/globals.css` from safe legacy assets/tokens; exclude secrets and Supabase coupling.
-- [ ] 3.2 Create public `src/app/**` routes for home, catalog/category/product, cart, contact, account entry, privacy, and terms.
+- [x] 3.1 Create `public/assets/brand/**` and `src/app/globals.css` from safe legacy assets/tokens; exclude secrets and Supabase coupling.
+  - Delivered: copied the byte-identical approved legacy white logo into `public/assets/brand/soprotelco-logo-white.png`; retained the already-translated token foundation in `src/app/globals.css`; added asset/token safety contract coverage.
+- [x] 3.2 Create public `src/app/**` routes for home, catalog/category/product, cart, contact, account entry, privacy, and terms.
+  - Delivered: every listed route exists and is evidenced — `src/app/page.tsx` (home), `src/app/productos/**` (catalog + category), `src/app/producto/[slug]/**` (product, with loading and Spanish not-found boundaries), `src/app/carrito/**` (cart), `src/app/contacto/**` (contact), `src/app/cuenta/**` (account entry), `src/app/privacidad/**`, and `src/app/terminos/**`. Covered by Vitest route/component suites plus the home, catalog, cart, and public-route Playwright specs.
+  - PR 3B historical scope: shared public shell, primary navigation, and home parity foundation only.
+  - PR 3C historical scope: catalog/category/product route foundation only; it added category/loading/behavior coverage and retained cart/contact/account/legal work for later slices.
+  - PR 3C corrective slice: storefront image reads fail closed, Spanish product not-found and accessible breadcrumbs are covered, cards expose the existing contact quote entry, and PostgreSQL-backed catalog Playwright smoke coverage is committed.
+  - PR 3D historical scope: contact safely accepts only a well-formed `?producto=<slug>` context and exposes its non-persistent availability state; account entry and legal pages were re-evidenced.
+  - PR 3E cart slice is reconciled and complete. The browser-local record parser fails closed for hostile currency, identity, slug, name, price, quantity, and unexpected image data; cart totals reject values outside the safe-integer range instead of rendering a silently rounded number; and a Playwright contract proves add/update/remove issue zero `POST`/`PUT`/`PATCH`/`DELETE` and zero `/api/` requests. The slice has an exact non-overlapping manifest and receipt.
+  - Still out of scope here and tracked by 3.3: quote persistence, checkout server action, and any payment surface. The cart remains a browser-local draft.
 - [ ] 3.3 Create `src/domains/catalog/**`, `storefront/**`, and `quote-order/**` with Zod 4 schemas, repositories, services, and checkout server action.
 - [ ] 3.4 Test browse, empty category, unknown product, cart validation, no payment UI, request creation, and handoff unavailable/success states.
 

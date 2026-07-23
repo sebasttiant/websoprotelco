@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import type { SiteSettings } from "@/domains/settings/schemas";
@@ -39,6 +40,7 @@ vi.mock("@/domains/settings", () => ({
 }));
 
 const { Header } = await import("@/components/layout/header");
+const { HeaderMobileMenu } = await import("@/components/layout/header-mobile-menu");
 
 async function renderHeader(overrides: Partial<SiteSettings> = {}, user: unknown = null) {
   mockGetSiteSettings.mockResolvedValue({ ...SETTINGS, ...overrides });
@@ -113,5 +115,21 @@ describe("Header", () => {
     await renderHeader({}, { id: "user-1", email: "ana@empresa.com", role: "customer" });
 
     expect(screen.getByRole("button", { name: /cerrar sesión/i })).toBeInTheDocument();
+  });
+
+  test("keeps the compact navigation accessible and dismissible on small screens", async () => {
+    const user = userEvent.setup();
+    render(<HeaderMobileMenu links={[{ href: "/productos", label: "Productos" }]} />);
+
+    const menuButton = screen.getByRole("button", { name: "Abrir menú" });
+    await user.click(menuButton);
+
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("navigation", { name: "Navegación móvil" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Productos" })).toHaveAttribute("href", "/productos");
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("navigation", { name: "Navegación móvil" })).not.toBeInTheDocument();
   });
 });

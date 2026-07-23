@@ -66,6 +66,13 @@ describe("Hero without banners", () => {
     expect(screen.getByText("Stock disponible y envíos nacionales.")).toBeInTheDocument();
   });
 
+  test("keeps the home layout usable when its optional background image is absent", async () => {
+    await renderHero([], { ...HERO_SETTINGS, backgroundImage: null });
+
+    expect(screen.getByRole("heading", { level: 1, name: HERO_SETTINGS.title })).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
   test("renders the call to action from hero settings", async () => {
     await renderHero([], { ...HERO_SETTINGS, ctaText: "Ver catálogo", ctaLink: "/productos" });
 

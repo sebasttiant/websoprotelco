@@ -11,6 +11,7 @@ import { getCurrentUser } from "@/server/auth/guards";
 const NAV_LINKS: readonly HeaderNavLink[] = [
   { href: "/", label: "Inicio" },
   { href: "/productos", label: "Productos" },
+  { href: "/carrito", label: "Carrito" },
   { href: "/contacto", label: "Contacto" },
 ];
 

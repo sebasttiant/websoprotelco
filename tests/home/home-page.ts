@@ -12,6 +12,20 @@ export class HomePage extends BasePage {
   }
 
   async expectLoaded(): Promise<void> {
-    await expect(this.heading("Ecommerce rebuild foundation")).toBeVisible();
+    const primaryNavigation = this.page.getByRole("navigation", { name: "Navegación principal" });
+
+    await expect(primaryNavigation).toBeVisible();
+    await expect(primaryNavigation.getByRole("link", { name: "Productos" })).toBeVisible();
+  }
+
+  async expectCompactNavigation(): Promise<void> {
+    const menuButton = this.page.getByRole("button", { name: "Abrir menú" });
+
+    await expect(menuButton).toBeVisible();
+    await menuButton.click();
+    await expect(this.page.getByRole("button", { name: "Cerrar menú" })).toHaveAttribute("aria-expanded", "true");
+
+    const mobileNavigation = this.page.getByRole("navigation", { name: "Navegación móvil" });
+    await expect(mobileNavigation.getByRole("link", { name: "Productos" })).toBeVisible();
   }
 }

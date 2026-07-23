@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Boxes, FileText, FolderTree, LayoutDashboard, type LucideIcon, Package, Palette, Settings, Users, UsersRound } from "lucide-react";
 
 import { hasPermission, type Permission, type Role } from "@/server/auth/rbac";
 
@@ -16,6 +17,7 @@ interface NavItem {
   href: string;
   label: string;
   permission: Permission | null;
+  icon: LucideIcon;
 }
 
 interface NavGroup {
@@ -27,35 +29,35 @@ interface NavGroup {
 const GROUPS: readonly NavGroup[] = [
   {
     title: null,
-    items: [{ href: "/admin", label: "Panel de control", permission: null }],
+    items: [{ href: "/admin", label: "Panel de control", permission: null, icon: LayoutDashboard }],
   },
   {
     title: "Catálogo",
     items: [
-      { href: "/admin/products", label: "Productos", permission: "catalog:read" },
-      { href: "/admin/categories", label: "Categorías", permission: "catalog:read" },
+      { href: "/admin/products", label: "Productos", permission: "catalog:read", icon: Package },
+      { href: "/admin/categories", label: "Categorías", permission: "catalog:read", icon: FolderTree },
     ],
   },
   {
     title: "Operaciones",
     items: [
-      { href: "/admin/quotes", label: "Cotizaciones", permission: "quote:read" },
-      { href: "/admin/leads", label: "Clientes potenciales", permission: "leads:read" },
-      { href: "/admin/inventory", label: "Inventario", permission: "inventory:read" },
+      { href: "/admin/quotes", label: "Cotizaciones", permission: "quote:read", icon: FileText },
+      { href: "/admin/leads", label: "Clientes potenciales", permission: "leads:read", icon: UsersRound },
+      { href: "/admin/inventory", label: "Inventario", permission: "inventory:read", icon: Boxes },
     ],
   },
   {
     title: "Contenido",
     items: [
-      { href: "/admin/documents", label: "Documentos", permission: "documents:read" },
-      { href: "/admin/design", label: "Diseño del sitio", permission: "design:read" },
+      { href: "/admin/documents", label: "Documentos", permission: "documents:read", icon: FileText },
+      { href: "/admin/design", label: "Diseño del sitio", permission: "design:read", icon: Palette },
     ],
   },
   {
     title: "Administración",
     items: [
-      { href: "/admin/users", label: "Usuarios", permission: "admin:access" },
-      { href: "/admin/settings", label: "Configuración", permission: "settings:read" },
+      { href: "/admin/users", label: "Usuarios", permission: "admin:access", icon: Users },
+      { href: "/admin/settings", label: "Configuración", permission: "settings:read", icon: Settings },
     ],
   },
 ];
@@ -90,18 +92,20 @@ export function AdminSidebar({ role }: { role: Role }) {
           ) : null}
           {group.items.map((item) => {
             const active = isActive(pathname, item.href);
+            const Icon = item.icon;
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+                className={`inline-flex items-center gap-2.5 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition ${
                   active
                     ? "bg-brand-blue text-white"
                     : "text-white/60 hover:bg-white/5 hover:text-brand-accent"
                 }`}
               >
+                <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
                 {item.label}
               </Link>
             );

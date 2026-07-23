@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Eye, FileText } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import type { ProductSummary } from "@/domains/catalog";
@@ -49,10 +50,12 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
           <p className="text-xl font-black text-brand-navy">{formatCurrency(product.priceCents, product.currency)}</p>
-          <Link href={`/contacto?producto=${encodeURIComponent(product.slug)}`} className="rounded-full border border-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-brand-blue transition hover:bg-blue-50">
+          <Link href={`/contacto?producto=${encodeURIComponent(product.slug)}`} className="inline-flex items-center gap-2 rounded-full border border-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-brand-blue transition hover:bg-blue-50">
+            <FileText aria-hidden="true" className="h-4 w-4" />
             Cotizar
           </Link>
-          <Link href={`/producto/${product.slug}`} className="rounded-full bg-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-blue-700">
+          <Link href={`/producto/${product.slug}`} className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-blue-700">
+            <Eye aria-hidden="true" className="h-4 w-4" />
             Ver
           </Link>
         </div>

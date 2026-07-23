@@ -14,8 +14,23 @@ jobs:
   quality:
     name: Lint, typecheck, test, build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: websoprotelco_ci_test
+          POSTGRES_USER: ci_test_user
+          POSTGRES_PASSWORD: ${{ secrets.CI_TEST_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_test_user -d websoprotelco_ci_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Must embed CI_TEST_PASSWORD and target websoprotelco_ci_test. See README "CI secrets".
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -34,6 +49,35 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Bounded on purpose: an unbounded `until` loop turns an unreachable database into a
+      # job that hangs until the GitHub-wide timeout instead of failing with a clear cause.
+      - name: Wait for test PostgreSQL
+        run: |
+          for attempt in $(seq 1 60); do
+            if pg_isready --host 127.0.0.1 --port 5432 --username ci_test_user --dbname websoprotelco_ci_test; then
+              echo "PostgreSQL is ready after ${attempt} attempt(s)."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "ERROR: PostgreSQL was not ready after 60 attempts (60s)."
+          exit 1
+
+      - name: Apply migrations
+        run: pnpm db:migrate
+
+      - name: Verify migration idempotency
+        run: pnpm db:migrate
+
+      - name: Reset test database
+        run: pnpm test:db:reset
+
+      - name: Reapply migrations after reset
+        run: pnpm db:migrate
+
+      - name: Seed test database
+        run: pnpm test:db:seed
+
       - name: Lint
         run: pnpm lint
 
@@ -44,15 +88,24 @@ jobs:
         run: pnpm test
 
       - name: Install Playwright Chromium
-        if: ${{ env.DATABASE_URL != '' }}
         run: pnpm exec playwright install --with-deps chromium
 
       - name: E2E smoke tests
-        if: ${{ env.DATABASE_URL != '' }}
+        env:
+          PORT: 8598
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:8598
         run: pnpm test:e2e
 
       - name: Build
         run: pnpm build
+
+      - name: Collect PostgreSQL diagnostics on failure
+        if: ${{ failure() }}
+        run: docker ps --all --format 'table {{.Names}}\t{{.Status}}'
+
+      - name: Cleanup CI test resources
+        if: ${{ always() }}
+        run: docker ps --all --format 'table {{.Names}}\t{{.Status}}'
 
   container:
     name: Docker build and Compose validation
@@ -61,8 +114,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Validate Compose file
-        run: docker compose config --quiet
+      - name: Validate Compose configuration contract
+        run: bash tests/deploy/compose-contract.sh
 
       - name: Build runtime image
         run: docker build --network host --target runner -t websoprotelco:ci .

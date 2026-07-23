@@ -96,7 +96,7 @@ fi
 # Fail fast on missing critical variables. ADMIN_* are required because this script creates
 # the administrator from them: the dev seed's credentials are committed to a public repo and
 # must never provision a real server.
-required_vars=(POSTGRES_PASSWORD DATABASE_URL ADMIN_EMAIL ADMIN_PASSWORD)
+required_vars=(POSTGRES_PASSWORD DATABASE_URL ADMIN_EMAIL ADMIN_PASSWORD STORAGE_PROVIDER)
 for var in "${required_vars[@]}"; do
   if ! grep -q "^${var}=" "$APP_DIR/.env"; then
     echo "ERROR: $var not set in .env"
@@ -694,6 +694,10 @@ echo "==> Post-deploy: verifying critical endpoints..."
 
 # /api/health?check=db — verifies DB connectivity from the app layer
 check_endpoint "/api/health?check=db" "/api/health (with DB check)" "2xx"
+
+# /api/health?check=storage — builds the configured storage adapter, so an invalid
+# STORAGE_PROVIDER fails here instead of on the first customer upload.
+check_endpoint "/api/health?check=storage" "/api/health (with storage check)" "2xx"
 
 # /login — public page, should render without errors
 check_endpoint "/login" "/login (public storefront)" "2xx"

@@ -1,7 +1,6 @@
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Container } from "@/components/ui/container";
-import { createLead } from "@/domains/leads";
 
 interface ContactPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -11,10 +10,14 @@ function firstParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
+function isProductSlug(value: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+}
+
 export default async function ContactPage({ searchParams }: ContactPageProps) {
   const params = await searchParams;
-  const sent = firstParam(params.sent) === "1";
-  const validationError = firstParam(params.error) === "validation";
+  const product = firstParam(params.producto).trim();
+  const quotedProduct = isProductSlug(product) ? product : null;
 
   return (
     <main className="min-h-screen bg-brand-ice">
@@ -34,7 +37,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
             <article className="rounded-3xl bg-white p-8 shadow-xl shadow-blue-950/5">
               <h2 className="mb-2 text-xl font-black text-brand-navy">Llamadas y WhatsApp</h2>
               <p className="mb-4 font-medium leading-7 text-brand-muted">Atención inmediata para ventas y soporte técnico.</p>
-              <a href="https://wa.me/573001234567" className="text-lg font-black text-brand-blue hover:underline">+57 300 123 4567</a>
+              <a href="https://wa.me/573001234567" aria-label="Contactar por WhatsApp" className="text-lg font-black text-brand-blue hover:underline">+57 300 123 4567</a>
             </article>
             <article className="rounded-3xl bg-white p-8 shadow-xl shadow-blue-950/5">
               <h2 className="mb-2 text-xl font-black text-brand-navy">Correo Electrónico</h2>
@@ -54,22 +57,15 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
           <section className="rounded-3xl bg-white p-8 shadow-xl shadow-blue-950/5 lg:col-span-2 lg:p-10">
             <div className="mb-8">
               <h2 className="text-3xl font-black text-brand-navy">Envíanos un mensaje</h2>
-              <p className="mt-3 font-medium leading-7 text-brand-muted">Completa el formulario y un asesor especializado te contactará.</p>
+              <p className="mt-3 font-medium leading-7 text-brand-muted">Completa el formulario para preparar tu solicitud de contacto.</p>
             </div>
 
-            {sent ? (
-              <div className="mb-6 rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
-                Mensaje recibido. Un asesor de SOPROTELCO te contactará pronto.
-              </div>
-            ) : null}
+            <div id="contact-availability" role="status" className="mb-6 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800">
+              El envío en línea todavía no está disponible. Para atención inmediata, usa WhatsApp o escríbenos al correo de ventas.
+              {quotedProduct ? <span className="block pt-2">Producto consultado: {quotedProduct}</span> : null}
+            </div>
 
-            {validationError ? (
-              <div className="mb-6 rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-700">
-                Revisa los campos del formulario e intenta nuevamente.
-              </div>
-            ) : null}
-
-            <form action={createLead} className="grid gap-6 md:grid-cols-2">
+            <fieldset aria-describedby="contact-availability" className="grid gap-6 md:grid-cols-2">
               <label className="space-y-2 text-sm font-black uppercase tracking-wider text-brand-navy">
                 Nombre Completo
                 <input name="name" required placeholder="Ej: Juan Pérez" className="w-full rounded-2xl border border-brand-line bg-brand-ice p-4 font-medium normal-case tracking-normal outline-none focus:border-brand-blue" />
@@ -95,10 +91,10 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
                 Tu mensaje
                 <textarea name="message" required placeholder="¿En qué podemos ayudarte hoy?" className="min-h-40 w-full rounded-2xl border border-brand-line bg-brand-ice p-4 font-medium normal-case tracking-normal outline-none focus:border-brand-blue" />
               </label>
-              <button type="submit" className="rounded-full bg-brand-blue px-8 py-4 text-sm font-black uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 transition hover:bg-blue-700 md:col-span-2">
-                Enviar Mensaje
+              <button type="button" className="rounded-full bg-brand-blue px-8 py-4 text-sm font-black uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 transition hover:bg-blue-700 md:col-span-2">
+                Preparar mensaje
               </button>
-            </form>
+            </fieldset>
           </section>
         </div>
       </Container>

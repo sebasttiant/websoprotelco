@@ -20,4 +20,22 @@ describe("StatusBadge", () => {
     render(<StatusBadge status="lost" label="Perdida" />);
     expect(screen.getByText("Perdida")).toBeInTheDocument();
   });
+
+  test("shows an icon for a known status, hidden from assistive tech", () => {
+    const { container } = render(<StatusBadge status="won" label="Ganada" />);
+
+    const icon = container.querySelector("svg");
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+    // The word still carries the meaning; the icon only reinforces it.
+    expect(screen.getByText("Ganada")).toBeInTheDocument();
+  });
+
+  test("renders text-only, without a broken icon slot, for an unmapped status", () => {
+    const { container } = render(<StatusBadge status="totally_unknown" />);
+
+    expect(container.querySelector("svg")).toBeNull();
+    // Still degrades to humanized text rather than the raw underscore value.
+    expect(screen.getByText("Totally unknown")).toBeInTheDocument();
+  });
 });

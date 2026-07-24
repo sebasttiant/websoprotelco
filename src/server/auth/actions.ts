@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { query } from "@/server/db/pool";
-import { verifyPassword } from "@/server/auth/password";
+import { hashPassword, verifyPassword } from "@/server/auth/password";
 import { isRole, type Role } from "@/server/auth/rbac";
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/server/auth/guards";
 import { createSession, destroySession } from "@/server/auth/session";
@@ -79,4 +79,57 @@ export async function signOut(): Promise<void> {
 
   cookieStore.delete(SESSION_COOKIE_NAME);
   redirect("/login");
+}
+
+export interface SignUpState {
+  error: string | null;
+}
+
+const MIN_PASSWORD_LENGTH = 8;
+
+const signUpSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((value) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value), "Ingresá un correo electrónico válido."),
+  password: z.string().min(MIN_PASSWORD_LENGTH, `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`),
+});
+
+// Public customer self-registration: always creates a `customer`, never a privileged role,
+// so this route can never mint an admin. A taken email is reported plainly because signup
+// needs it; sign-in stays deliberately generic.
+export async function signUp(_prev: SignUpState, formData: FormData): Promise<SignUpState> {
+  const parsed = signUpSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Revisá los datos ingresados." };
+  }
+
+  const { email, password } = parsed.data;
+  const passwordHash = await hashPassword(password);
+
+  // ON CONFLICT against the lower(email) unique index keeps this a single atomic write with no
+  // separate existence check to race, and reuses the same conflict target as create-admin.
+  const rows = await query<{ id: string }>(
+    `INSERT INTO users (email, password_hash, role, is_active)
+     VALUES ($1, $2, 'customer', true)
+     ON CONFLICT ((lower(email))) DO NOTHING
+     RETURNING id`,
+    [email, passwordHash],
+  );
+  const user = rows[0];
+
+  if (!user) {
+    return { error: "Ese correo ya está registrado. Iniciá sesión." };
+  }
+
+  const { token, expiresAt } = await createSession(user.id);
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, token, sessionCookieOptions(expiresAt));
+
+  redirect("/cuenta");
 }

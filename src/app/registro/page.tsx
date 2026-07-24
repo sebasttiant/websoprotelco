@@ -3,11 +3,11 @@ import Link from "next/link";
 
 import { getSiteSettings } from "@/domains/settings";
 
-import { SignInForm } from "./sign-in-form";
+import { SignUpForm } from "./sign-up-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+export default async function RegisterPage() {
   const settings = await getSiteSettings();
 
   return (
@@ -25,7 +25,7 @@ export default async function LoginPage() {
         </Link>
         <div className="space-y-6">
           <h2 className="text-4xl font-black leading-tight">
-            Tu cuenta para proyectos de <span className="text-brand-accent">fibra óptica</span>
+            Creá tu cuenta para <span className="text-brand-accent">seguir tus cotizaciones</span>
           </h2>
           <p className="max-w-md text-sm font-medium leading-7 text-white/70">{settings.siteDescription}</p>
         </div>
@@ -45,24 +45,20 @@ export default async function LoginPage() {
 
         <div className="w-full max-w-sm space-y-2 text-center">
           <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Cuenta</p>
-          <h1 className="text-3xl font-black text-brand-navy">Iniciar sesión</h1>
+          <h1 className="text-3xl font-black text-brand-navy">Crear cuenta</h1>
           <p className="text-sm font-medium text-brand-muted">
-            Accede para consultar tus cotizaciones y tus datos de perfil.
+            Registrate para guardar tus datos y consultar tus cotizaciones.
           </p>
         </div>
 
-        <SignInForm />
+        <SignUpForm />
 
         <p className="text-sm font-medium text-brand-muted">
-          ¿No tenés cuenta?{" "}
-          <Link href="/registro" className="font-bold text-brand-blue hover:text-brand-primary">
-            Creá una
+          ¿Ya tenés cuenta?{" "}
+          <Link href="/login" className="font-bold text-brand-blue hover:text-brand-primary">
+            Iniciá sesión
           </Link>
         </p>
-
-        <Link href="/" className="text-sm font-bold text-brand-blue hover:text-brand-primary">
-          ← Volver al inicio
-        </Link>
       </section>
     </main>
   );

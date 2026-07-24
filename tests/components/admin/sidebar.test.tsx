@@ -31,9 +31,9 @@ describe("AdminSidebar", () => {
       ["Categorías", "/admin/categories"],
       ["Cotizaciones", "/admin/quotes"],
       ["Clientes potenciales", "/admin/leads"],
-      ["Inventario", "/admin/inventory"],
-      ["Documentos", "/admin/documents"],
-      ["Diseño del sitio", "/admin/design"],
+      ["Gestión de stock", "/admin/inventory"],
+      ["Documentación", "/admin/documents"],
+      ["Apariencia", "/admin/design"],
       ["Usuarios", "/admin/users"],
       ["Configuración", "/admin/settings"],
     ] as const) {
@@ -44,7 +44,7 @@ describe("AdminSidebar", () => {
   test("groups the navigation under Spanish headings", () => {
     const nav = renderSidebar("/admin");
 
-    for (const group of ["Catálogo", "Operaciones", "Contenido", "Administración"]) {
+    for (const group of ["Principal", "Inventario", "Diseño y sitio", "Administración"]) {
       expect(within(nav).getByText(group)).toBeInTheDocument();
     }
   });
@@ -75,6 +75,16 @@ describe("AdminSidebar", () => {
     );
   });
 
+  // Sign-out moved out of the top bar and into the sidebar, below the sections. It sits
+  // OUTSIDE the <nav>, so it is looked up on the whole render rather than within it: a
+  // destructive control does not belong among the navigation landmarks.
+  test("offers sign-out below the sections rather than inside the navigation", () => {
+    const nav = renderSidebar("/admin");
+
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: "Cerrar sesión" })).not.toBeInTheDocument();
+  });
+
   test("marks the dashboard active on the admin index itself", () => {
     const nav = renderSidebar("/admin");
 
@@ -97,8 +107,8 @@ describe("AdminSidebar for a staff user", () => {
       "Categorías",
       "Cotizaciones",
       "Clientes potenciales",
-      "Inventario",
-      "Documentos",
+      "Gestión de stock",
+      "Documentación",
     ]) {
       expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
     }
@@ -107,7 +117,7 @@ describe("AdminSidebar for a staff user", () => {
   test("hides the sections that would answer 404", () => {
     const nav = renderSidebar("/admin", "staff");
 
-    for (const label of ["Diseño del sitio", "Configuración", "Usuarios"]) {
+    for (const label of ["Apariencia", "Configuración", "Usuarios"]) {
       expect(within(nav).queryByRole("link", { name: label })).not.toBeInTheDocument();
     }
   });
@@ -122,7 +132,7 @@ describe("AdminSidebar for a staff user", () => {
   test("keeps every section for an admin", () => {
     const nav = renderSidebar("/admin", "admin");
 
-    for (const label of ["Diseño del sitio", "Configuración", "Usuarios"]) {
+    for (const label of ["Apariencia", "Configuración", "Usuarios"]) {
       expect(within(nav).getByRole("link", { name: label })).toBeInTheDocument();
     }
   });

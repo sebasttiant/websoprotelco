@@ -1,3 +1,14 @@
+import {
+  Ban,
+  CheckCircle2,
+  Clock,
+  FileCheck,
+  Inbox,
+  type LucideIcon,
+  UserCheck,
+  XCircle,
+} from "lucide-react";
+
 import { statusLabel } from "@/lib/presentation";
 
 // Color is keyed by the raw persisted value; the visible text is always Spanish. Callers in a
@@ -18,6 +29,24 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: "bg-slate-100 text-slate-700 ring-slate-200",
 };
 
+// Icon keyed to the same raw value, chosen by what the state MEANS so the shape reinforces the
+// colour: an amber clock reads "waiting" at a glance, a green check reads "done". A status with
+// no entry simply renders text-only — the icon is reinforcement, never the only signal.
+const STATUS_ICONS: Record<string, LucideIcon> = {
+  active: CheckCircle2,
+  inactive: Ban,
+  new: Inbox,
+  contacted: Clock,
+  qualified: UserCheck,
+  converted: CheckCircle2,
+  received: Inbox,
+  in_review: Clock,
+  quoted: FileCheck,
+  won: CheckCircle2,
+  lost: XCircle,
+  cancelled: Ban,
+};
+
 interface StatusBadgeProps {
   status: string;
   label?: string;
@@ -25,9 +54,12 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, label }: StatusBadgeProps) {
   const style = STATUS_STYLES[status] ?? STATUS_STYLES.inactive;
+  const Icon = STATUS_ICONS[status];
 
   return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ring-1 ${style}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ring-1 ${style}`}>
+      {/* Decorative: the label beside it already states the status in words. */}
+      {Icon ? <Icon aria-hidden="true" className="h-3.5 w-3.5" /> : null}
       {label ?? statusLabel(status)}
     </span>
   );

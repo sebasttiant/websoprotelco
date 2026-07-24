@@ -46,22 +46,25 @@ export function paletteIndexFor(seed: string, paletteLength: number): number {
 }
 
 interface InitialAvatarProps {
-  /** The text the initials are taken from — a product or category name. */
+  /** The text the initials are taken from — a product, category or person name. */
   name: string;
   /** What the colour is keyed to. Defaults to `name`; pass an SKU or id for finer separation. */
   seed?: string;
+  /** Rounded square for catalog rows (default), full circle for people. */
+  shape?: "square" | "circle";
   className?: string;
 }
 
-export function InitialAvatar({ name, seed, className = "" }: InitialAvatarProps) {
+export function InitialAvatar({ name, seed, shape = "square", className = "" }: InitialAvatarProps) {
   const tone = AVATAR_PALETTE[paletteIndexFor(seed ?? name, AVATAR_PALETTE.length)];
+  const radius = shape === "circle" ? "rounded-full" : "rounded-xl";
 
   // Decorative: the row already names the item in text beside this, so the initials would only
   // repeat it for a screen reader.
   return (
     <span
       aria-hidden="true"
-      className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xs font-black ${tone} ${className}`}
+      className={`grid h-10 w-10 shrink-0 place-items-center ${radius} text-xs font-black ${tone} ${className}`}
     >
       {initialsFrom(name)}
     </span>

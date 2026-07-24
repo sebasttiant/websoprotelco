@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
+import { InitialAvatar } from "@/components/admin/initial-avatar";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { formatDate, leadStatusLabel } from "@/lib/presentation";
 import {
@@ -41,9 +42,13 @@ export default async function AdminLeadsPage({ searchParams }: LeadsPageProps) {
       key: "name",
       header: "Nombre",
       render: (row) => (
-        <div>
-          <p className="font-black text-slate-950">{row.name}</p>
-          <p className="text-xs font-bold text-slate-500">{formatDate(row.createdAt)}</p>
+        <div className="flex items-center gap-3">
+          {/* Keyed to the email so two leads with the same display name still separate. */}
+          <InitialAvatar name={row.name} seed={row.email} shape="circle" />
+          <div className="min-w-0">
+            <p className="truncate font-black text-slate-950">{row.name}</p>
+            <p className="text-xs font-bold text-slate-500">{formatDate(row.createdAt)}</p>
+          </div>
         </div>
       ),
     },

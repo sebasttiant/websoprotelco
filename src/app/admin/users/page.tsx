@@ -1,4 +1,5 @@
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
+import { InitialAvatar } from "@/components/admin/initial-avatar";
 import { NewUserModal } from "@/components/admin/new-user-modal";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { formatDate, roleLabel } from "@/lib/presentation";
@@ -17,7 +18,16 @@ export default async function AdminUsersPage() {
 
   const rows = await getUsersForAdmin();
   const columns: DataTableColumn<AdminUserSummary>[] = [
-    { key: "email", header: "Correo", render: (row) => <span className="font-black text-slate-950">{row.email}</span> },
+    {
+      key: "email",
+      header: "Correo",
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <InitialAvatar name={row.email} seed={row.id} shape="circle" />
+          <span className="font-black text-slate-950">{row.email}</span>
+        </div>
+      ),
+    },
     { key: "role", header: "Rol", render: (row) => roleLabel(row.role) },
     { key: "status", header: "Estado", render: (row) => <StatusBadge status={row.isActive ? "active" : "inactive"} /> },
     { key: "created", header: "Creado", render: (row) => formatDate(row.createdAt) },

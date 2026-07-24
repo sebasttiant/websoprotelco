@@ -6,9 +6,18 @@ test.describe("Cart quote preparation", () => {
     await page.getByRole("button", { name: "Agregar" }).first().click();
     await expect(page.getByText("Fusionadora segura se agregó al carrito.")).toBeAttached();
 
-    await page.getByRole("link", { name: "Carrito" }).first().click();
-    await expect(page.getByRole("heading", { name: "Tu carrito" })).toBeVisible();
+    // Navigated to directly rather than by clicking the cart icon: that icon now opens the
+    // drawer (covered by CART-E2E-004 below). /carrito remains the no-JavaScript fallback and
+    // this test is what keeps it working.
+    await page.goto("/carrito");
+    // `exact` because "Tu carrito" is a substring of the empty-state heading "Tu carrito está
+    // vacío", which renders on the first paint before the cart hydrates from localStorage.
+    await expect(page.getByRole("heading", { name: "Tu carrito", exact: true })).toBeVisible();
+
+    // Waiting on the row itself is what proves hydration finished and the product is listed;
+    // the page heading above is present either way.
     const quantity = page.getByLabel(/Cantidad para Fusionadora segura/);
+    await expect(quantity).toBeVisible();
     await quantity.fill("2");
     await expect(page.getByText("Cantidad actualizada.")).toBeVisible();
     await expect(page.getByText("Aún no envía una solicitud ni realiza pagos.")).toBeVisible();
@@ -17,9 +26,10 @@ test.describe("Cart quote preparation", () => {
     await expect(page.getByRole("heading", { name: "Tu carrito está vacío" })).toBeVisible();
   });
 
-  // The cart is a browser-local quote draft: it must never write to the server, because no
-  // quote/checkout persistence exists yet. Asserting on methods and /api/ traffic proves the
-  // boundary directly instead of trusting that no fetch was written.
+  // Composing a cart stays entirely browser-local. Confirming an order from the drawer DOES
+  // write — that is the whole point of it — but adding, updating and removing must not, so a
+  // visitor browsing the catalog never touches the database. Asserting on methods and /api/
+  // traffic proves the boundary directly instead of trusting that no fetch was written.
   test("performs add, update, and remove without any server write", { tag: ["@critical", "@e2e", "@cart", "@CART-E2E-003"] }, async ({ page }) => {
     const mutatingRequests: string[] = [];
     const apiRequests: string[] = [];
@@ -48,6 +58,28 @@ test.describe("Cart quote preparation", () => {
 
     expect(mutatingRequests).toEqual([]);
     expect(apiRequests).toEqual([]);
+  });
+
+  // The drawer is the primary flow now, so the cart icon opening it is the path a real visitor
+  // takes. Stops at the contact step: confirming writes an order, and an E2E smoke run must not
+  // leave rows behind in the database it shares with every other test.
+  test("opens the order drawer from the cart icon and reaches the contact step", { tag: ["@critical", "@e2e", "@cart", "@CART-E2E-004"] }, async ({ page }) => {
+    await page.goto("/productos");
+    await page.getByRole("button", { name: "Agregar" }).first().click();
+    await expect(page.getByText("Fusionadora segura se agregó al carrito.")).toBeAttached();
+
+    await page.getByRole("link", { name: "Carrito" }).first().click();
+
+    const drawer = page.getByRole("dialog", { name: "Tu pedido" });
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByText("Subtotal")).toBeVisible();
+
+    await drawer.getByRole("button", { name: "Continuar con mis datos" }).click();
+    await expect(drawer.getByLabel("Correo")).toBeVisible();
+
+    // Escape closes it, which is the contract every modal owes a keyboard user.
+    await page.keyboard.press("Escape");
+    await expect(drawer).not.toBeVisible();
   });
 
   test("recovers from a hostile cached currency without fake totals or a formatting crash", { tag: ["@critical", "@e2e", "@cart", "@CART-E2E-002"] }, async ({ page }) => {

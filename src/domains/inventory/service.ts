@@ -59,6 +59,30 @@ export async function getMovementHistory(productId: string, page = 1): Promise<M
   };
 }
 
+/**
+ * Movement history across every product, for the standalone "Historial de movimientos" screen.
+ *
+ * Separate from getMovementHistory, which answers "what happened to THIS product" from the
+ * inventory screen. Same read model and page size so both render through the same table.
+ */
+export async function getAllMovements(search = "", page = 1): Promise<MovementHistory> {
+  const currentPage = Math.max(1, page);
+  const offset = (currentPage - 1) * MOVEMENT_PAGE_SIZE;
+  const term = search.trim();
+
+  const [rows, total] = await Promise.all([
+    repository.findAllMovements(term, MOVEMENT_PAGE_SIZE, offset),
+    repository.countAllMovements(term),
+  ]);
+
+  return {
+    movements: rows.map(mapStockMovement),
+    total,
+    page: currentPage,
+    pageSize: MOVEMENT_PAGE_SIZE,
+  };
+}
+
 export async function getLowStockProducts(
   threshold: number = DEFAULT_LOW_STOCK_THRESHOLD,
 ): Promise<ProductStock[]> {

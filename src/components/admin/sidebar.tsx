@@ -7,6 +7,7 @@ import {
   ChevronRight,
   FileText,
   FolderTree,
+  History,
   LayoutDashboard,
   LogOut,
   type LucideIcon,
@@ -60,6 +61,7 @@ const GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/admin/products", label: "Productos", permission: "catalog:read", icon: Package },
       { href: "/admin/inventory", label: "Gestión de stock", permission: "inventory:read", icon: Boxes },
+      { href: "/admin/inventory/movements", label: "Historial de movimientos", permission: "inventory:read", icon: History },
       { href: "/admin/categories", label: "Categorías", permission: "catalog:read", icon: FolderTree },
     ],
   },
@@ -84,9 +86,25 @@ const GROUPS: readonly NavGroup[] = [
 ];
 
 // "/admin" prefixes every other admin route, so it only counts as active on an exact match; the
-// rest stay active across their nested routes (e.g. /admin/products/<id>).
-function isActive(pathname: string, href: string): boolean {
+// rest match across their nested routes (e.g. /admin/products/<id>).
+function matchesRoute(pathname: string, href: string): boolean {
   return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+}
+
+/**
+ * The href of the single section to mark active: the LONGEST match wins.
+ *
+ * Prefix matching alone lights up two rows at once whenever one section nests under another —
+ * /admin/inventory/movements matches both itself and /admin/inventory. Telling the operator
+ * they are in two places is worse than telling them nothing.
+ */
+function activeHref(pathname: string, items: readonly NavItem[]): string | null {
+  return items
+    .filter((item) => matchesRoute(pathname, item.href))
+    .reduce<string | null>(
+      (best, item) => (best === null || item.href.length > best.length ? item.href : best),
+      null,
+    );
 }
 
 export function AdminSidebar({ role }: { role: Role }) {
@@ -98,6 +116,10 @@ export function AdminSidebar({ role }: { role: Role }) {
       (item) => item.permission === null || hasPermission(role, item.permission),
     ),
   })).filter((group) => group.items.length > 0);
+
+  // Resolved across the VISIBLE items, not the full list: a section hidden from this role must
+  // not win the match and leave no row highlighted at all.
+  const current = activeHref(pathname, visibleGroups.flatMap((group) => group.items));
 
   return (
     <div className="flex flex-col md:min-h-0 md:flex-1">
@@ -113,7 +135,7 @@ export function AdminSidebar({ role }: { role: Role }) {
               </p>
             ) : null}
             {group.items.map((item) => {
-              const active = isActive(pathname, item.href);
+              const active = current === item.href;
               const Icon = item.icon;
 
               return (

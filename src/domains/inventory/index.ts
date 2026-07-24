@@ -6,6 +6,13 @@ export type { MovementType, ProductStock, StockMovement, StockMovementInput } fr
 
 export { DEFAULT_LOW_STOCK_THRESHOLD, isProductId, MOVEMENT_TYPES } from "./schemas";
 
-export { getCurrentStock, getLowStockProducts, getMovementHistory, type MovementHistory } from "./service";
+export {
+  getAllMovements,
+  getCurrentStock,
+  getLowStockProducts,
+  getMovementHistory,
+  MOVEMENT_PAGE_SIZE,
+  type MovementHistory,
+} from "./service";
 
 export { recordStockMovement, type InventoryActionState } from "./actions";

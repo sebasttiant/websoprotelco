@@ -67,6 +67,32 @@ describe("AdminSidebar", () => {
     );
   });
 
+  // Movements nests under inventory, so plain prefix matching lights up both rows. Telling the
+  // operator they are in two places at once is worse than telling them nothing.
+  test("marks only the most specific section when one nests under another", () => {
+    const nav = renderSidebar("/admin/inventory/movements");
+
+    expect(within(nav).getByRole("link", { name: "Historial de movimientos" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(nav).getByRole("link", { name: "Gestión de stock" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
+  test("still marks the parent section on its own route", () => {
+    const nav = renderSidebar("/admin/inventory");
+
+    expect(within(nav).getByRole("link", { name: "Gestión de stock" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(nav).getByRole("link", { name: "Historial de movimientos" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
   test("does not mark the dashboard active for every admin route", () => {
     const nav = renderSidebar("/admin/products");
 

@@ -93,7 +93,13 @@ describe("Header", () => {
     const nav = screen.getByRole("navigation", { name: /principal/i });
     expect(within(nav).getByRole("link", { name: "Inicio" })).toHaveAttribute("href", "/");
     expect(within(nav).getByRole("link", { name: "Productos" })).toHaveAttribute("href", "/productos");
-    expect(within(nav).getByRole("link", { name: "Contacto" })).toHaveAttribute("href", "/contacto");
+    expect(within(nav).getByRole("link", { name: "Contáctanos" })).toHaveAttribute("href", "/contacto");
+  });
+
+  test("exposes the cart as a dedicated icon link", async () => {
+    await renderHeader();
+
+    expect(screen.getByRole("link", { name: /carrito/i })).toHaveAttribute("href", "/carrito");
   });
 
   test("offers login to a signed-out visitor", async () => {

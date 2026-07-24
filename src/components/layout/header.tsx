@@ -3,17 +3,19 @@ import Link from "next/link";
 import { LogIn, LogOut, Phone, User } from "lucide-react";
 
 import { toTelHref } from "@/components/layout/contact-href";
+import { HeaderCartLink } from "@/components/layout/header-cart-link";
 import { HeaderMobileMenu, type HeaderNavLink } from "@/components/layout/header-mobile-menu";
 import { Container } from "@/components/ui/container";
 import { getSiteSettings } from "@/domains/settings";
 import { signOut } from "@/server/auth/actions";
 import { getCurrentUser } from "@/server/auth/guards";
 
+// Cart is intentionally not here: it renders as a dedicated icon with a live count on the
+// right, matching the previous site. These stay as text/menu links.
 const NAV_LINKS: readonly HeaderNavLink[] = [
   { href: "/", label: "Inicio" },
   { href: "/productos", label: "Productos" },
-  { href: "/carrito", label: "Carrito" },
-  { href: "/contacto", label: "Contacto" },
+  { href: "/contacto", label: "Contáctanos" },
 ];
 
 export async function Header() {
@@ -61,6 +63,7 @@ export async function Header() {
           </nav>
 
           <div className="flex items-center gap-3">
+            <HeaderCartLink />
             {user ? (
               <div className="hidden items-center gap-3 sm:flex">
                 <Link

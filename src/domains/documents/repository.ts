@@ -24,6 +24,15 @@ export interface DocumentRow extends QueryResultRow {
 export interface DocumentFilters {
   category?: string;
   productId?: string;
+  /** Free-text match on the document title. Wildcards in it are treated literally. */
+  search?: string;
+}
+
+// `%` and `_` are LIKE wildcards, `\` escapes them. A title search of "50%" means the literal
+// characters, so this escapes them — backslash first, or it escapes its own replacements —
+// otherwise a lone "%" matches every row and the search silently stops filtering.
+function escapeLikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
 const DOCUMENT_SELECT = `
@@ -44,6 +53,11 @@ function buildWhereClause(filters: DocumentFilters, values: unknown[]): string {
   if (filters.productId) {
     values.push(filters.productId);
     conditions.push(`d.product_id = $${values.length}`);
+  }
+
+  if (filters.search) {
+    values.push(`%${escapeLikePattern(filters.search)}%`);
+    conditions.push(`d.title ILIKE $${values.length}`);
   }
 
   return conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";

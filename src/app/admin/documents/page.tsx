@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Search } from "lucide-react";
 import { z } from "zod";
 
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
@@ -60,14 +60,16 @@ export default async function AdminDocumentsPage({ searchParams }: DocumentsPage
   // non-UUID value in the URL would otherwise reach Postgres and crash the page with
   // "invalid input syntax for type uuid", so anything invalid is treated as absent.
   const productId = isUuid(rawProductId) ? rawProductId : undefined;
+  const search = firstParam(params.search).trim();
   const page = parsePage(firstParam(params.page));
 
-  const result = await getDocuments({ category, productId }, page);
+  const result = await getDocuments({ category, productId, search: search || undefined }, page);
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
 
   const filterQuery = new URLSearchParams();
   if (category) filterQuery.set("category", category);
   if (productId) filterQuery.set("productId", productId);
+  if (search) filterQuery.set("search", search);
   const filterPrefix = filterQuery.toString() ? `${filterQuery.toString()}&` : "";
 
   return (
@@ -85,6 +87,22 @@ export default async function AdminDocumentsPage({ searchParams }: DocumentsPage
       </div>
 
       <form method="get" className="flex flex-wrap items-end gap-3 rounded-[28px] border border-brand-line bg-white p-4 shadow-xl shadow-blue-950/5">
+        <div className="min-w-[14rem] flex-[2]">
+          <label htmlFor="doc-search" className="block text-xs font-black uppercase tracking-widest text-brand-muted">
+            Buscar por título
+          </label>
+          <div className="relative mt-1.5">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />
+            <input
+              id="doc-search"
+              type="search"
+              name="search"
+              defaultValue={search}
+              placeholder="Catálogo, guía, certificación…"
+              className="w-full rounded-2xl border border-brand-line bg-brand-ice py-3 pl-11 pr-4 text-sm font-bold text-brand-navy"
+            />
+          </div>
+        </div>
         <div className="min-w-[12rem] flex-1">
           <label htmlFor="category" className="block text-xs font-black uppercase tracking-widest text-brand-muted">
             Categoría
@@ -188,7 +206,7 @@ export default async function AdminDocumentsPage({ searchParams }: DocumentsPage
             ) : (
               <tr>
                 <td colSpan={5} className="px-6 py-10 text-center font-bold text-brand-muted">
-                  No se encontraron documentos.
+                  {search === "" ? "No se encontraron documentos." : `Sin documentos que coincidan con “${search}”.`}
                 </td>
               </tr>
             )}

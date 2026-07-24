@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 // From ./actions, never the domain barrel: the barrel reaches the repository's
 // `import "server-only"` and fails the client build. See the note in domains/quote-order/index.ts.
 import { createAdminOrder, type CartOrderActionState } from "@/domains/quote-order/actions";
+import { Portal } from "@/components/ui/portal";
 import { formatCurrencyCents } from "@/lib/presentation";
 
 export interface OrderProductOption {
@@ -151,8 +152,13 @@ export function NewOrderModal({ products }: NewOrderModalProps) {
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div aria-hidden="true" onClick={close} className="absolute inset-0 bg-brand-navy/50 backdrop-blur-sm" />
+        // Portalled for the same reason as the cart drawer: any ancestor with transform,
+        // filter, backdrop-filter or contain becomes the containing block for a fixed child,
+        // and the overlay silently stops covering the viewport. Escaping the subtree makes
+        // this immune to whatever the admin layout grows later.
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div aria-hidden="true" onClick={close} className="absolute inset-0 bg-brand-navy/50 backdrop-blur-sm" />
 
           <div
             role="dialog"
@@ -338,8 +344,9 @@ export function NewOrderModal({ products }: NewOrderModalProps) {
                 {pending ? "Creando…" : "Crear pedido"}
               </button>
             </footer>
+            </div>
           </div>
-        </div>
+        </Portal>
       ) : null}
     </>
   );

@@ -94,7 +94,7 @@ export async function Header() {
                 Iniciar sesión
               </Link>
             )}
-            <HeaderMobileMenu links={NAV_LINKS} isSignedIn={Boolean(user)} />
+            <HeaderMobileMenu links={NAV_LINKS} categories={categories} isSignedIn={Boolean(user)} />
           </div>
         </Container>
       </div>

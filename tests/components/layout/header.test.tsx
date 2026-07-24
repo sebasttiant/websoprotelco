@@ -162,4 +162,22 @@ describe("Header", () => {
 
     expect(screen.queryByRole("navigation", { name: "Navegación móvil" })).not.toBeInTheDocument();
   });
+
+  test("gives the mobile menu its own search and category links", async () => {
+    const user = userEvent.setup();
+    render(
+      <HeaderMobileMenu
+        links={[{ href: "/productos", label: "Productos" }]}
+        categories={[{ slug: "fibra", name: "Fibra óptica" }]}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+
+    const search = screen.getByRole("search");
+    expect(search).toHaveAttribute("action", "/productos");
+    expect(within(search).getByLabelText("Buscar productos")).toHaveAttribute("name", "q");
+    expect(screen.getByRole("link", { name: "Fibra óptica" })).toHaveAttribute("href", "/productos/fibra");
+    expect(screen.getByRole("link", { name: "Crear cuenta" })).toHaveAttribute("href", "/registro");
+  });
 });

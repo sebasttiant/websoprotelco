@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { signOut } from "@/server/auth/actions";
@@ -10,11 +11,18 @@ export interface HeaderNavLink {
   label: string;
 }
 
+export interface HeaderMobileCategory {
+  slug: string;
+  name: string;
+}
+
 export function HeaderMobileMenu({
   links,
+  categories = [],
   isSignedIn = false,
 }: {
   links: readonly HeaderNavLink[];
+  categories?: readonly HeaderMobileCategory[];
   isSignedIn?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -57,6 +65,26 @@ export function HeaderMobileMenu({
           aria-label="Navegación móvil"
           className="absolute inset-x-0 top-full border-b border-brand-line bg-white p-4 shadow-lg shadow-blue-950/5"
         >
+          <form action="/productos" method="get" role="search" className="mb-4 flex items-center rounded-full border border-brand-line bg-brand-ice pl-4 pr-1.5 focus-within:border-brand-accent">
+            <label htmlFor="mobile-search" className="sr-only">
+              Buscar productos
+            </label>
+            <input
+              id="mobile-search"
+              type="search"
+              name="q"
+              placeholder="Buscar productos..."
+              className="w-full bg-transparent py-2.5 text-sm font-medium text-brand-navy outline-none placeholder:text-brand-muted"
+            />
+            <button
+              type="submit"
+              aria-label="Buscar"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-blue text-white transition hover:bg-brand-primary"
+            >
+              <Search aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </form>
+
           <ul className="flex flex-col gap-1">
             {links.map((link) => (
               <li key={link.href}>
@@ -70,6 +98,25 @@ export function HeaderMobileMenu({
               </li>
             ))}
           </ul>
+
+          {categories.length > 0 ? (
+            <div className="mt-3 border-t border-brand-line pt-3">
+              <p className="px-4 pb-1 text-xs font-black uppercase tracking-widest text-brand-muted">Categorías</p>
+              <ul className="flex flex-col gap-1">
+                {categories.map((category) => (
+                  <li key={category.slug}>
+                    <Link
+                      href={`/productos/${category.slug}`}
+                      onClick={() => setIsOpen(false)}
+                      className="block rounded-xl px-4 py-2.5 text-sm font-bold text-brand-navy transition hover:bg-brand-ice hover:text-brand-blue"
+                    >
+                      {category.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {/* The header's account controls are hidden below the sm breakpoint, so this is the
               only way into (or out of) the account on a phone. */}
@@ -92,13 +139,22 @@ export function HeaderMobileMenu({
               </form>
             </>
           ) : (
-            <Link
-              href="/login"
-              onClick={() => setIsOpen(false)}
-              className="mt-3 block rounded-full bg-brand-navy px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-white transition hover:bg-brand-blue"
-            >
-              Iniciar sesión
-            </Link>
+            <>
+              <Link
+                href="/login"
+                onClick={() => setIsOpen(false)}
+                className="mt-3 block rounded-full bg-brand-navy px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-white transition hover:bg-brand-blue"
+              >
+                Iniciar sesión
+              </Link>
+              <Link
+                href="/registro"
+                onClick={() => setIsOpen(false)}
+                className="mt-2 block rounded-full border border-brand-line px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue"
+              >
+                Crear cuenta
+              </Link>
+            </>
           )}
         </nav>
       ) : null}

@@ -70,6 +70,58 @@ export async function countMovementsByProduct(productId: string): Promise<number
   return rows[0]?.total ?? 0;
 }
 
+// `%` and `_` are wildcards to LIKE, and `\` escapes them. A visitor typing "50%" into the
+// search box means the literal characters, so without this a single "%" matches every row and
+// the search silently stops filtering. Backslash goes first, or it would escape its own
+// replacements.
+function escapeLikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+// Global history across every product, as opposed to findMovementsByProduct above. Matches on
+// the product name and on the note, which is what the operator can actually recall — "the
+// adjustment I made for the damaged reel" is a note, not a product.
+function movementSearchClause(search: string): { where: string; values: unknown[] } {
+  if (search === "") {
+    return { where: "", values: [] };
+  }
+
+  const pattern = `%${escapeLikePattern(search)}%`;
+  return { where: "WHERE p.name ILIKE $1 OR m.notes ILIKE $1", values: [pattern] };
+}
+
+export async function findAllMovements(
+  search: string,
+  limit: number,
+  offset: number,
+): Promise<StockMovementRow[]> {
+  const { where, values } = movementSearchClause(search);
+
+  return query<StockMovementRow>(
+    `SELECT m.id, m.product_id, p.name AS product_name, m.movement_type, m.quantity, m.notes, m.user_id, m.created_at
+     FROM stock_movements m
+     JOIN products p ON p.id = m.product_id
+     ${where}
+     ORDER BY m.created_at DESC
+     LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
+    [...values, limit, offset],
+  );
+}
+
+export async function countAllMovements(search: string): Promise<number> {
+  const { where, values } = movementSearchClause(search);
+
+  const rows = await query<{ total: number }>(
+    `SELECT COUNT(*)::int AS total
+     FROM stock_movements m
+     JOIN products p ON p.id = m.product_id
+     ${where}`,
+    values,
+  );
+
+  return rows[0]?.total ?? 0;
+}
+
 export async function findLowStockProducts(threshold: number): Promise<ProductStockRow[]> {
   // Same overflow hazard as findCurrentStock: this is a single GROUP BY over ALL active
   // products, so an `::int` downcast on one overflowing product's sum would throw and take

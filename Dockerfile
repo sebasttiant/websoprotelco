@@ -30,7 +30,7 @@ CMD ["pnpm", "seed:users"]
 FROM base AS runner
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
-ENV PORT=8585
+ENV PORT=8686
 
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
@@ -48,9 +48,9 @@ RUN mkdir -p /app/public/uploads /app/public/documents \
   && chown nextjs:nodejs /app/public/uploads /app/public/documents
 
 USER nextjs
-EXPOSE 8585
+EXPOSE 8686
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:8585/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:8686/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "server.js"]

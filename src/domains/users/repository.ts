@@ -72,3 +72,26 @@ export async function updateProfileById(id: string, fullName: string): Promise<v
 export async function updatePasswordHashById(id: string, passwordHash: string): Promise<void> {
   await query("UPDATE users SET password_hash = $2 WHERE id = $1", [id, passwordHash]);
 }
+
+export interface NewAdminUser {
+  fullName: string;
+  email: string;
+  passwordHash: string;
+  role: string;
+}
+
+// Inserts a user for the admin directory, returning the new id or null when the email is
+// already taken. ON CONFLICT against the lower(email) unique index makes this a single atomic
+// write with no separate existence check to race — the same pattern signUp and create-admin
+// use. A null return is a taken email, never a thrown 23505 that would surface as a 500.
+export async function insertAdminUser(input: NewAdminUser): Promise<string | null> {
+  const rows = await query<{ id: string }>(
+    `INSERT INTO users (email, full_name, password_hash, role, is_active)
+     VALUES ($1, $2, $3, $4, true)
+     ON CONFLICT ((lower(email))) DO NOTHING
+     RETURNING id`,
+    [input.email, input.fullName, input.passwordHash, input.role],
+  );
+
+  return rows[0]?.id ?? null;
+}

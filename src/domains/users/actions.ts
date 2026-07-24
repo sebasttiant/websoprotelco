@@ -6,15 +6,19 @@ import { redirect } from "next/navigation";
 
 import { z } from "zod";
 
-import { requireSession } from "@/server/auth/guards";
+import { requirePermission, requireSession } from "@/server/auth/guards";
 
-import { passwordChangeInputSchema, profileUpdateInputSchema } from "./schemas";
+import { adminCreateUserInputSchema, passwordChangeInputSchema, profileUpdateInputSchema } from "./schemas";
 import * as usersService from "./service";
 
 export interface AccountActionState {
   success: boolean;
   message: string;
 }
+
+export type CreateUserActionState =
+  | { success: true; message: string }
+  | { success: false; message: string };
 
 function stringValue(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
@@ -33,6 +37,36 @@ function accountErrorState(error: unknown): AccountActionState {
 
   console.error("Account action failed:", error);
   return { success: false, message: "The operation could not be completed." };
+}
+
+// Admin-only user creation. requirePermission("admin:access") runs BEFORE anything is parsed,
+// so a caller without that permission can never reach the role-assigning path — this is the
+// gate that separates it from the public signUp, which can only ever mint a customer.
+//
+// Returns state instead of redirecting: the modal stays open to report a taken email inline,
+// then the client refreshes the list on success.
+export async function createUser(input: unknown): Promise<CreateUserActionState> {
+  await requirePermission("admin:access");
+
+  const parsed = adminCreateUserInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { success: false, message: parsed.error.issues[0]?.message ?? "Revisá los datos ingresados." };
+  }
+
+  try {
+    const outcome = await usersService.createUser(parsed.data);
+
+    if (outcome.status === "email-taken") {
+      return { success: false, message: "Ese correo ya está registrado." };
+    }
+
+    revalidatePath("/admin/users");
+    return { success: true, message: "Usuario creado." };
+  } catch (error) {
+    console.error("Admin user creation failed:", error);
+    return { success: false, message: "No se pudo crear el usuario." };
+  }
 }
 
 // Customer self-service. The target user id is taken from the server session as

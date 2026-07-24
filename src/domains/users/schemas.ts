@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ROLES } from "@/server/auth/rbac";
+
 // --- Read models -------------------------------------------------------------
 
 // Admin user directory row. Deliberately omits the credential column: this read
@@ -59,3 +61,32 @@ export const passwordChangeInputSchema = z
   });
 
 export type PasswordChangeInput = z.infer<typeof passwordChangeInputSchema>;
+
+// --- Admin user creation -----------------------------------------------------
+
+// The role an admin may assign. Sourced from the rbac ROLES tuple so a role added there is
+// offered here automatically and can never drift from what the CHECK constraint accepts.
+export const assignableRoleSchema = z.enum(ROLES);
+
+export type AssignableRole = z.infer<typeof assignableRoleSchema>;
+
+// Distinct from the public signUp schema, which hard-codes the customer role and can never
+// mint a privileged account. This one CAN set any role — which is exactly why the action that
+// uses it guards on admin:access before parsing. The password minimum matches signUp's 8.
+const ADMIN_MIN_PASSWORD_LENGTH = 8;
+
+export const adminCreateUserInputSchema = z.object({
+  fullName: z.string().trim().min(2, { error: "El nombre es obligatorio." }).max(160),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((value) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value), { error: "Ingresá un correo electrónico válido." }),
+  password: z
+    .string()
+    .min(ADMIN_MIN_PASSWORD_LENGTH, { error: `La contraseña debe tener al menos ${ADMIN_MIN_PASSWORD_LENGTH} caracteres.` })
+    .max(200),
+  role: assignableRoleSchema,
+});
+
+export type AdminCreateUserInput = z.infer<typeof adminCreateUserInputSchema>;

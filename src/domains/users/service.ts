@@ -4,6 +4,7 @@ import * as repository from "./repository";
 import type { AccountRow, AdminUserRow, ProfileRow } from "./repository";
 import type {
   AccountOverview,
+  AdminCreateUserInput,
   AdminUserSummary,
   PasswordChangeInput,
   ProfileDetails,
@@ -11,6 +12,8 @@ import type {
 } from "./schemas";
 
 export type PasswordChangeOutcome = "updated" | "invalid-current-password";
+
+export type CreateUserOutcome = { status: "created"; id: string } | { status: "email-taken" };
 
 function mapAdminUserSummary(row: AdminUserRow): AdminUserSummary {
   return {
@@ -41,6 +44,22 @@ function mapProfileDetails(row: ProfileRow): ProfileDetails {
 export async function getUsersForAdmin(): Promise<AdminUserSummary[]> {
   const rows = await repository.findAllUsersForAdmin();
   return rows.map(mapAdminUserSummary);
+}
+
+// Creates a user with an admin-chosen role. The password is hashed here; the plaintext never
+// leaves this call. A taken email returns "email-taken" rather than throwing, so the modal can
+// report it inline instead of the caller seeing a 500.
+export async function createUser(input: AdminCreateUserInput): Promise<CreateUserOutcome> {
+  const passwordHash = await hashPassword(input.password);
+
+  const id = await repository.insertAdminUser({
+    fullName: input.fullName,
+    email: input.email,
+    passwordHash,
+    role: input.role,
+  });
+
+  return id ? { status: "created", id } : { status: "email-taken" };
 }
 
 // Scoped read: returns the account for exactly the id it is given. Callers must

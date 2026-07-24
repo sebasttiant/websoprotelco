@@ -9,6 +9,7 @@ import {
   type StorageAdapter,
   type StoredFile,
 } from "./index";
+import { OPTIMIZED_IMAGE_EXTENSION, optimizeProductImage } from "./optimize-image";
 
 const uploadDirectory = path.join(process.cwd(), "public", "uploads");
 const publicDirectory = path.join(process.cwd(), "public");
@@ -90,13 +91,18 @@ function resolvePublicPath(pathname: string): string {
 export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAdapter & DesignImageStorageAdapter {
   return {
     async save(file: File): Promise<StoredFile> {
-      const extension = EXTENSIONS_BY_TYPE[file.type] ?? "bin";
-      const filename = `${new Date().toISOString().slice(0, 10)}-${randomUUID()}.${extension}`;
+      // The input has already passed validateUploadFile (real jpg/png/webp within the size cap).
+      // Every stored image is re-encoded to a bounded WebP here, so the extension is always
+      // `.webp` regardless of what was uploaded — the disk holds a ~200 KB web image, never the
+      // multi-MB original. See optimize-image.ts for the rationale.
+      const original = Buffer.from(await file.arrayBuffer());
+      const optimized = await optimizeProductImage(original);
+
+      const filename = `${new Date().toISOString().slice(0, 10)}-${randomUUID()}.${OPTIMIZED_IMAGE_EXTENSION}`;
       const pathname = path.join(uploadDirectory, filename);
-      const bytes = Buffer.from(await file.arrayBuffer());
 
       await mkdir(uploadDirectory, { recursive: true });
-      await writeFile(pathname, bytes, { flag: "wx" });
+      await writeFile(pathname, optimized, { flag: "wx" });
 
       return {
         url: `/uploads/${filename}`,

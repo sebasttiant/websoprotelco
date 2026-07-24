@@ -74,8 +74,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <section className="grid gap-10 rounded-[40px] bg-white p-6 shadow-2xl shadow-blue-950/5 lg:grid-cols-2 lg:p-10">
           <div className="grid aspect-square place-items-center rounded-[32px] bg-brand-ice">
             {imageUrl ? (
+              // The main product image is above the fold (the page's LCP), so it stays eager;
+              // only `decoding="async"` is added to keep it off the main thread. The image is
+              // already a bounded WebP from the upload optimizer.
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt={product.name} className="h-full w-full object-contain p-10" />
+              <img src={imageUrl} alt={product.name} decoding="async" className="h-full w-full object-contain p-10" />
             ) : (
               <div className="text-center text-brand-blue/25">
                 <div className="mx-auto mb-4 grid h-28 w-28 place-items-center rounded-3xl border-2 border-current text-5xl font-black">SP</div>

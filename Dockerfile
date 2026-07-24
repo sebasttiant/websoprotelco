@@ -27,6 +27,20 @@ FROM builder AS seed
 USER node
 CMD ["pnpm", "seed:users"]
 
+# sharp is a native module: a JS wrapper, a platform .node binding, and a separate libvips
+# shared library. Under pnpm those are wired together with symlinks, and Next's standalone
+# tracing copies the files but not that linkage — so libvips fails to dlopen at runtime ("cannot
+# open libvips-cpp.so"), a failure no build-time check sees, only an actual image upload.
+#
+# This stage installs sharp with npm into a clean, FLAT node_modules where the binding and its
+# libvips sit as plain siblings, then the runner copies that over the broken traced copy.
+# Running npm directly against the pnpm-structured standalone node_modules crashes npm's
+# resolver, which is why this is isolated here. Pinned to the package.json version.
+FROM base AS sharp-runtime
+WORKDIR /sharp
+RUN npm init -y >/dev/null 2>&1 \
+  && npm_config_update_notifier=false npm install --os=linux --cpu=x64 sharp@0.35.3
+
 FROM base AS runner
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
@@ -38,6 +52,20 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# The traced `node_modules/sharp` is a pnpm symlink into `.pnpm`, so copying onto it would only
+# overwrite the still-broken target. Remove the symlink and the traced pnpm sharp/@img trees
+# first, then drop in the clean wrapper.
+#
+# sharp's own runtime deps (detect-libc, semver, the @img native packages) are NESTED under
+# sharp's own node_modules rather than placed at the top level, so node resolves them locally to
+# sharp and nothing the rest of the app depends on — semver in particular — is overwritten.
+RUN rm -rf /app/node_modules/sharp /app/node_modules/@img \
+      /app/node_modules/.pnpm/sharp@* /app/node_modules/.pnpm/@img+*
+COPY --from=sharp-runtime --chown=nextjs:nodejs /sharp/node_modules/sharp /app/node_modules/sharp
+COPY --from=sharp-runtime --chown=nextjs:nodejs /sharp/node_modules/detect-libc /app/node_modules/sharp/node_modules/detect-libc
+COPY --from=sharp-runtime --chown=nextjs:nodejs /sharp/node_modules/semver /app/node_modules/sharp/node_modules/semver
+COPY --from=sharp-runtime --chown=nextjs:nodejs /sharp/node_modules/@img /app/node_modules/sharp/node_modules/@img
 
 # Both directories must exist in the image and be owned by the runtime user BEFORE a named
 # volume is mounted over them. Docker copies the image's content and ownership into a new

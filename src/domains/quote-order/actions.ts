@@ -115,6 +115,38 @@ export async function submitCartOrder(input: unknown): Promise<CartOrderActionSt
   }
 }
 
+// Admin-side order entry, for orders taken by phone or in person.
+//
+// Deliberately NOT a reuse of submitCartOrder: that one binds ownership to the session user,
+// which here is the staff member operating the panel, not the customer. Reusing it would file
+// every phone order under whoever happened to be on shift, and those rows would then surface
+// in that employee's own account history. Ownership stays NULL, exactly as for a guest.
+export async function createAdminOrder(input: unknown): Promise<CartOrderActionState> {
+  await requirePermission("quote:write");
+
+  const parsed = cartOrderInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { success: false, message: "Revisá los datos del cliente y los productos del pedido." };
+  }
+
+  try {
+    const result = await quoteOrderService.submitCartOrder(parsed.data, null);
+
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin");
+
+    return { success: true, reference: result.reference, totalCents: result.totalCents };
+  } catch (error) {
+    if (error instanceof UnavailableProductError) {
+      return { success: false, message: "Algún producto ya no está disponible o fue desactivado." };
+    }
+
+    console.error("Admin order creation failed:", error);
+    return { success: false, message: "No se pudo crear el pedido." };
+  }
+}
+
 // Admin-only triage mutation: requires the "quote:write" permission before touching
 // anything else, including reading the quote's current status.
 export async function updateQuoteStatus(formData: FormData): Promise<AdminActionState> {

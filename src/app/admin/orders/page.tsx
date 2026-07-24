@@ -1,6 +1,8 @@
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
+import { NewOrderModal, type OrderProductOption } from "@/components/admin/new-order-modal";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { formatCurrencyCents, formatDate, quoteStatusLabel } from "@/lib/presentation";
+import { getProducts } from "@/domains/catalog";
 import {
   getQuotes,
   isQuoteStatus,
@@ -8,6 +10,7 @@ import {
   updateQuoteStatus,
   type QuoteSummary,
 } from "@/domains/quote-order";
+import { hasPermission } from "@/server/auth/rbac";
 import { requirePermission } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
@@ -25,10 +28,28 @@ function firstParam(value: string | string[] | undefined): string {
 // Orders and quotes are one table split by `kind`, so this screen reuses the quote permission,
 // status machine and mutation rather than growing a parallel set that could drift out of sync.
 export default async function AdminOrdersPage({ searchParams }: OrdersPageProps) {
-  await requirePermission("quote:read");
+  const user = await requirePermission("quote:read");
   const params = await searchParams;
   const status = firstParam(params.status).trim();
-  const rows = await getQuotes(isQuoteStatus(status) ? { kind: "order", status } : { kind: "order" });
+
+  // getProducts returns ACTIVE products only, matching what the server will accept when the
+  // order is written — offering an inactive product here would only produce a rejected order.
+  const [rows, products] = await Promise.all([
+    getQuotes(isQuoteStatus(status) ? { kind: "order", status } : { kind: "order" }),
+    getProducts(),
+  ]);
+
+  // Creating an order is a write. Reading the list is not, so a role that may only read still
+  // sees the page — without a button that would 403 the moment it was pressed.
+  const canCreate = hasPermission(user.role, "quote:write");
+
+  const productOptions: OrderProductOption[] = products.map((product) => ({
+    id: product.id,
+    name: product.name,
+    sku: product.sku,
+    priceCents: product.priceCents,
+    categoryName: product.categoryName,
+  }));
 
   const columns: DataTableColumn<QuoteSummary>[] = [
     {
@@ -88,10 +109,13 @@ export default async function AdminOrdersPage({ searchParams }: OrdersPageProps)
 
   return (
     <section className="space-y-6">
-      <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Flujo comercial</p>
-        <h1 className="text-3xl font-black text-slate-950">Pedidos</h1>
-        <p className="mt-2 text-sm font-medium text-brand-muted">Control y seguimiento de órdenes</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Flujo comercial</p>
+          <h1 className="text-3xl font-black text-slate-950">Pedidos</h1>
+          <p className="mt-2 text-sm font-medium text-brand-muted">Control y seguimiento de órdenes</p>
+        </div>
+        {canCreate ? <NewOrderModal products={productOptions} /> : null}
       </div>
       <form className="flex max-w-sm gap-3 rounded-[28px] bg-white p-4 shadow-xl shadow-blue-950/5">
         <select name="status" defaultValue={status} className="min-w-0 flex-1 rounded-full border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700">

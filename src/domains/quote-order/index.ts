@@ -23,6 +23,7 @@ export type {
 export { isQuoteKind, isQuoteStatus, QUOTE_KINDS, QUOTE_STATUSES } from "./schemas";
 
 export {
+  createAdminOrder,
   submitCartOrder,
   submitContactRequest,
   updateQuoteStatus,

@@ -15,7 +15,9 @@ export class HomePage extends BasePage {
     const primaryNavigation = this.page.getByRole("navigation", { name: "Navegación principal" });
 
     await expect(primaryNavigation).toBeVisible();
-    await expect(primaryNavigation.getByRole("link", { name: "Productos" })).toBeVisible();
+    // Exact for the same reason as the mobile assertion below: the products dropdown puts
+    // category links in this nav, and one of them can contain the word on its own.
+    await expect(primaryNavigation.getByRole("link", { name: "Productos", exact: true })).toBeVisible();
   }
 
   async expectCompactNavigation(): Promise<void> {
@@ -25,7 +27,10 @@ export class HomePage extends BasePage {
     await menuButton.click();
     await expect(this.page.getByRole("button", { name: "Cerrar menú" })).toHaveAttribute("aria-expanded", "true");
 
+    // `exact` matters here: the mobile menu lists categories alongside the top-level links, and
+    // an accessible-name match is a substring by default, so a category named "Sin productos"
+    // also satisfies "Productos" and the locator resolves to two elements.
     const mobileNavigation = this.page.getByRole("navigation", { name: "Navegación móvil" });
-    await expect(mobileNavigation.getByRole("link", { name: "Productos" })).toBeVisible();
+    await expect(mobileNavigation.getByRole("link", { name: "Productos", exact: true })).toBeVisible();
   }
 }

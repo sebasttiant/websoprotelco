@@ -72,6 +72,20 @@ test.describe("Cart quote preparation", () => {
 
     const drawer = page.getByRole("dialog", { name: "Tu pedido" });
     await expect(drawer).toBeVisible();
+
+    // Geometry, not just presence. The drawer is rendered from the header, which carries
+    // `backdrop-blur-xl` — and a backdrop-filter makes that element the containing block for
+    // any fixed descendant. Rendered in place, the panel was laid out against the header and
+    // collapsed into a clipped box in the corner while its backdrop still blocked the page.
+    // It was "visible" throughout, so only measuring it catches the regression.
+    const viewport = page.viewportSize();
+    const box = await drawer.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.height).toBeGreaterThan((viewport?.height ?? 0) * 0.9);
+    expect(box!.y).toBeLessThan(5);
+
+    // The page behind must stay reachable: a backdrop confined to the header would leave the
+    // rest of the document covered by nothing, but a mis-sized one covers what it should not.
     await expect(drawer.getByText("Subtotal")).toBeVisible();
 
     await drawer.getByRole("button", { name: "Continuar con mis datos" }).click();

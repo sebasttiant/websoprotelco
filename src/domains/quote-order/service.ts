@@ -29,10 +29,24 @@ function toItemCount(value: string): number {
   return Number.parseInt(value, 10);
 }
 
+// pg hands back bigint aggregates as strings so nothing is silently rounded in the driver.
+// A total beyond Number.MAX_SAFE_INTEGER is decoded as unknown rather than as a quietly
+// rounded number, on the same principle as the cart's overflow guard: no total beats a
+// wrong total.
+function toTotalCents(value: string | null): number | null {
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
 function mapQuoteSummary(row: QuoteRow): QuoteSummary {
   return {
     id: row.id,
     reference: row.reference,
+    kind: row.kind,
     status: row.status,
     contactName: row.contact_name,
     contactEmail: row.contact_email,
@@ -40,6 +54,7 @@ function mapQuoteSummary(row: QuoteRow): QuoteSummary {
     companyName: row.company_name,
     createdAt: row.created_at,
     itemCount: toItemCount(row.item_count),
+    totalCents: toTotalCents(row.total_cents),
   };
 }
 

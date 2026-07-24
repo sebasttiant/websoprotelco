@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, FileText, FolderTree, LayoutDashboard, type LucideIcon, Package, Palette, Settings, Users, UsersRound } from "lucide-react";
+import { Boxes, FileText, FolderTree, LayoutDashboard, type LucideIcon, Package, Palette, Settings, ShoppingCart, Users, UsersRound } from "lucide-react";
 
 import { hasPermission, type Permission, type Role } from "@/server/auth/rbac";
 
@@ -41,6 +41,8 @@ const GROUPS: readonly NavGroup[] = [
   {
     title: "Operaciones",
     items: [
+      // Orders and quotes are the same table split by `kind`, so they share one permission.
+      { href: "/admin/orders", label: "Pedidos", permission: "quote:read", icon: ShoppingCart },
       { href: "/admin/quotes", label: "Cotizaciones", permission: "quote:read", icon: FileText },
       { href: "/admin/leads", label: "Clientes potenciales", permission: "leads:read", icon: UsersRound },
       { href: "/admin/inventory", label: "Inventario", permission: "inventory:read", icon: Boxes },

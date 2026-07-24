@@ -5,13 +5,14 @@
 export type {
   ContactRequestInput,
   CustomerQuoteSummary,
+  QuoteKind,
   QuoteListFilters,
   QuoteStatus,
   QuoteStatusUpdateInput,
   QuoteSummary,
 } from "./schemas";
 
-export { isQuoteStatus, QUOTE_STATUSES } from "./schemas";
+export { isQuoteKind, isQuoteStatus, QUOTE_KINDS, QUOTE_STATUSES } from "./schemas";
 
 export { submitContactRequest, updateQuoteStatus, type AdminActionState } from "./actions";
 

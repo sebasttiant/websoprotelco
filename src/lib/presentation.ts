@@ -44,6 +44,11 @@ const QUOTE_STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelada",
 };
 
+const QUOTE_KIND_LABELS: Record<string, string> = {
+  quote: "Cotización",
+  order: "Pedido",
+};
+
 const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   sale: "Venta",
   purchase: "Compra",
@@ -95,6 +100,10 @@ export function quoteStatusLabel(status: string): string {
   return labelFrom(QUOTE_STATUS_LABELS, status);
 }
 
+export function quoteKindLabel(kind: string): string {
+  return labelFrom(QUOTE_KIND_LABELS, kind);
+}
+
 export function movementTypeLabel(type: string): string {
   return labelFrom(MOVEMENT_TYPE_LABELS, type);
 }
@@ -115,6 +124,26 @@ const COMBINED_STATUS_LABELS: Record<string, string> = {
 
 export function statusLabel(status: string): string {
   return labelFrom(COMBINED_STATUS_LABELS, status);
+}
+
+// --- Currency ----------------------------------------------------------------
+//
+// Money is stored in cents as an integer everywhere (products.price_cents,
+// quote_request_items.unit_price_cents) so no amount ever passes through a float. Division
+// happens here, once, at the very edge where the value becomes text.
+//
+// A null amount is an UNKNOWN total, not a zero one — see quoteSummarySchema.totalCents.
+// Rendering it as "$ 0" would state, confidently, something we do not know.
+export function formatCurrencyCents(cents: number | null | undefined): string {
+  if (cents === null || cents === undefined) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+  }).format(cents / 100);
 }
 
 // --- Date formatting ---------------------------------------------------------

@@ -26,7 +26,9 @@ export default async function AdminQuotesPage({ searchParams }: QuotesPageProps)
   await requirePermission("quote:read");
   const params = await searchParams;
   const status = firstParam(params.status).trim();
-  const rows = await getQuotes(isQuoteStatus(status) ? { status } : {});
+  // Always scoped to kind "quote". Without it this screen would also list every order, which
+  // is precisely the conflation the legacy dashboard shipped.
+  const rows = await getQuotes(isQuoteStatus(status) ? { kind: "quote", status } : { kind: "quote" });
 
   const columns: DataTableColumn<QuoteSummary>[] = [
     { key: "reference", header: "Referencia", render: (row) => <div><p className="font-black text-slate-950">{row.reference}</p><p className="text-xs font-bold text-slate-500">{formatDate(row.createdAt)}</p></div> },

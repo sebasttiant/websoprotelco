@@ -8,7 +8,7 @@ import type { QueryResultRow } from "pg";
 
 import { query } from "@/server/db/pool";
 
-import type { QuoteListFilters, QuoteStatus } from "./schemas";
+import type { QuoteKind, QuoteListFilters, QuoteStatus } from "./schemas";
 
 export interface CustomerQuoteRow extends QueryResultRow {
   id: string;
@@ -21,6 +21,7 @@ export interface CustomerQuoteRow extends QueryResultRow {
 export interface QuoteRow extends QueryResultRow {
   id: string;
   reference: string;
+  kind: QuoteKind;
   status: QuoteStatus;
   contact_name: string;
   contact_email: string;
@@ -28,6 +29,9 @@ export interface QuoteRow extends QueryResultRow {
   company_name: string | null;
   created_at: string;
   item_count: string;
+  // pg returns bigint/numeric aggregates as strings to avoid a lossy conversion, and NULL
+  // when the total cannot be trusted. Both cases are decoded in the service layer.
+  total_cents: string | null;
 }
 
 export interface QuoteStatusRow extends QueryResultRow {
@@ -56,16 +60,33 @@ export async function insertQuoteRequest(input: NewQuoteRequest): Promise<void> 
 
 export async function findQuotes(filters: QuoteListFilters = {}): Promise<QuoteRow[]> {
   const values: unknown[] = [];
-  let where = "";
+  const conditions: string[] = [];
 
   if (filters.status) {
     values.push(filters.status);
-    where = `WHERE qr.status = $${values.length}`;
+    conditions.push(`qr.status = $${values.length}`);
   }
 
+  // Callers scope by kind so the quotes screen never lists orders and vice versa. Omitting it
+  // returns both, which only the dashboard's "everything commercial" counts should ever want.
+  if (filters.kind) {
+    values.push(filters.kind);
+    conditions.push(`qr.kind = $${values.length}`);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  // The total collapses to NULL as soon as ONE line lacks a price snapshot. SUM() skips NULLs
+  // silently, so a request with a $500.000 priced line and an unpriced legacy line would
+  // otherwise report $500.000 as if that were the whole thing. A total is either complete or
+  // unknown; there is no useful third state.
   return query<QuoteRow>(
-    `SELECT qr.id, qr.reference, qr.status, qr.contact_name, qr.contact_email, qr.contact_phone, qr.company_name, qr.created_at,
-            count(qri.id) AS item_count
+    `SELECT qr.id, qr.reference, qr.kind, qr.status, qr.contact_name, qr.contact_email, qr.contact_phone, qr.company_name, qr.created_at,
+            count(qri.id) AS item_count,
+            CASE
+              WHEN bool_or(qri.id IS NOT NULL AND qri.unit_price_cents IS NULL) THEN NULL
+              ELSE COALESCE(sum(qri.quantity * qri.unit_price_cents), 0)
+            END AS total_cents
      FROM quote_requests qr
      LEFT JOIN quote_request_items qri ON qri.quote_request_id = qr.id
      ${where}

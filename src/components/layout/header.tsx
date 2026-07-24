@@ -65,7 +65,7 @@ export async function Header() {
 
           <div className="flex items-center gap-3">
             <HeaderSearch />
-            <HeaderCartLink />
+            <HeaderCartLink whatsappNumber={settings.whatsappNumber} />
             {user ? (
               <div className="hidden items-center gap-3 sm:flex">
                 <Link

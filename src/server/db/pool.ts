@@ -1,4 +1,4 @@
-import { Pool, type QueryResultRow } from "pg";
+import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 import { readDatabaseEnv } from "./env";
 
@@ -45,6 +45,57 @@ export async function query<Row extends QueryResultRow>(text: string, values?: r
   const result = await getPool().query<Row>(text, values as unknown[] | undefined);
 
   return result.rows;
+}
+
+/**
+ * A single database session inside an open transaction. Every statement issued through it
+ * runs on the SAME pooled connection, which is what makes BEGIN/COMMIT meaningful — the
+ * module-level `query` above grabs an arbitrary client per call and would leave statements
+ * scattered across connections, outside the transaction entirely.
+ */
+export interface TransactionClient {
+  query<Row extends QueryResultRow>(text: string, values?: readonly unknown[]): Promise<Row[]>;
+}
+
+function toTransactionClient(client: PoolClient): TransactionClient {
+  return {
+    async query<Row extends QueryResultRow>(text: string, values?: readonly unknown[]): Promise<Row[]> {
+      const result = await client.query<Row>(text, values as unknown[] | undefined);
+      return result.rows;
+    },
+  };
+}
+
+/**
+ * Runs `handler` inside a transaction, committing on success and rolling back on any thrown
+ * error. Use it whenever two or more writes only make sense together — an order and its line
+ * items, say: a half-written order with no lines is worse than no order at all.
+ *
+ * The client is released in `finally` so a failure can never leak a connection out of the
+ * pool; leak enough of them and every later request blocks on connectionTimeoutMillis.
+ */
+export async function withTransaction<Result>(
+  handler: (client: TransactionClient) => Promise<Result>,
+): Promise<Result> {
+  const client = await getPool().connect();
+
+  try {
+    await client.query("BEGIN");
+    const result = await handler(toTransactionClient(client));
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    // A ROLLBACK can itself fail when the connection is already broken. Swallow that failure
+    // so it cannot mask the original error, which is the one that explains what went wrong.
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("Transaction rollback failed:", rollbackError);
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function closePool(): Promise<void> {

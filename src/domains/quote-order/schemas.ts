@@ -44,6 +44,40 @@ export const contactRequestInputSchema = z.object({
 
 export type ContactRequestInput = z.infer<typeof contactRequestInputSchema>;
 
+// --- Cart order submission ---------------------------------------------------
+//
+// What this schema DOES NOT accept is the point: no price, and no product name.
+//
+// The cart lives in the visitor's localStorage, so every field in it is attacker-controlled —
+// editing `priceCents` to 1 takes a devtools console and five seconds. The legacy checkout
+// posted `price: item.price` straight from the browser and stored it, which means the order
+// total was whatever the customer said it was.
+//
+// The server accepts an id and a quantity, then reads the price and the name from the products
+// table itself. A client can ask for a product; it can never state what that product costs.
+export const cartOrderItemInputSchema = z.object({
+  productId: z.uuid(),
+  quantity: z.number().int().positive().max(99),
+});
+
+export type CartOrderItemInput = z.infer<typeof cartOrderItemInputSchema>;
+
+export const cartOrderInputSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.email().max(180),
+  phone: z.string().trim().min(7).max(50),
+  notes: z.string().trim().max(2_000).default(""),
+  // An empty order is never a real intent, and the max bounds a single request's write size.
+  items: z.array(cartOrderItemInputSchema).min(1).max(99),
+});
+
+export type CartOrderInput = z.infer<typeof cartOrderInputSchema>;
+
+export interface CartOrderResult {
+  reference: string;
+  totalCents: number;
+}
+
 // --- Admin read model --------------------------------------------------------
 
 export const quoteSummarySchema = z.object({

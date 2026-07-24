@@ -1,6 +1,8 @@
 import * as repository from "./repository";
 import type { CustomerQuoteRow, QuoteRow } from "./repository";
 import type {
+  CartOrderInput,
+  CartOrderResult,
   ContactRequestInput,
   CustomerQuoteSummary,
   QuoteListFilters,
@@ -74,6 +76,29 @@ export async function submitQuoteRequest(input: ContactRequestInput, userId: str
     message: `[${input.subject}] ${input.message}`,
     userId,
   });
+}
+
+/**
+ * Turns a cart into an order. `userId` binds ownership when the visitor is signed in and stays
+ * NULL for a guest — checkout is deliberately open to guests, so this is never an access check.
+ *
+ * The returned total is computed server-side from the products table, so the confirmation the
+ * customer sees is the amount actually recorded, not the one their browser proposed.
+ */
+export async function submitCartOrder(input: CartOrderInput, userId: string | null): Promise<CartOrderResult> {
+  const reference = createReference();
+
+  const { totalCents } = await repository.insertOrder({
+    reference,
+    contactName: input.name,
+    contactEmail: input.email,
+    contactPhone: input.phone,
+    message: input.notes,
+    userId,
+    items: input.items,
+  });
+
+  return { reference, totalCents };
 }
 
 export async function getQuotes(filters: QuoteListFilters = {}): Promise<QuoteSummary[]> {

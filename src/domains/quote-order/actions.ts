@@ -8,13 +8,18 @@ import { z } from "zod";
 
 import { getCurrentUser, requirePermission } from "@/server/auth/guards";
 
-import { contactRequestInputSchema, quoteStatusUpdateInputSchema } from "./schemas";
+import { UnavailableProductError } from "./repository";
+import { cartOrderInputSchema, contactRequestInputSchema, quoteStatusUpdateInputSchema } from "./schemas";
 import * as quoteOrderService from "./service";
 
 export interface AdminActionState {
   success: boolean;
   message: string;
 }
+
+export type CartOrderActionState =
+  | { success: true; reference: string; totalCents: number }
+  | { success: false; message: string };
 
 function formValue(formData: FormData, key: string): FormDataEntryValue | null {
   return formData.get(key);
@@ -70,6 +75,44 @@ export async function submitContactRequest(formData: FormData): Promise<void> {
   await quoteOrderService.submitQuoteRequest(parsed.data, user?.id ?? null);
 
   redirect("/contacto?sent=1");
+}
+
+// Public checkout behind the cart drawer. Like submitContactRequest, it is reachable by
+// unauthenticated visitors and must never gain a requirePermission guard.
+//
+// It returns state instead of redirecting: the drawer stays open to show the reference and,
+// for the WhatsApp path, a link the visitor clicks themselves. Opening a window from inside an
+// awaited callback is what popup blockers exist to stop, so the order is never left created
+// with the customer looking at nothing.
+export async function submitCartOrder(input: unknown): Promise<CartOrderActionState> {
+  const parsed = cartOrderInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { success: false, message: "Revisá los datos de contacto y los productos del pedido." };
+  }
+
+  // Ownership binding, not an access check: a signed-in visitor's order is tied to their id,
+  // a guest's stays NULL.
+  const user = await getCurrentUser();
+
+  try {
+    const result = await quoteOrderService.submitCartOrder(parsed.data, user?.id ?? null);
+
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin");
+
+    return { success: true, reference: result.reference, totalCents: result.totalCents };
+  } catch (error) {
+    if (error instanceof UnavailableProductError) {
+      return {
+        success: false,
+        message: "Algún producto ya no está disponible. Actualizá tu pedido e intentá de nuevo.",
+      };
+    }
+
+    console.error("Cart order submission failed:", error);
+    return { success: false, message: "No pudimos registrar tu pedido. Intentá de nuevo en unos minutos." };
+  }
 }
 
 // Admin-only triage mutation: requires the "quote:write" permission before touching

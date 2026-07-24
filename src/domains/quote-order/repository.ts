@@ -6,9 +6,9 @@ import "server-only";
 
 import type { QueryResultRow } from "pg";
 
-import { query } from "@/server/db/pool";
+import { query, withTransaction } from "@/server/db/pool";
 
-import type { QuoteKind, QuoteListFilters, QuoteStatus } from "./schemas";
+import type { CartOrderItemInput, QuoteKind, QuoteListFilters, QuoteStatus } from "./schemas";
 
 export interface CustomerQuoteRow extends QueryResultRow {
   id: string;
@@ -56,6 +56,99 @@ export async function insertQuoteRequest(input: NewQuoteRequest): Promise<void> 
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [input.reference, input.contactName, input.contactEmail, input.contactPhone, input.message, input.userId],
   );
+}
+
+export interface NewOrder {
+  reference: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  message: string;
+  userId: string | null;
+  items: readonly CartOrderItemInput[];
+}
+
+interface PricedProductRow extends QueryResultRow {
+  id: string;
+  name: string;
+  price_cents: string;
+}
+
+interface InsertedOrderRow extends QueryResultRow {
+  id: string;
+}
+
+export class UnavailableProductError extends Error {
+  constructor() {
+    super("One or more products are no longer available.");
+    this.name = "UnavailableProductError";
+  }
+}
+
+/**
+ * Writes an order and its line items atomically, pricing every line from the PRODUCTS TABLE.
+ *
+ * The caller passes ids and quantities only. Prices and names are read here, inside the same
+ * transaction as the insert, so the snapshot cannot drift from what was charged and a client
+ * has no way to state what anything costs.
+ *
+ * Inactive and unknown products are rejected outright rather than skipped: silently dropping a
+ * line would confirm an order the customer never placed, for less than they asked for.
+ */
+export async function insertOrder(input: NewOrder): Promise<{ id: string; totalCents: number }> {
+  return withTransaction(async (client) => {
+    const productIds = input.items.map((item) => item.productId);
+
+    const products = await client.query<PricedProductRow>(
+      "SELECT id, name, price_cents FROM products WHERE id = ANY($1::uuid[]) AND is_active = true",
+      [productIds],
+    );
+
+    const pricing = new Map(products.map((row) => [row.id, row]));
+
+    // A short read means at least one id was unknown or inactive. Duplicate ids in the request
+    // collapse in the map, so compare against the DISTINCT set rather than the raw length.
+    if (pricing.size !== new Set(productIds).size) {
+      throw new UnavailableProductError();
+    }
+
+    const orderRows = await client.query<InsertedOrderRow>(
+      `INSERT INTO quote_requests (reference, kind, contact_name, contact_email, contact_phone, message, user_id)
+       VALUES ($1, 'order', $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [input.reference, input.contactName, input.contactEmail, input.contactPhone, input.message, input.userId],
+    );
+
+    const orderId = orderRows[0]?.id;
+    if (!orderId) {
+      throw new Error("Order insert returned no id.");
+    }
+
+    let totalCents = 0;
+
+    for (const item of input.items) {
+      // Non-null: the size check above proves every id resolved.
+      const product = pricing.get(item.productId)!;
+      const unitPriceCents = Number(product.price_cents);
+
+      const lineCents = unitPriceCents * item.quantity;
+      totalCents += lineCents;
+
+      // Mirrors the cart's overflow guard. Past this range IEEE-754 rounds silently, and a
+      // rounded order total is a wrong invoice. Throwing rolls the whole order back.
+      if (!Number.isSafeInteger(lineCents) || !Number.isSafeInteger(totalCents)) {
+        throw new Error("Order total is not representable.");
+      }
+
+      await client.query(
+        `INSERT INTO quote_request_items (quote_request_id, product_id, description, quantity, unit_price_cents, product_name)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [orderId, item.productId, product.name, item.quantity, unitPriceCents, product.name],
+      );
+    }
+
+    return { id: orderId, totalCents };
+  });
 }
 
 export async function findQuotes(filters: QuoteListFilters = {}): Promise<QuoteRow[]> {

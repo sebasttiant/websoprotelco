@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { ExternalLink, Pencil, Trash2 } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
+import { InitialAvatar } from "@/components/admin/initial-avatar";
 import { SearchInput } from "@/components/admin/search-input";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { deleteProduct, getProductsForAdmin, type ProductAdminSummary } from "@/domains/catalog";
@@ -44,13 +46,70 @@ export default async function AdminProductsPage({ searchParams }: ProductsPagePr
   });
 
   const columns: DataTableColumn<ProductAdminSummary>[] = [
-    { key: "product", header: "Producto", render: (row) => <div><p className="font-black text-slate-950">{row.name}</p><p className="text-xs font-bold text-slate-500">{row.sku} · {row.slug}</p></div> },
-    { key: "category", header: "Categoría", render: (row) => row.categoryName ?? "Sin categoría" },
+    {
+      key: "product",
+      header: "Producto",
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          {/* Keyed to the SKU: two products in the same category still get distinct colours. */}
+          <InitialAvatar name={row.name} seed={row.sku} />
+          <div className="min-w-0">
+            <p className="truncate font-black text-slate-950">{row.name}</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">SKU: {row.sku}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "category",
+      header: "Categoría",
+      render: (row) =>
+        row.categoryName ? (
+          <span className="inline-flex rounded-full bg-brand-ice px-3 py-1 text-xs font-black uppercase tracking-wide text-brand-navy">
+            {row.categoryName}
+          </span>
+        ) : (
+          <span className="text-xs font-bold text-slate-400">Sin categoría</span>
+        ),
+    },
     { key: "brand", header: "Marca", render: (row) => row.brand ?? "—" },
-    { key: "price", header: "Precio", render: (row) => formatCurrency(row.priceCents, row.currency) },
+    { key: "price", header: "Precio", render: (row) => <span className="font-black text-brand-blue">{formatCurrency(row.priceCents, row.currency)}</span> },
     { key: "stock", header: "Stock", render: (row) => row.stockQuantity },
     { key: "status", header: "Estado", render: (row) => <StatusBadge status={row.isActive ? "active" : "inactive"} /> },
-    { key: "actions", header: "Acciones", render: (row) => <div className="flex gap-2"><Link href={`/admin/products/${row.id}`} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700">Editar</Link><form action={deleteProduct as unknown as FormAction}><input type="hidden" name="id" value={row.id} /><ConfirmDialog message={`¿Eliminar el producto "${row.name}"? Esta acción no se puede deshacer.`}>Eliminar</ConfirmDialog></form></div> },
+    {
+      key: "actions",
+      header: "Acciones",
+      render: (row) => (
+        <div className="flex items-center gap-1">
+          <Link
+            href={`/producto/${row.slug}`}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label={`Ver "${row.name}" en la tienda`}
+            className="rounded-lg p-2 text-slate-400 transition hover:bg-brand-ice hover:text-brand-blue"
+          >
+            <ExternalLink aria-hidden="true" className="h-4 w-4" />
+          </Link>
+          <Link
+            href={`/admin/products/${row.id}`}
+            aria-label={`Editar "${row.name}"`}
+            className="rounded-lg p-2 text-slate-400 transition hover:bg-brand-ice hover:text-brand-blue"
+          >
+            <Pencil aria-hidden="true" className="h-4 w-4" />
+          </Link>
+          <form action={deleteProduct as unknown as FormAction}>
+            <input type="hidden" name="id" value={row.id} />
+            <ConfirmDialog
+              message={`¿Eliminar el producto "${row.name}"? Esta acción no se puede deshacer.`}
+              triggerClassName="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+            >
+              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              <span className="sr-only">Eliminar “{row.name}”</span>
+            </ConfirmDialog>
+          </form>
+        </div>
+      ),
+    },
   ];
 
   return (

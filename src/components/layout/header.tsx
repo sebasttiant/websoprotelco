@@ -5,6 +5,7 @@ import { LogIn, LogOut, Phone, User } from "lucide-react";
 import { toTelHref } from "@/components/layout/contact-href";
 import { HeaderCartLink } from "@/components/layout/header-cart-link";
 import { HeaderMobileMenu, type HeaderNavLink } from "@/components/layout/header-mobile-menu";
+import { HeaderSearch } from "@/components/layout/header-search";
 import { Container } from "@/components/ui/container";
 import { getSiteSettings } from "@/domains/settings";
 import { signOut } from "@/server/auth/actions";
@@ -63,6 +64,7 @@ export async function Header() {
           </nav>
 
           <div className="flex items-center gap-3">
+            <HeaderSearch />
             <HeaderCartLink />
             {user ? (
               <div className="hidden items-center gap-3 sm:flex">

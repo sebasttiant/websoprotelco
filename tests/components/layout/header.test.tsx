@@ -102,6 +102,14 @@ describe("Header", () => {
     expect(screen.getByRole("link", { name: /carrito/i })).toHaveAttribute("href", "/carrito");
   });
 
+  test("offers a product search that targets the catalog's q parameter", async () => {
+    await renderHeader();
+
+    const search = screen.getByRole("search");
+    expect(search).toHaveAttribute("action", "/productos");
+    expect(within(search).getByLabelText("Buscar productos")).toHaveAttribute("name", "q");
+  });
+
   test("offers login to a signed-out visitor", async () => {
     await renderHeader({}, null);
 

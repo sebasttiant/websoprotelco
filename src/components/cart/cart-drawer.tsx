@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // ./actions carries "use server", so Next replaces these with RPC references and ships none of
 // the implementation to the browser.
 import { submitCartOrder, type CartOrderActionState } from "@/domains/quote-order/actions";
+import { Portal } from "@/components/ui/portal";
 
 import {
   calculateCartTotal,
@@ -180,8 +181,11 @@ export function CartDrawer({ open, onClose, whatsappNumber }: CartDrawerProps) {
   const canSubmit = form.name.trim().length >= 2 && form.email.includes("@") && form.phone.trim().length >= 7;
   const hasWhatsapp = toWaNumber(whatsappNumber) !== "";
 
+  // Portalled to document.body: this component is rendered from the header, which carries
+  // `backdrop-blur-xl` and therefore becomes the containing block for any fixed descendant.
+  // Left in place, the panel is sized against the header rather than the viewport.
   return (
-    <>
+    <Portal>
       <div
         aria-hidden="true"
         onClick={onClose}
@@ -194,8 +198,11 @@ export function CartDrawer({ open, onClose, whatsappNumber }: CartDrawerProps) {
         aria-modal="true"
         aria-label="Tu pedido"
         aria-hidden={!open}
-        className={`fixed right-0 top-0 z-[101] flex h-full w-full max-w-[26rem] flex-col bg-white shadow-2xl transition-transform duration-300 ${
-          open ? "translate-x-0" : "translate-x-full"
+        // h-dvh, not h-full: h-full is 100% of the containing block, which only equals the
+        // window because of the Portal above — and on mobile browsers the dynamic viewport unit
+        // is what accounts for the collapsing address bar.
+        className={`fixed right-0 top-0 z-[101] flex h-dvh w-full max-w-[26rem] flex-col bg-white shadow-2xl transition-transform duration-300 ${
+          open ? "translate-x-0" : "pointer-events-none translate-x-full"
         }`}
       >
         <header className="flex items-center justify-between border-b border-brand-line px-6 py-5">
@@ -391,6 +398,6 @@ export function CartDrawer({ open, onClose, whatsappNumber }: CartDrawerProps) {
           </footer>
         ) : null}
       </aside>
-    </>
+    </Portal>
   );
 }

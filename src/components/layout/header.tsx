@@ -5,8 +5,10 @@ import { LogIn, LogOut, Phone, User } from "lucide-react";
 import { toTelHref } from "@/components/layout/contact-href";
 import { HeaderCartLink } from "@/components/layout/header-cart-link";
 import { HeaderMobileMenu, type HeaderNavLink } from "@/components/layout/header-mobile-menu";
+import { HeaderProductsMenu } from "@/components/layout/header-products-menu";
 import { HeaderSearch } from "@/components/layout/header-search";
 import { Container } from "@/components/ui/container";
+import { getCategories } from "@/domains/catalog";
 import { getSiteSettings } from "@/domains/settings";
 import { signOut } from "@/server/auth/actions";
 import { getCurrentUser } from "@/server/auth/guards";
@@ -22,7 +24,7 @@ const NAV_LINKS: readonly HeaderNavLink[] = [
 export async function Header() {
   // getCurrentUser resolves to null rather than redirecting, so the header stays usable for
   // signed-out visitors.
-  const [settings, user] = await Promise.all([getSiteSettings(), getCurrentUser()]);
+  const [settings, user, categories] = await Promise.all([getSiteSettings(), getCurrentUser(), getCategories()]);
 
   return (
     <header className="sticky top-0 z-50 shadow-sm shadow-blue-950/5">
@@ -56,11 +58,9 @@ export async function Header() {
             className="hidden items-center gap-10 text-sm font-black text-brand-navy md:flex"
             aria-label="Navegación principal"
           >
-            {NAV_LINKS.map((link) => (
-              <Link key={link.href} href={link.href} className="transition-colors hover:text-brand-blue">
-                {link.label}
-              </Link>
-            ))}
+            <Link href="/" className="transition-colors hover:text-brand-blue">Inicio</Link>
+            <HeaderProductsMenu categories={categories} />
+            <Link href="/contacto" className="transition-colors hover:text-brand-blue">Contáctanos</Link>
           </nav>
 
           <div className="flex items-center gap-3">

@@ -4,9 +4,14 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import type { SiteSettings } from "@/domains/settings/schemas";
 
-const { mockGetSiteSettings, mockGetCurrentUser } = vi.hoisted(() => ({
+const { mockGetSiteSettings, mockGetCurrentUser, mockGetCategories } = vi.hoisted(() => ({
   mockGetSiteSettings: vi.fn(),
   mockGetCurrentUser: vi.fn(),
+  mockGetCategories: vi.fn(),
+}));
+
+vi.mock("@/domains/catalog", () => ({
+  getCategories: mockGetCategories,
 }));
 
 vi.mock("@/server/auth/guards", () => ({
@@ -45,6 +50,9 @@ const { HeaderMobileMenu } = await import("@/components/layout/header-mobile-men
 async function renderHeader(overrides: Partial<SiteSettings> = {}, user: unknown = null) {
   mockGetSiteSettings.mockResolvedValue({ ...SETTINGS, ...overrides });
   mockGetCurrentUser.mockResolvedValue(user);
+  mockGetCategories.mockResolvedValue([
+    { id: "11111111-1111-4111-8111-111111111111", slug: "fibra", name: "Fibra óptica", position: 1, imageUrl: null },
+  ]);
   render(await Header());
 }
 
@@ -108,6 +116,14 @@ describe("Header", () => {
     const search = screen.getByRole("search");
     expect(search).toHaveAttribute("action", "/productos");
     expect(within(search).getByLabelText("Buscar productos")).toHaveAttribute("name", "q");
+  });
+
+  test("lists categories under the Productos menu, linking to each category route", async () => {
+    await renderHeader();
+
+    const nav = screen.getByRole("navigation", { name: /principal/i });
+    expect(within(nav).getByRole("link", { name: "Productos" })).toHaveAttribute("href", "/productos");
+    expect(within(nav).getByRole("link", { name: "Fibra óptica" })).toHaveAttribute("href", "/productos/fibra");
   });
 
   test("offers login to a signed-out visitor", async () => {

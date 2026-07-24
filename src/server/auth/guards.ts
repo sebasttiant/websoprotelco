@@ -17,12 +17,21 @@ interface SessionCookieOptions {
   expires: Date;
 }
 
+// The session cookie is Secure in production so the token never travels over plain HTTP;
+// a deployment terminating TLS in front (Cloudflare, a reverse proxy) keeps this working.
+// SESSION_COOKIE_SECURE=false is an explicit escape hatch for reaching the site directly over
+// HTTP with no TLS yet (e.g. http://<ip>:8686). Never leave it off for a real public site.
+function resolveSecureSessionCookie(): boolean {
+  if (process.env.SESSION_COOKIE_SECURE === "false") return false;
+  return process.env.NODE_ENV !== "development";
+}
+
 export function sessionCookieOptions(expiresAt: Date): SessionCookieOptions {
   return {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
-    secure: process.env.NODE_ENV !== "development",
+    secure: resolveSecureSessionCookie(),
     expires: expiresAt,
   };
 }

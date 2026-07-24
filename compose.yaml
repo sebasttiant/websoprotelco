@@ -90,6 +90,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-local_dev_user}:${POSTGRES_PASSWORD:-local_dev_password_change_me}@db:5432/${POSTGRES_DB:-websoprotelco}
       DATABASE_SSL: ${DATABASE_SSL:-disable}
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+      # Empty by default (cookie stays Secure). Set SESSION_COOKIE_SECURE=false in .env only to
+      # log in over plain HTTP (no TLS yet); put it back once Cloudflare/HTTPS is in front.
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
     # 127.0.0.1 by default: a VPS must opt in with WEB_HOST=0.0.0.0, as .env.example spells out.
     ports:
       - "${WEB_HOST:-127.0.0.1}:${WEB_PORT:-8585}:8585"

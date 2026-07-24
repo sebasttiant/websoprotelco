@@ -104,6 +104,11 @@ WEB_HOST=0.0.0.0
 # Storage: local disk (fails closed if unset). Do not leave blank.
 STORAGE_PROVIDER=local
 
+# Session cookie security. Leave commented for HTTPS (Cloudflare/reverse proxy) — the safe
+# default. Uncomment ONLY to log in over plain HTTP (http://<ip>:8686) before TLS is set up;
+# re-comment it once HTTPS is in front.
+# SESSION_COOKIE_SECURE=false
+
 # Database.
 POSTGRES_DB=websoprotelco
 POSTGRES_USER=local_dev_user

@@ -122,6 +122,34 @@ export async function countAllMovements(search: string): Promise<number> {
   return rows[0]?.total ?? 0;
 }
 
+// Every active product with its current stock — the full stock-management table, as opposed to
+// findLowStockProducts which filters by the threshold. Optional name/SKU search. Same bigint
+// cast rationale as below: an ::int downcast could overflow and take the whole page down.
+function stockSearchClause(search: string): { where: string; values: unknown[] } {
+  if (search === "") {
+    return { where: "", values: [] };
+  }
+
+  // `%` and `_` are LIKE wildcards; escape so a typed "%" filters literally instead of matching
+  // everything. Backslash first, or it escapes its own replacements.
+  const pattern = `%${search.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_")}%`;
+  return { where: "AND (p.name ILIKE $1 OR p.sku ILIKE $1)", values: [pattern] };
+}
+
+export async function findAllStockLevels(search: string): Promise<ProductStockRow[]> {
+  const { where, values } = stockSearchClause(search);
+
+  return query<ProductStockRow>(
+    `SELECT p.id AS product_id, p.sku, p.name, COALESCE(SUM(m.quantity), 0)::bigint AS current_stock
+     FROM products p
+     LEFT JOIN stock_movements m ON m.product_id = p.id
+     WHERE p.is_active = true ${where}
+     GROUP BY p.id, p.sku, p.name
+     ORDER BY p.name ASC`,
+    values,
+  );
+}
+
 export async function findLowStockProducts(threshold: number): Promise<ProductStockRow[]> {
   // Same overflow hazard as findCurrentStock: this is a single GROUP BY over ALL active
   // products, so an `::int` downcast on one overflowing product's sum would throw and take

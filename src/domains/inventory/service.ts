@@ -89,3 +89,10 @@ export async function getLowStockProducts(
   const rows = await repository.findLowStockProducts(threshold);
   return rows.map(mapProductStock);
 }
+
+// Every active product with its current stock, for the stock-management table. Optional
+// name/SKU search; the low/ok classification is left to the caller against its threshold.
+export async function getStockLevels(search = ""): Promise<ProductStock[]> {
+  const rows = await repository.findAllStockLevels(search.trim());
+  return rows.map(mapProductStock);
+}

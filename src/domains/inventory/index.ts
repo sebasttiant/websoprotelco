@@ -11,6 +11,7 @@ export {
   getCurrentStock,
   getLowStockProducts,
   getMovementHistory,
+  getStockLevels,
   MOVEMENT_PAGE_SIZE,
   type MovementHistory,
 } from "./service";

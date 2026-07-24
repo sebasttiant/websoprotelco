@@ -31,6 +31,10 @@ DB_SERVICE="${DB_SERVICE:-db}"
 MIGRATE_SERVICE="${MIGRATE_SERVICE:-migrate}"
 SEED_SERVICE="${SEED_SERVICE:-seed}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-180}"
+# Endpoint verification retries. A single-shot probe races the Next.js boot, so an endpoint
+# that is merely not listening YET is indistinguishable from one that is broken.
+ENDPOINT_RETRIES="${ENDPOINT_RETRIES:-24}"
+ENDPOINT_RETRY_DELAY="${ENDPOINT_RETRY_DELAY:-5}"
 
 # Shared with rollback.sh, and exercised directly by tests/deploy/ with a stub docker on PATH.
 # These helpers decide whether user files live or die, so they must be testable off the VPS.
@@ -606,7 +610,12 @@ docker compose run --rm --no-deps "$SEED_SERVICE" pnpm db:create-admin
 # 8. Start web
 # --------------------------------------------------------------------------
 echo "==> Starting web server..."
-docker compose up -d --no-deps "$WEB_SERVICE"
+# --force-recreate is what makes the health gate below trustworthy. Docker preserves a
+# container's health status across a restart until the next probe fires, so a container that
+# compose merely "Started" reports the PREVIOUS run's `healthy` for up to one full interval —
+# the wait loop then passes instantly against a server that has not finished booting. A newly
+# created container always starts at `starting`, so the loop actually waits.
+docker compose up -d --no-deps --force-recreate "$WEB_SERVICE"
 
 echo "==> Waiting for '$WEB_SERVICE' to become healthy (timeout ${HEALTH_TIMEOUT}s)..."
 deadline=$(( $(date +%s) + HEALTH_TIMEOUT ))
@@ -654,40 +663,63 @@ check_table() {
   fi
 }
 
+probe_endpoint() {
+  docker compose exec -T "$WEB_SERVICE" node -e \
+    "fetch('http://127.0.0.1:8686$1',{redirect:'manual'}).then(r=>{console.log(r.status)}).catch((e)=>{console.log('no-response:'+e.message);process.exit(1)})"
+}
+
+# Retries until the endpoint answers with an HTTP status. Any numeric status ends the loop —
+# a 500 is a real answer and must be reported as such, not retried into a timeout. Only the
+# "did not answer at all" case is retried, because that is the one a slow boot produces.
 check_endpoint() {
   local path="$1"
   local label="$2"
   local expected="$3"
-  local http_status
-  if http_status="$(docker compose exec -T "$WEB_SERVICE" node -e \
-       "fetch('http://127.0.0.1:8686${path}',{redirect:'manual'}).then(r=>{console.log(r.status)}).catch(()=>{console.log('no-response');process.exit(1)})" \
-       2>/dev/null)"; then
-    http_status="$(printf '%s' "$http_status" | tr -d '\r\n ')"
-    case "$http_status" in
-      ''|*[!0-9]*)
-        echo "    ✗ $label returned an unparsable HTTP status: ${http_status:-<empty>}."
-        verification_ok=0
-        return
-        ;;
-    esac
-    case "$expected" in
-      2xx)
-        if [ "$http_status" -ge 200 ] && [ "$http_status" -le 299 ]; then
-          echo "    ✓ $label responds with expected HTTP $http_status ($expected)."
-        else
-          echo "    ✗ $label returned HTTP $http_status; expected $expected."
-          verification_ok=0
-        fi
-        ;;
-      *)
-        echo "    ✗ Unsupported endpoint expectation '$expected' for $label."
-        verification_ok=0
-        ;;
-    esac
-  else
-    echo "    ⚠ $label returned an error (HTTP ${http_status:-no-response})."
-    verification_ok=0
+  local http_status=""
+  local attempt=1
+  local last_output=""
+
+  while :; do
+    if http_status="$(probe_endpoint "$path" 2>/dev/null)"; then
+      http_status="$(printf '%s' "$http_status" | tr -d '\r\n ')"
+      case "$http_status" in
+        ''|*[!0-9]*) ;;
+        *) break ;;
+      esac
+    fi
+
+    if [ "$attempt" -ge "$ENDPOINT_RETRIES" ]; then
+      # Every retry exhausted: re-probe once WITHOUT discarding stderr, so the operator sees
+      # the actual docker/fetch error instead of a bare "no-response".
+      last_output="$(probe_endpoint "$path" 2>&1 || true)"
+      echo "    ✗ $label never answered after $(( ENDPOINT_RETRIES * ENDPOINT_RETRY_DELAY ))s."
+      echo "      Last probe output: ${last_output:-<empty>}"
+      verification_ok=0
+      return
+    fi
+
+    attempt=$(( attempt + 1 ))
+    sleep "$ENDPOINT_RETRY_DELAY"
+  done
+
+  if [ "$attempt" -gt 1 ]; then
+    echo "    (…$label answered on attempt $attempt)"
   fi
+
+  case "$expected" in
+    2xx)
+      if [ "$http_status" -ge 200 ] && [ "$http_status" -le 299 ]; then
+        echo "    ✓ $label responds with expected HTTP $http_status ($expected)."
+      else
+        echo "    ✗ $label returned HTTP $http_status; expected $expected."
+        verification_ok=0
+      fi
+      ;;
+    *)
+      echo "    ✗ Unsupported endpoint expectation '$expected' for $label."
+      verification_ok=0
+      ;;
+  esac
 }
 
 # --------------------------------------------------------------------------

@@ -16,7 +16,7 @@ set -Eeuo pipefail
 #
 # El contenedor `web` es Next.js standalone y NO incluye tsx ni migraciones.
 #
-# Acceso final:  http://<ip-vps>:8585
+# Acceso final:  http://<ip-vps>:8686
 # ==========================================================================
 
 # APP_DIR se autodetecta desde la ubicación del script.
@@ -89,15 +89,13 @@ echo "==> Verifying .env..."
 # On a first deploy there is no .env yet. Rather than only erroring, scaffold one with the
 # correct keys and safe non-secret defaults, then stop so the operator fills in the secrets.
 # The scaffold carries CHANGE_ME placeholders and NO real credentials: .env is gitignored and
-# must never be committed. Port 8686 is exposed on the host; the container still listens on
-# 8585 internally, so this never touches the internal port.
+# must never be committed. Port 8686 is both the host and the container port.
 if [ ! -f "$APP_DIR/.env" ]; then
   cat > "$APP_DIR/.env" <<'ENV_SCAFFOLD'
 # SOPROTELCO production environment.
 # Replace every CHANGE_ME value, then re-run ./deploy.sh. This file is gitignored:
 # never commit it. Keep POSTGRES_PASSWORD identical in DATABASE_URL.
 
-# Host exposure: 8686 on the host, container stays on 8585 internally.
 WEB_PORT=8686
 WEB_HOST=0.0.0.0
 
@@ -107,7 +105,8 @@ STORAGE_PROVIDER=local
 # Session cookie security. Leave commented for HTTPS (Cloudflare/reverse proxy) — the safe
 # default. Uncomment ONLY to log in over plain HTTP (http://<ip>:8686) before TLS is set up;
 # re-comment it once HTTPS is in front.
-# SESSION_COOKIE_SECURE=false
+# NOTE: uncommented by default so the first deploy over HTTP works without bucle infinito.
+SESSION_COOKIE_SECURE=false
 
 # Database.
 POSTGRES_DB=websoprotelco
@@ -661,7 +660,7 @@ check_endpoint() {
   local expected="$3"
   local http_status
   if http_status="$(docker compose exec -T "$WEB_SERVICE" node -e \
-       "fetch('http://127.0.0.1:8585${path}',{redirect:'manual'}).then(r=>{console.log(r.status)}).catch(()=>{console.log('no-response');process.exit(1)})" \
+       "fetch('http://127.0.0.1:8686${path}',{redirect:'manual'}).then(r=>{console.log(r.status)}).catch(()=>{console.log('no-response');process.exit(1)})" \
        2>/dev/null)"; then
     http_status="$(printf '%s' "$http_status" | tr -d '\r\n ')"
     case "$http_status" in
@@ -779,6 +778,6 @@ docker image prune -f 2>/dev/null || true
 echo ""
 echo "=========================================================================="
 echo " Deploy completed successfully."
-echo " Access: http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo '<your-vps-ip>'):${WEB_PORT:-8585}"
+echo " Access: http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo '<your-vps-ip>'):${WEB_PORT:-8686}"
 echo " Admin:  admin@ilasesorias.com"
 echo "=========================================================================="

@@ -148,6 +148,22 @@ for var in "${required_vars[@]}"; do
 done
 echo "    .env OK"
 
+# The scaffold above only runs on a FIRST deploy, so a server whose .env predates a newly
+# added key never receives it — which is how this key went missing in production. With
+# NODE_ENV=production the session cookie then carries `Secure`, and a browser reaching the
+# site over plain http://<ip>:8686 discards it with no error at all: the admin logs in, sees
+# exactly one page (rendered server-side in the same request that set the cookie), and every
+# navigation after that bounces back to /login. Warn instead of failing, because leaving this
+# unset is precisely correct once TLS terminates in front (Cloudflare, reverse proxy).
+if ! grep -qE '^[[:space:]]*SESSION_COOKIE_SECURE=' "$APP_DIR/.env"; then
+  echo "    NOTE: SESSION_COOKIE_SECURE is not set in .env."
+  echo "          Correct if HTTPS terminates in front of this server. Serving over plain HTTP"
+  echo "          instead? The session cookie is Secure, the browser silently drops it, and admin"
+  echo "          login loops back to /login. In that case run:"
+  echo "            echo 'SESSION_COOKIE_SECURE=false' >> .env"
+  echo "            docker compose up -d --force-recreate $WEB_SERVICE"
+fi
+
 # --------------------------------------------------------------------------
 # 3.3 Legacy documents preflight
 # --------------------------------------------------------------------------

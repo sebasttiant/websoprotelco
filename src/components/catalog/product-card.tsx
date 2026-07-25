@@ -25,8 +25,19 @@ export function ProductCard({ product }: ProductCardProps) {
       <Link href={`/producto/${product.slug}`} className="relative grid aspect-square place-items-center overflow-hidden rounded-3xl bg-brand-ice">
         <Badge className="absolute left-4 top-4">{product.categoryName}</Badge>
         {imageUrl ? (
+          // Plain <img> on purpose: images are pre-optimized to a bounded WebP at upload
+          // (~200 KB), so the per-request CPU of next/image's optimizer buys nothing on a small
+          // VPS. `loading="lazy"` keeps a long catalog grid from downloading off-screen cards
+          // until they scroll into view; the aspect-square container already reserves the box,
+          // so there is no layout shift.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={product.name} className="h-full w-full object-contain p-6 transition duration-500 group-hover:scale-105" />
+          <img
+            src={imageUrl}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-contain p-6 transition duration-500 group-hover:scale-105"
+          />
         ) : (
           <div className="text-center text-brand-blue/25">
             <div className="mx-auto mb-4 grid h-24 w-24 place-items-center rounded-3xl border-2 border-current text-4xl font-black">SP</div>

@@ -67,6 +67,24 @@ COPY --from=sharp-runtime --chown=nextjs:nodejs /sharp/node_modules/detect-libc 
 COPY --from=sharp-runtime --chown=nextjs:nodejs /sharp/node_modules/semver /app/node_modules/sharp/node_modules/semver
 COPY --from=sharp-runtime --chown=nextjs:nodejs /sharp/node_modules/@img /app/node_modules/sharp/node_modules/@img
 
+# Turbopack (Next 16's default builder) does not emit `import("sharp")` for a package listed in
+# serverExternalPackages. It emits a build-derived hashed alias — `sharp-<hash>` — and resolves it
+# through a symlink it writes into `.next/node_modules/` that points at the pnpm store. The `rm`
+# above deletes that symlink's target, so the alias dangles and EVERY storage operation fails at
+# runtime with ERR_MODULE_NOT_FOUND (the whole `storage/local` module fails to import, not just
+# image optimization). Repoint the alias at the clean copy installed above.
+#
+# The hash is derived at build time, so it is matched by glob rather than hardcoded. If a future
+# Turbopack version stops emitting the alias the loop is a no-op, and the deploy-time
+# `/api/health?check=storage` probe remains the gate that catches a broken storage runtime.
+RUN set -eu; \
+  for alias in /app/.next/node_modules/sharp-*; do \
+    [ -L "$alias" ] || [ -e "$alias" ] || continue; \
+    rm -rf "$alias"; \
+    ln -s /app/node_modules/sharp "$alias"; \
+    chown -h nextjs:nodejs "$alias"; \
+  done
+
 # Both directories must exist in the image and be owned by the runtime user BEFORE a named
 # volume is mounted over them. Docker copies the image's content and ownership into a new
 # empty volume; if the path does not exist in the image, Docker creates the mountpoint owned

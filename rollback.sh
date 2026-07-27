@@ -45,13 +45,15 @@ MANIFEST_FILE="$MANIFEST"
 . "$APP_DIR/deploy-lib.sh"
 
 cd "$APP_DIR"
+require_runtime_asset_evidence
 mkdir -p "$BACKUP_DIR"
 
 # Same lock deploy.sh takes: a rollback racing a deploy would mean git reset --hard against
 # git pull, and pg_restore against a migration.
-exec 9>"$BACKUP_DIR/.deploy.lock"
+DEPLOY_LOCK_FILE="$(deploy_lock_file)"
+exec 9>"$DEPLOY_LOCK_FILE"
 if ! flock -n 9; then
-  echo "ERROR: a deploy or another rollback is running (lock: $BACKUP_DIR/.deploy.lock)."
+  echo "ERROR: a deploy or another rollback is running (lock: $DEPLOY_LOCK_FILE)."
   exit 1
 fi
 
@@ -148,12 +150,14 @@ fi
 # documents-data, web would come back up with no documents mount: the restored files would sit
 # in a volume the app cannot see, while this script reported "documents restored". Refuse
 # rather than silently undo our own restore.
-for required_mount in "uploads-data:/app/public/uploads" "documents-data:/app/public/documents"; do
+for runtime_volume in "uploads-data:uploads" "documents-data:documents"; do
+  volume="${runtime_volume%%:*}"
+  kind="${runtime_volume##*:}"
   # Anchored on the mount line itself via commit_mounts_volume. An unanchored grep for the
   # volume name also matches compose.yaml's own explanatory comment, so a commit that dropped
   # the volume but kept the comment would pass the check meant to catch exactly that.
-  if ! commit_mounts_volume "$target_sha" "$required_mount"; then
-    echo "ERROR: the rollback target $target_sha does not mount '$required_mount' in compose.yaml."
+  if ! commit_mounts_runtime_volume "$target_sha" "$volume" "$kind"; then
+    echo "ERROR: the rollback target $target_sha does not mount '$volume' at its public or data root in compose.yaml."
     echo "       Rolling back to it would unmount that volume and hide the files this script"
     echo "       is about to restore, while reporting success. Refusing."
     echo "       That commit predates persistent file storage: roll back by hand, and keep"
@@ -314,8 +318,8 @@ archive_current_files() {
 }
 
 echo "==> Archiving current files before they are replaced..."
-archive_current_files "/app/public/uploads" "$safety_uploads" "uploads"
-archive_current_files "/app/public/documents" "$safety_documents" "documents"
+archive_current_files "/app/data/uploads" "$safety_uploads" "uploads"
+archive_current_files "/app/data/documents" "$safety_documents" "documents"
 
 # --------------------------------------------------------------------------
 # 6. Restore database
@@ -414,8 +418,8 @@ restore_files() {
   echo "    $label restored: ${actual} file(s)."
 }
 
-restore_files "/app/public/uploads" "$uploads_tar" "uploads" "$safety_uploads"
-restore_files "/app/public/documents" "$documents_tar" "documents" "$safety_documents"
+restore_files "/app/data/uploads" "$uploads_tar" "uploads" "$safety_uploads"
+restore_files "/app/data/documents" "$documents_tar" "documents" "$safety_documents"
 
 # --------------------------------------------------------------------------
 # 7. Restore code
@@ -459,6 +463,13 @@ until status="$(docker compose ps -q "$WEB_SERVICE" | xargs -r docker inspect -f
   sleep 2
 done
 echo "    '$WEB_SERVICE' is healthy."
+
+for known_url in "$KNOWN_UPLOAD_URL" "$KNOWN_DOCUMENT_URL"; do
+  if ! status="$(docker compose exec -T "$WEB_SERVICE" node -e "fetch('http://127.0.0.1:8686$known_url').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))")"; then
+    echo "ERROR: rollback target did not serve $known_url. Traffic remains isolated."
+    exit 1
+  fi
+done
 
 # --------------------------------------------------------------------------
 # 9. Post-restore data check

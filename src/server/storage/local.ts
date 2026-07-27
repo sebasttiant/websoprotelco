@@ -1,4 +1,4 @@
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -10,10 +10,9 @@ import {
   type StoredFile,
 } from "./index";
 import { OPTIMIZED_IMAGE_EXTENSION, optimizeProductImage } from "./optimize-image";
+import { runtimeAssetRoots } from "./roots";
 
-const uploadDirectory = path.join(process.cwd(), "public", "uploads");
-const publicDirectory = path.join(process.cwd(), "public");
-const documentsDirectory = path.join(publicDirectory, "documents");
+const { uploads: uploadDirectory, documents: documentsDirectory } = runtimeAssetRoots();
 const bannerUploadsDirectory = path.join(uploadDirectory, "banners");
 const heroUploadsDirectory = path.join(uploadDirectory, "hero");
 
@@ -80,12 +79,31 @@ function assertWithinDirectory(baseDir: string, targetPath: string): void {
   }
 }
 
+// The reader rejects symlink components before it opens an asset. Writers must apply the same
+// policy: lexical containment alone still follows an existing symlinked category directory.
+async function assertNoSymlinkComponents(baseDir: string, targetPath: string): Promise<void> {
+  const relative = path.relative(baseDir, targetPath);
+  const parts = relative === "" ? [] : relative.split(path.sep);
+  let current = baseDir;
+
+  for (const part of ["", ...parts]) {
+    if (part) current = path.join(current, part);
+    try {
+      if ((await lstat(current)).isSymbolicLink()) {
+        throw new Error("Runtime asset path contains a symbolic link.");
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+      throw error;
+    }
+  }
+}
+
 // `pathname` here is the public-facing path stored on the document row (e.g.
 // "/documents/manual/<uuid>_<name>.pdf"), not an absolute filesystem path — the domain
 // layer never persists the absolute path, only the URL. This resolves it back to disk.
-function resolvePublicPath(pathname: string): string {
-  const relative = pathname.startsWith("/") ? pathname.slice(1) : pathname;
-  return path.join(publicDirectory, relative);
+function resolveDocumentPath(pathname: string): string {
+  return path.join(documentsDirectory, pathname.replace(/^\/documents\/?/, ""));
 }
 
 export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAdapter & DesignImageStorageAdapter {
@@ -101,7 +119,9 @@ export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAda
       const filename = `${new Date().toISOString().slice(0, 10)}-${randomUUID()}.${OPTIMIZED_IMAGE_EXTENSION}`;
       const pathname = path.join(uploadDirectory, filename);
 
+      await assertNoSymlinkComponents(uploadDirectory, pathname);
       await mkdir(uploadDirectory, { recursive: true });
+      await assertNoSymlinkComponents(uploadDirectory, pathname);
       await writeFile(pathname, optimized, { flag: "wx" });
 
       return {
@@ -121,7 +141,9 @@ export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAda
 
       const bytes = Buffer.from(await file.arrayBuffer());
 
+      await assertNoSymlinkComponents(documentsDirectory, pathname);
       await mkdir(targetDirectory, { recursive: true });
+      await assertNoSymlinkComponents(documentsDirectory, pathname);
       await writeFile(pathname, bytes, { flag: "wx" });
 
       return {
@@ -141,7 +163,9 @@ export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAda
 
       const bytes = Buffer.from(await file.arrayBuffer());
 
+      await assertNoSymlinkComponents(uploadDirectory, pathname);
       await mkdir(targetDirectory, { recursive: true });
+      await assertNoSymlinkComponents(uploadDirectory, pathname);
       await writeFile(pathname, bytes, { flag: "wx" });
 
       return {
@@ -151,9 +175,10 @@ export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAda
     },
 
     async deleteFile(pathname: string): Promise<void> {
-      const resolved = resolvePublicPath(pathname);
+      const resolved = resolveDocumentPath(pathname);
 
       assertWithinDirectory(documentsDirectory, resolved);
+      await assertNoSymlinkComponents(documentsDirectory, resolved);
 
       try {
         await unlink(resolved);

@@ -22,6 +22,10 @@ POSTGRES_PASSWORD=test
 DATABASE_URL=postgresql://u:p@db:5432/app
 ADMIN_EMAIL=admin@example.test
 ADMIN_PASSWORD=change-me
+STORAGE_PROVIDER=local
+MAINTENANCE_WINDOW_CONFIRMED=true
+KNOWN_UPLOAD_URL=/uploads/image.webp
+KNOWN_DOCUMENT_URL=/documents/manual/guide.pdf
 ENV
 
 cat > "$BIN/git" <<'GIT'
@@ -74,6 +78,7 @@ chmod +x "$BIN/docker"
 
 export PATH="$BIN:$PATH"
 export APP_DIR="$APP"
+export MAINTENANCE_WINDOW_CONFIRMED=true KNOWN_UPLOAD_URL=/uploads/image.webp KNOWN_DOCUMENT_URL=/documents/manual/guide.pdf
 export FAKE_DOCKER_CALLS="$WORK/docker.calls"
 : > "$FAKE_DOCKER_CALLS"
 

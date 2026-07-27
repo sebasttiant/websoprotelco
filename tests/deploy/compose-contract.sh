@@ -32,5 +32,11 @@ else
   bad "compose rejected an explicit local provider: $out"
 fi
 
+if out="$(cfg STORAGE_PROVIDER=local)" && [[ "$out" == *"source: uploads-data"*"target: /app/data/uploads"* ]] && [[ "$out" == *"source: documents-data"*"target: /app/data/documents"* ]]; then
+  ok "candidate mounts the preserved named volumes at data roots"
+else
+  bad "candidate data-root volume mounts are missing"
+fi
+
 echo " passed: $pass   failed: $fail"
 [ "$fail" -eq 0 ]

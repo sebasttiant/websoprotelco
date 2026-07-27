@@ -43,19 +43,47 @@ ENDPOINT_RETRY_DELAY="${ENDPOINT_RETRY_DELAY:-5}"
 
 cd "$APP_DIR"
 
+# Serialize deploys and rollbacks before any Git mutation. FD 9 is the capability: re-exec
+# metadata is only loop prevention and can never prove that this process owns the lock.
+mkdir -p "$BACKUP_DIR"
+DEPLOY_LOCK_FILE="$(deploy_lock_file)"
+fd9_target=""
+if [ -e "/proc/$$/fd/9" ]; then
+  fd9_target="$(readlink -f "/proc/$$/fd/9" 2>/dev/null || true)"
+fi
+inherited_fd9=0
+if [ "$fd9_target" = "$DEPLOY_LOCK_FILE" ]; then
+  inherited_fd9=1
+else
+  exec 9>"$DEPLOY_LOCK_FILE"
+fi
+if ! flock -n 9; then
+  echo "ERROR: another deploy or rollback is running (lock: $DEPLOY_LOCK_FILE)."
+  exit 1
+fi
+
+# Validate supplied evidence before Git or container mutation. Optional only means a fresh
+# deployment may omit both URLs; any supplied prefixless URL still fails closed here.
+require_runtime_asset_evidence optional
+
+# Re-exec after updating so an already-running old script cannot bypass target-revision gates.
+# The marker and SHA only prevent a re-exec loop. FD 9 was proved above, before this branch.
+if [ "$inherited_fd9" -eq 1 ] \
+  && [ "${DEPLOY_TARGET_REEXEC:-}" = "1" ] \
+  && [ -n "${DEPLOY_TARGET_REEXEC_SHA:-}" ] \
+  && [ "$(git rev-parse HEAD)" = "$DEPLOY_TARGET_REEXEC_SHA" ]; then
+  : # Re-execed target: keep the inherited lock descriptor open.
+else
+  echo "==> Updating code (branch: $BRANCH)..."
+  git fetch origin "$BRANCH"
+  git pull --ff-only origin "$BRANCH"
+  DEPLOY_TARGET_REEXEC=1 DEPLOY_TARGET_REEXEC_SHA="$(git rev-parse HEAD)" exec "$APP_DIR/deploy.sh" "$@"
+fi
+
 # --------------------------------------------------------------------------
 # 1. Backup
 # --------------------------------------------------------------------------
 mkdir -p "$BACKUP_DIR"
-
-# Serialize deploys and rollbacks against each other. Without this, two concurrent runs
-# interleave `git pull`, image builds and manifest appends; worse, a deploy racing a rollback
-# means `git reset --hard` against `git pull` and pg_restore against a migration.
-exec 9>"$BACKUP_DIR/.deploy.lock"
-if ! flock -n 9; then
-  echo "ERROR: another deploy or rollback is running (lock: $BACKUP_DIR/.deploy.lock)."
-  exit 1
-fi
 
 echo "==> Creating backup..."
 BACKUP_FILE="$BACKUP_DIR/soprotelco-before-deploy-$(date +%Y%m%d-%H%M%S).tar.gz"
@@ -68,9 +96,8 @@ tar --exclude='./backups' \
 echo "    Backup created: $BACKUP_FILE"
 
 # --------------------------------------------------------------------------
-# 2. Pull latest code
+# 2. Record the deployed revision
 # --------------------------------------------------------------------------
-echo "==> Updating code (branch: $BRANCH)..."
 # The rollback target is the last commit that DEPLOYED SUCCESSFULLY, recorded at the end of
 # this script — not `git rev-parse HEAD`. They differ in the case that matters: if a deploy
 # fails at the migration step, the tree is already pulled to the new commit but the running
@@ -83,8 +110,6 @@ else
   PRE_DEPLOY_SHA="$(git rev-parse HEAD)"
   echo "    No previous deploy recorded; using current commit as rollback target: $PRE_DEPLOY_SHA"
 fi
-git fetch origin "$BRANCH"
-git pull --ff-only origin "$BRANCH"
 
 # --------------------------------------------------------------------------
 # 3. Verify .env
@@ -183,7 +208,7 @@ preflight_manifest_nonempty=0
 
 if [ "$preflight_web_state" != "absent" ]; then
   preflight_web_id="$(web_container_id "$WEB_SERVICE")"
-  if ! container_has_mount "$preflight_web_id" /app/public/documents; then
+  if ! container_has_mount "$preflight_web_id" /app/public/documents && ! container_has_mount "$preflight_web_id" /app/data/documents; then
     case "$preflight_web_state" in
       running)
         if ! preflight_documents_status="$(docker compose exec -T "$WEB_SERVICE" sh -lc '
@@ -224,6 +249,12 @@ elif [ "$preflight_manifest_nonempty" -eq 1 ]; then
   echo "       cannot be proven safe or absent. Follow: $MANUAL_DOCUMENTS_RUNBOOK"
   exit 1
 fi
+
+# Capture this before PostgreSQL starts: its initialization creates POSTGRES_DB even on a
+# genuinely fresh compose state. Do not infer this from the database after step 5.
+preflight_last_deployed=0
+[ -f "$LAST_DEPLOYED_SHA_FILE" ] && preflight_last_deployed=1
+deployment_state="$(deployment_state "$preflight_last_deployed" "$preflight_web_state" "$preflight_manifest_nonempty")"
 
 # --------------------------------------------------------------------------
 # 3.4 Backup retention
@@ -489,7 +520,7 @@ echo "    '$WEB_SERVICE' container state: $web_state"
 web_id=""
 if [ "$web_state" != "absent" ]; then
   web_id="$(web_container_id "$WEB_SERVICE")"
-  if ! container_has_mount "$web_id" /app/public/documents; then
+  if ! container_has_mount "$web_id" /app/public/documents && ! container_has_mount "$web_id" /app/data/documents; then
     documents_are_legacy=1
     legacy_documents_status="unknown"
     if [ "$web_state" = "running" ]; then
@@ -534,17 +565,19 @@ trap cleanup_file_partials EXIT INT TERM
 
 case "$(file_backup_plan "$web_state" "$documents_are_legacy" "$manifest_nonempty")" in
   archive_running)
-    archive_from_running "uploads" "/app/public/uploads" "$candidate_uploads" \
+    # The candidate compose definition mounts the same named volumes at /app/data. Reading via
+    # an ephemeral candidate container preserves identity without depending on old paths.
+    archive_from_volumes "uploads" "/app/data/uploads" "$candidate_uploads" \
       && file_backup_uploads="$candidate_uploads"
-    archive_from_running "documents" "/app/public/documents" "$candidate_documents" \
+    archive_from_volumes "documents" "/app/data/documents" "$candidate_documents" \
       && file_backup_documents="$candidate_documents"
     ;;
 
   archive_volumes)
     echo "    Reading files from the volumes directly."
-    archive_from_volumes "uploads" "/app/public/uploads" "$candidate_uploads" \
+    archive_from_volumes "uploads" "/app/data/uploads" "$candidate_uploads" \
       && file_backup_uploads="$candidate_uploads"
-    archive_from_volumes "documents" "/app/public/documents" "$candidate_documents" \
+    archive_from_volumes "documents" "/app/data/documents" "$candidate_documents" \
       && file_backup_documents="$candidate_documents"
     ;;
 
@@ -585,11 +618,10 @@ trap - EXIT INT TERM
 # Absent snapshots are recorded as "-" only for helper compatibility. deploy.sh never writes
 # a partial rollback point: existing deployments require database + uploads + documents together.
 existing_deployment=0
-if [ -f "$LAST_DEPLOYED_SHA_FILE" ] || [ "$database_exists" -eq 1 ] || [ "$web_state" != "absent" ] || [ "$manifest_nonempty" -eq 1 ]; then
-  existing_deployment=1
-fi
+[ "$deployment_state" = "existing" ] && existing_deployment=1
 
 if [ "$existing_deployment" -eq 1 ]; then
+  require_runtime_asset_evidence
   if [ -z "$db_backup_recorded" ] || [ -z "$file_backup_uploads" ] || [ -z "$file_backup_documents" ]; then
     echo "ERROR: existing deployment requires a complete rollback snapshot."
     echo "       db='${db_backup_recorded:--}' uploads='${file_backup_uploads:--}' documents='${file_backup_documents:--}'"
@@ -785,6 +817,26 @@ check_endpoint "/api/health?check=db" "/api/health (with DB check)" "2xx"
 # /api/health?check=storage — builds the configured storage adapter, so an invalid
 # STORAGE_PROVIDER fails here instead of on the first customer upload.
 check_endpoint "/api/health?check=storage" "/api/health (with storage check)" "2xx"
+if [ "$existing_deployment" -eq 1 ]; then
+  check_endpoint "$KNOWN_UPLOAD_URL" "known upload" "2xx"
+  check_endpoint "$KNOWN_DOCUMENT_URL" "known document" "2xx"
+else
+  first_deploy_probe() {
+    local file_path="$1" url="$2" label="$3"
+    if ! docker compose exec -T "$WEB_SERVICE" sh -lc 'mkdir -p "$(dirname "$1")" && printf probe > "$1"' sh "$file_path"; then
+      echo "    ✗ could not create first-deploy $label probe."
+      verification_ok=0
+      return
+    fi
+    check_endpoint "$url" "first-deploy $label probe" "2xx"
+    if ! docker compose exec -T "$WEB_SERVICE" rm -f "$file_path"; then
+      echo "    ✗ could not remove first-deploy $label probe."
+      verification_ok=0
+    fi
+  }
+  first_deploy_probe "/app/data/uploads/deploy-health-${$}.webp" "/uploads/deploy-health-${$}.webp" "upload"
+  first_deploy_probe "/app/data/documents/manual/deploy-health-${$}.pdf" "/documents/manual/deploy-health-${$}.pdf" "document"
+fi
 
 # /login — public page, should render without errors
 check_endpoint "/login" "/login (public storefront)" "2xx"

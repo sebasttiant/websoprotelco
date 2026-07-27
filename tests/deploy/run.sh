@@ -56,6 +56,27 @@ else
 fi
 
 echo
+echo "== evidence grammar mirrors runtime routes =="
+MAINTENANCE_WINDOW_CONFIRMED=true KNOWN_UPLOAD_URL= KNOWN_DOCUMENT_URL=
+if require_runtime_asset_evidence optional; then ok "allows missing evidence only for a first deployment"; else bad "rejected first-deploy evidence contract"; fi
+MAINTENANCE_WINDOW_CONFIRMED=true KNOWN_UPLOAD_URL=/uploads/image.svg KNOWN_DOCUMENT_URL=/documents/manual/guide.pdf
+if require_runtime_asset_evidence 2>/dev/null; then bad "rejects unsupported upload extension"; else ok "rejects unsupported upload extension"; fi
+KNOWN_UPLOAD_URL="/uploads/$(printf 'a%.0s' {1..197}).webp"
+if require_runtime_asset_evidence 2>/dev/null; then bad "rejects upload segment over 200 characters"; else ok "rejects upload segment over 200 characters"; fi
+KNOWN_UPLOAD_URL=/uploads/banners/image.webp KNOWN_DOCUMENT_URL=/documents/manual/guide.pdf
+if require_runtime_asset_evidence 2>/dev/null; then ok "accepts exact runtime upload and document grammar"; else bad "rejected exact runtime grammar"; fi
+KNOWN_UPLOAD_URL=image.webp KNOWN_DOCUMENT_URL=manual/guide.pdf
+if require_runtime_asset_evidence 2>/dev/null; then bad "accepts prefixless evidence URLs"; else ok "rejects prefixless evidence URLs before mutation"; fi
+KNOWN_UPLOAD_URL=/uploads/image.webp KNOWN_DOCUMENT_URL=/documentsmanual/guide.pdf
+if require_runtime_asset_evidence 2>/dev/null; then bad "accepts a document URL without its exact prefix"; else ok "requires the exact /documents/ prefix"; fi
+
+echo
+echo "== first deploy state is captured before PostgreSQL initialization =="
+is "truly fresh compose state remains first deploy" "$(deployment_state 0 absent 0)" "first"
+is "existing web requires known-asset evidence" "$(deployment_state 0 running 0)" "existing"
+is "prior deploy marker requires known-asset evidence" "$(deployment_state 1 absent 0)" "existing"
+
+echo
 echo "== legacy writable-layer documents fail closed before rebuild =="
 new_case fail_closed
 is "running legacy container can be inspected first" "$(file_backup_plan running 1 1)" "archive_running"

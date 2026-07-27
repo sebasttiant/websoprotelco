@@ -83,6 +83,8 @@ async function createConfiguredStorageAdapter(): Promise<ConfiguredStorageAdapte
 export async function checkStorageConfiguration(): Promise<{ ok: true; provider: StorageProvider } | { ok: false; error: string }> {
   try {
     await createConfiguredStorageAdapter();
+    const { checkRuntimeAssetRoots } = await import("./runtime-assets");
+    await checkRuntimeAssetRoots();
 
     return { ok: true, provider: readStorageProvider() };
   } catch (error) {

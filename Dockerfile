@@ -90,8 +90,8 @@ RUN set -eu; \
 # empty volume; if the path does not exist in the image, Docker creates the mountpoint owned
 # by root instead and the app (uid 1001) cannot write to it. documents/ is not in the repo,
 # so without this line adding documents-data to compose.yaml would silently break uploads.
-RUN mkdir -p /app/public/uploads /app/public/documents \
-  && chown nextjs:nodejs /app/public/uploads /app/public/documents
+RUN mkdir -p /app/data/uploads /app/data/documents \
+  && chown nextjs:nodejs /app/data/uploads /app/data/documents
 
 USER nextjs
 EXPOSE 8686

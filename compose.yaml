@@ -107,8 +107,8 @@ services:
     # destroys it. deploy.sh now aborts if legacy documents still live only in that layer;
     # perform the one-time move with docs/operations/legacy-documents-migration.md first.
     volumes:
-      - uploads-data:/app/public/uploads
-      - documents-data:/app/public/documents
+      - uploads-data:/app/data/uploads
+      - documents-data:/app/data/documents
 
 volumes:
   postgres-data:

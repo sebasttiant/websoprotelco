@@ -4,6 +4,10 @@ node_modules/
 # Build outputs
 .next/
 out/
+# Disposable Next project root used by `pnpm typecheck` to keep `next typegen` from writing
+# generated files (notably `next-env.d.ts`) into the repository root. Normally removed by the
+# script itself; stays ignored so an interrupted run cannot dirty the tree.
+.next-typecheck/
 dist/
 build/
 coverage/
@@ -15,6 +19,7 @@ test-results/
 .env
 .env.*
 !.env.example
+!.env.staging.example
 
 # Logs
 *.log
@@ -45,3 +50,6 @@ public/uploads/*
 # These MUST stay ignored: rollback.sh refuses to run on a dirty tree, so an
 # untracked backup directory would permanently block rollback.
 backups/
+
+# Shared deploy/rollback flock file. It must not make the scripts reject their own lock.
+.deploy.lock

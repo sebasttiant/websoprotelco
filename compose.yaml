@@ -50,9 +50,8 @@ services:
   #   docker compose run --rm seed                       -> the DEV accounts (default CMD)
   #   docker compose run --rm seed pnpm db:create-admin  -> a real admin from ADMIN_* in .env
   #
-  # db/seeds/001-users.ts carries committed credentials, and this repository is public. It
-  # refuses to run when NODE_ENV=production, so NODE_ENV is passed through here rather than
-  # left unset: setting NODE_ENV=production in a server's .env makes that guard actually fire.
+  # db/seeds/001-users.ts requires operator-supplied credentials and refuses staging/production.
+  # NODE_ENV is passed through rather than left unset so the guard always sees the target mode.
   # deploy.sh never invokes the seed — it creates the admin from ADMIN_EMAIL/ADMIN_PASSWORD,
   # which live only in the server's .env and are never committed.
   #
@@ -70,6 +69,11 @@ services:
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ALLOW_LOCAL_SEED_USERS: ${ALLOW_LOCAL_SEED_USERS:-}
+      LOCAL_SEED_ADMIN_EMAIL: ${LOCAL_SEED_ADMIN_EMAIL:-}
+      LOCAL_SEED_ADMIN_PASSWORD: ${LOCAL_SEED_ADMIN_PASSWORD:-}
+      LOCAL_SEED_STAFF_EMAIL: ${LOCAL_SEED_STAFF_EMAIL:-}
+      LOCAL_SEED_STAFF_PASSWORD: ${LOCAL_SEED_STAFF_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy
@@ -90,12 +94,12 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-local_dev_user}:${POSTGRES_PASSWORD:-local_dev_password_change_me}@db:5432/${POSTGRES_DB:-websoprotelco}
       DATABASE_SSL: ${DATABASE_SSL:-disable}
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
-      # Empty by default (cookie stays Secure). Set SESSION_COOKIE_SECURE=false in .env only to
-      # log in over plain HTTP (no TLS yet); put it back once Cloudflare/HTTPS is in front.
+      # Empty by default so the application keeps its Secure-cookie production default.
+      # Production deploy.sh validates the fully resolved value and rejects false.
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
-    # 127.0.0.1 by default: a VPS must opt in with WEB_HOST=0.0.0.0, as .env.example spells out.
-    ports:
-      - "${WEB_HOST:-127.0.0.1}:${WEB_PORT:-8686}:8686"
+      RELEASE_SHA: ${RELEASE_SHA:-unknown}
+    expose:
+      - "8686"
     # Deliberately not dependent on `seed`: the site works without the default accounts.
     depends_on:
       db:
@@ -110,7 +114,81 @@ services:
       - uploads-data:/app/data/uploads
       - documents-data:/app/data/documents
 
+  # This is the completed-response boundary. TLS remains owned by the existing external proxy;
+  # it proxies to this loopback-only HTTP listener, which assigns the audit request ID.
+  proxy:
+    image: nginx:1.28.2-alpine@sha256:5b4900b042ccfa8b0a73df622c3a60f2322faeb2be800cbee5aa7b44d241649e
+    restart: unless-stopped
+    environment:
+      RELEASE_SHA: ${RELEASE_SHA:-unknown}
+      OBSERVABILITY_ENVIRONMENT: ${OBSERVABILITY_ENVIRONMENT:-development}
+      UPSTREAM_HOST: web
+      UPSTREAM_PORT: 8686
+      NGINX_ENVSUBST_FILTER: RELEASE_SHA|OBSERVABILITY_ENVIRONMENT|UPSTREAM_HOST|UPSTREAM_PORT
+    ports:
+      - "${WEB_HOST:-127.0.0.1}:${WEB_PORT:-8686}:8080"
+    volumes:
+      - ./observability/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - proxy-logs:/var/log/nginx
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/proxy-health >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # The evaluator is intentionally a single Compose replica. It reads the proxy's durable log
+  # volume and never claims in-process or cross-replica aggregation. An external collector owns
+  # cross-host retention/aggregation; failed webhook delivery is durably recorded then retried by
+  # restart, never silently discarded.
+  observability-alerts:
+    build:
+      context: .
+      target: observability
+    restart: unless-stopped
+    environment:
+      OBSERVABILITY_LOG_FILE: /var/log/nginx/access.json
+      OBSERVABILITY_ALERT_FAILURE_FILE: /var/lib/observability/alert-delivery-failed.ndjson
+      OBSERVABILITY_CURSOR_FILE: /var/lib/observability/cursor.json
+      OBSERVABILITY_ALERT_WEBHOOK_URL: ${OBSERVABILITY_ALERT_WEBHOOK_URL:-}
+      OBSERVABILITY_LATENCY_SECONDS: ${OBSERVABILITY_LATENCY_SECONDS:-1}
+      OBSERVABILITY_LATENCY_MINIMUM_SAMPLES: ${OBSERVABILITY_LATENCY_MINIMUM_SAMPLES:-10}
+      OBSERVABILITY_READINESS_FAILURES: ${OBSERVABILITY_READINESS_FAILURES:-3}
+      OBSERVABILITY_ALERT_TIMEOUT_MS: ${OBSERVABILITY_ALERT_TIMEOUT_MS:-10000}
+      OBSERVABILITY_ALERT_FAILURE_MAX_BYTES: ${OBSERVABILITY_ALERT_FAILURE_MAX_BYTES:-1048576}
+      OBSERVABILITY_WINDOW_SECONDS: ${OBSERVABILITY_WINDOW_SECONDS:-300}
+      OBSERVABILITY_MAX_WINDOW_BYTES: ${OBSERVABILITY_MAX_WINDOW_BYTES:-1048576}
+      OBSERVABILITY_MAX_WINDOW_EVENTS: ${OBSERVABILITY_MAX_WINDOW_EVENTS:-1000}
+      OBSERVABILITY_CADENCE_SECONDS: ${OBSERVABILITY_CADENCE_SECONDS:-60}
+    command: ["sh", "-c", "while true; do node /app/observability-evaluate.mjs || exit $?; sleep \"$${OBSERVABILITY_CADENCE_SECONDS}\"; done"]
+    volumes:
+      - proxy-logs:/var/log/nginx:ro
+      - observability-state:/var/lib/observability
+    depends_on:
+      proxy:
+        condition: service_healthy
+
+  access-log-retention:
+    image: nginx:1.28.2-alpine@sha256:5b4900b042ccfa8b0a73df622c3a60f2322faeb2be800cbee5aa7b44d241649e
+    restart: unless-stopped
+    pid: service:proxy
+    environment:
+      OBSERVABILITY_LOG_FILE: /var/log/nginx/access.json
+      OBSERVABILITY_ACCESS_LOG_MAX_BYTES: ${OBSERVABILITY_ACCESS_LOG_MAX_BYTES:-10485760}
+      OBSERVABILITY_ACCESS_LOG_ROTATE_SECONDS: ${OBSERVABILITY_ACCESS_LOG_ROTATE_SECONDS:-60}
+    command: ["/bin/sh", "/usr/local/bin/access-log-retention.sh"]
+    volumes:
+      - proxy-logs:/var/log/nginx
+      - ./observability/access-log-retention.sh:/usr/local/bin/access-log-retention.sh:ro
+    depends_on:
+      proxy:
+        condition: service_healthy
+
 volumes:
   postgres-data:
   uploads-data:
   documents-data:
+  proxy-logs:
+  observability-state:

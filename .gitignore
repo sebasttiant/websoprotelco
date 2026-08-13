@@ -3,6 +3,10 @@ node_modules/
 
 # Build outputs
 .next/
+# Disposable project root built by scripts/typecheck.mjs so `next typegen` never
+# writes into the repository root. It is removed at the end of every run; ignoring
+# it keeps a crashed run from leaving the tree dirty.
+.next-typecheck/
 out/
 dist/
 build/

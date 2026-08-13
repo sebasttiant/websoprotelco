@@ -1,5 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+import { ADMIN_DESKTOP_MEDIA_QUERY } from "@/components/admin/breakpoints";
 
 const { mockUsePathname } = vi.hoisted(() => ({
   mockUsePathname: vi.fn(),
@@ -17,8 +20,53 @@ function renderSidebar(pathname: string, role: "admin" | "staff" = "admin") {
   return screen.getByRole("navigation", { name: /secciones/i });
 }
 
+interface MatchMediaController {
+  enterDesktop: () => void;
+  listenerCount: () => number;
+}
+
+// jsdom ships no matchMedia at all, and the drawer both reads `.matches` and subscribes to
+// changes. A hand-rolled double is what lets a test cross the breakpoint deliberately, and
+// exposing the listener count is what proves the subscription is released rather than leaked.
+function mockMatchMedia(): MatchMediaController {
+  let matches = false;
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  const mediaQuery = {
+    get matches() {
+      return matches;
+    },
+    media: ADMIN_DESKTOP_MEDIA_QUERY,
+    // Only the modern MQL listener API is modelled — the legacy addListener/removeListener pair
+    // is deliberately absent so a regression onto it fails loudly instead of silently passing.
+    addEventListener: (_type: string, listener: EventListenerOrEventListenerObject | null) => {
+      if (typeof listener === "function") listeners.add(listener as unknown as (event: MediaQueryListEvent) => void);
+    },
+    removeEventListener: (_type: string, listener: EventListenerOrEventListenerObject | null) => {
+      if (typeof listener === "function") listeners.delete(listener as unknown as (event: MediaQueryListEvent) => void);
+    },
+  } as unknown as MediaQueryList;
+
+  vi.stubGlobal("matchMedia", vi.fn().mockImplementation(() => mediaQuery));
+
+  return {
+    enterDesktop: () => {
+      matches = true;
+      for (const listener of listeners) listener({ matches, media: ADMIN_DESKTOP_MEDIA_QUERY } as MediaQueryListEvent);
+    },
+    listenerCount: () => listeners.size,
+  };
+}
+
+let mediaQuery: MatchMediaController;
+
+beforeEach(() => {
+  mediaQuery = mockMatchMedia();
+});
+
 afterEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
+  document.body.style.overflow = "";
 });
 
 describe("AdminSidebar", () => {
@@ -201,5 +249,163 @@ describe("AdminSidebar group structure", () => {
 
     expect(within(nav).queryByRole("region", { name: "Administración" })).not.toBeInTheDocument();
     expect(within(nav).getByRole("region", { name: "Principal" })).toBeInTheDocument();
+  });
+});
+
+// Below `md` the desktop navigation is hidden outright, so the drawer is the only way to reach the
+// sections. These cover the modal behaviour the component implements by hand — none of it comes
+// free from `role="dialog"`.
+describe("AdminSidebar mobile navigation", () => {
+  test("opens an accessible drawer with the permitted active section", async () => {
+    renderSidebar("/admin/inventory/movements", "staff");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+
+    const drawer = screen.getByRole("dialog", { name: "Menú de administración" });
+    expect(drawer).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cerrar menú" })).toHaveFocus();
+    expect(within(drawer).getByRole("link", { name: "Historial de movimientos" })).toHaveAttribute("aria-current", "page");
+    expect(within(drawer).queryByRole("link", { name: "Usuarios" })).not.toBeInTheDocument();
+  });
+
+  test("closes on Escape and returns focus to the menu trigger", async () => {
+    renderSidebar("/admin");
+    const user = userEvent.setup();
+    const trigger = screen.getByRole("button", { name: "Abrir menú" });
+
+    await user.click(trigger);
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog", { name: "Menú de administración" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  test("closes when its close button is activated", async () => {
+    renderSidebar("/admin");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar menú" }));
+
+    expect(screen.queryByRole("dialog", { name: "Menú de administración" })).not.toBeInTheDocument();
+  });
+
+  test("keeps keyboard focus inside the open drawer", async () => {
+    renderSidebar("/admin");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+
+    const drawer = screen.getByRole("dialog", { name: "Menú de administración" });
+    expect(within(drawer).getByRole("link", { name: "Configuración" })).toHaveFocus();
+  });
+
+  test("wraps forward Tab from the final control to the close button", async () => {
+    renderSidebar("/admin");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+    const drawer = screen.getByRole("dialog", { name: "Menú de administración" });
+    within(drawer).getByRole("link", { name: "Configuración" }).focus();
+    await user.tab();
+
+    expect(screen.getByRole("button", { name: "Cerrar menú" })).toHaveFocus();
+  });
+
+  test("closes when the backdrop is activated", async () => {
+    renderSidebar("/admin");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+    await user.click(screen.getByRole("button", { name: "Cerrar menú al hacer clic fuera" }));
+
+    expect(screen.queryByRole("dialog", { name: "Menú de administración" })).not.toBeInTheDocument();
+  });
+
+  // Crossing into the desktop layout hides the trigger, so an open drawer would otherwise be
+  // orphaned: still painted, still holding the body unscrollable, with nothing left to dismiss it.
+  test("cleans up the open drawer when the viewport reaches desktop", async () => {
+    renderSidebar("/admin");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+    expect(document.body.style.overflow).toBe("hidden");
+    act(() => {
+      mediaQuery.enterDesktop();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Menú de administración" })).not.toBeInTheDocument();
+      expect(document.body.style.overflow).toBe("");
+    });
+  });
+
+  // The double answers any query identically, so without this the component could subscribe to a
+  // query false on every real device and the rest of this file would still pass. Asserted as a
+  // LITERAL: comparing against the imported constant only proves the module agrees with itself,
+  // since changing the constant moves both sides. 768px is Tailwind's `md:`, and `md:` is what
+  // hides the trigger — break the pairing and an open drawer survives into the desktop layout
+  // with nothing left to close it. jsdom cannot see the CSS half, so this is the only pin.
+  test("subscribes to the breakpoint the md: visibility classes are keyed to", async () => {
+    renderSidebar("/admin");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+
+    expect(vi.mocked(window.matchMedia)).toHaveBeenCalledWith("(min-width: 768px)");
+    expect(ADMIN_DESKTOP_MEDIA_QUERY).toBe("(min-width: 768px)");
+  });
+
+  // Guarding only the first and last controls is not a trap: clicking a non-focusable part of the
+  // drawer parks focus on <body>, and Tab from there escapes to the page behind the scrim.
+  test("pulls focus back in when Tab is pressed from outside the drawer", async () => {
+    renderSidebar("/admin");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+    const drawer = screen.getByRole("dialog", { name: "Menú de administración" });
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.body).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Cerrar menú" })).toHaveFocus();
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(within(drawer).getByRole("link", { name: "Configuración" })).toHaveFocus();
+  });
+
+  // Unmounting with the drawer open is the route-change case. The body must be handed back the
+  // value it had, not "", and the global keydown listener must stop answering.
+  test("restores body scrolling and deactivates global listeners on unmount", async () => {
+    mockUsePathname.mockReturnValue("/admin");
+    document.body.style.overflow = "clip";
+    const { unmount } = render(<AdminSidebar role="admin" />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+    expect(document.body.style.overflow).toBe("hidden");
+    expect(mediaQuery.listenerCount()).toBe(1);
+    unmount();
+
+    const escape = new KeyboardEvent("keydown", { key: "Escape", cancelable: true });
+    window.dispatchEvent(escape);
+
+    expect(document.body.style.overflow).toBe("clip");
+    expect(escape.defaultPrevented).toBe(false);
+    expect(mediaQuery.listenerCount()).toBe(0);
+  });
+
+  test("closes before following an admin navigation link", async () => {
+    renderSidebar("/admin");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Abrir menú" }));
+    const drawer = screen.getByRole("dialog", { name: "Menú de administración" });
+    await user.click(within(drawer).getByRole("link", { name: "Productos" }));
+
+    expect(screen.queryByRole("dialog", { name: "Menú de administración" })).not.toBeInTheDocument();
   });
 });

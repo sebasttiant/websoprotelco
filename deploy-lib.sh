@@ -117,6 +117,46 @@ manifest_referenced_files() {
 }
 
 # ---------------------------------------------------------------------------
+# Durability and input primitives
+# ---------------------------------------------------------------------------
+# Two building blocks the provenance and recovery state built on top of this will depend on: a
+# write that cannot be observed half-finished, and a gate every revision must pass before it is
+# allowed near a destructive command. Both are self-contained and are contracted directly by
+# tests/deploy/revision-validation.sh.
+
+# rename(2) within one directory is atomic, so a reader either sees the whole old content or the
+# whole new content. A bare `printf > file` truncates first: a crash in that window leaves an
+# empty provenance file, which the caller would read as "no previous deploy".
+atomic_write_file() {
+  local target="$1" content="$2" tmp
+  tmp="$(mktemp "${target}.tmp.XXXXXX")" || return 1
+  printf '%s\n' "$content" > "$tmp" || { rm -f "$tmp"; return 1; }
+  mv -f "$tmp" "$target"
+}
+
+# Revisions reach `git reset --hard`, recovery points, and persisted recovery commands. They come
+# from files under backups/ — a directory that survives incidents, is writable by whatever went
+# wrong, and is never itself part of the verified working tree. So a revision is a hostile input
+# until proven otherwise, and nothing may interpolate one that has not been through here.
+#
+# Rejected: empty, whitespace, anything that would be parsed as an option, any shell
+# metacharacter, and syntactically plausible object ids this repository does not contain.
+# Prints the resolved commit id on success.
+validate_git_revision() {
+  local revision="${1-}" resolved
+  case "$revision" in
+    '' | -*) return 1 ;;
+    # Whitespace, ';', '$', backticks, quotes and newlines all fall out of this class.
+    *[!0-9A-Za-z/._-]*) return 1 ;;
+  esac
+  # `--end-of-options` stops git from reinterpreting the value even if the class above is ever
+  # loosened; `^{commit}` refuses a tag or tree that merely resolves.
+  resolved="$(git rev-parse --verify --quiet --end-of-options "${revision}^{commit}" 2>/dev/null)" || return 1
+  [ -n "$resolved" ] || return 1
+  printf '%s\n' "$resolved"
+}
+
+# ---------------------------------------------------------------------------
 # Retention
 # ---------------------------------------------------------------------------
 

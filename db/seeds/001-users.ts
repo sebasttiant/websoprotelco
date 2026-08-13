@@ -3,19 +3,7 @@
 // tsconfig.json.
 import { hashPassword } from "../../src/server/auth/password";
 import { closePool, query } from "../../src/server/db/pool";
-
-interface SeedUser {
-  email: string;
-  password: string;
-  role: "admin" | "staff";
-}
-
-// Development credentials. They are committed on purpose so the team shares one login, which
-// is also why this script refuses to touch a production database below.
-const SEED_USERS: readonly SeedUser[] = [
-  { email: "admin@ilasesorias.com", password: "Infoseg.002026", role: "admin" },
-  { email: "staff@ilasesorias.com", password: "Infoseg.002026", role: "staff" },
-];
+import { getSeedUsers, type SeedUser } from "./seed-policy";
 
 interface InsertedUserRow {
   email: string;
@@ -42,15 +30,12 @@ async function seedUser(user: SeedUser): Promise<"created" | "skipped"> {
 }
 
 async function seedUsers(): Promise<void> {
-  // A committed password must never reach a real database. Seeding is a development affordance.
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Refusing to seed users: this script ships committed credentials and must not run in production.");
-  }
+  const seedUsers = getSeedUsers();
 
   let failed = false;
 
   try {
-    for (const user of SEED_USERS) {
+    for (const user of seedUsers) {
       try {
         const outcome = await seedUser(user);
 

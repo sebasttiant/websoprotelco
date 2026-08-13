@@ -50,9 +50,10 @@ services:
   #   docker compose run --rm seed                       -> the DEV accounts (default CMD)
   #   docker compose run --rm seed pnpm db:create-admin  -> a real admin from ADMIN_* in .env
   #
-  # db/seeds/001-users.ts carries committed credentials, and this repository is public. It
-  # refuses to run when NODE_ENV=production, so NODE_ENV is passed through here rather than
-  # left unset: setting NODE_ENV=production in a server's .env makes that guard actually fire.
+  # db/seeds/001-users.ts no longer carries committed credentials: every account comes from
+  # operator-supplied LOCAL_SEED_* values, which are passed through below and have no defaults.
+  # The seed runs only under NODE_ENV=development or NODE_ENV=test, and under development it
+  # also requires ALLOW_LOCAL_SEED_USERS=true, so an unset opt-in fails closed.
   # deploy.sh never invokes the seed — it creates the admin from ADMIN_EMAIL/ADMIN_PASSWORD,
   # which live only in the server's .env and are never committed.
   #
@@ -70,6 +71,12 @@ services:
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # No defaults on purpose: the seed policy fails closed when any of these is missing.
+      ALLOW_LOCAL_SEED_USERS: ${ALLOW_LOCAL_SEED_USERS:-}
+      LOCAL_SEED_ADMIN_EMAIL: ${LOCAL_SEED_ADMIN_EMAIL:-}
+      LOCAL_SEED_ADMIN_PASSWORD: ${LOCAL_SEED_ADMIN_PASSWORD:-}
+      LOCAL_SEED_STAFF_EMAIL: ${LOCAL_SEED_STAFF_EMAIL:-}
+      LOCAL_SEED_STAFF_PASSWORD: ${LOCAL_SEED_STAFF_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy

@@ -21,8 +21,10 @@ FROM builder AS migrator
 USER node
 CMD ["pnpm", "db:migrate"]
 
-# Seed creates the default admin and staff accounts. It refuses to run when
-# NODE_ENV=production, so the deploy script must not set that variable on this target.
+# Seed creates the local admin and staff accounts from operator-supplied credentials. It runs
+# only under NODE_ENV=development or NODE_ENV=test, and under development it additionally
+# requires ALLOW_LOCAL_SEED_USERS=true, so an unset NODE_ENV is now refused rather than allowed.
+# All LOCAL_SEED_* values must be provided; nothing is defaulted. See db/seeds/seed-policy.ts.
 FROM builder AS seed
 USER node
 CMD ["pnpm", "seed:users"]

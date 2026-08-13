@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# `pnpm typecheck` must be a pure read of the working tree.
+#
+# Next generates files into whatever directory it treats as a project root. It rewrites
+# `next-env.d.ts` with the active `distDir` baked into the import path, and it re-adds `.next/**`
+# entries to `tsconfig.json` when they are missing. Both files are tracked, so running Next in the
+# repository root silently edits the repository — and the bytes it writes depend on whether a
+# build, a dev server, or a typecheck ran last, which makes the working tree flap forever.
+#
+# The dev server's generated output is also untrusted input: it is transient and can be observed
+# half-written while `next dev` is running.
+#
+# This contract pins four properties in one pass:
+#   1. malformed stale dev output cannot change the result;
+#   2. Next's generated route types really are in the program;
+#   3. the route contract is enforced, not merely present;
+#   4. a genuine application type error still fails;
+# and then asserts that not one tracked byte moved. Cleanup restores only the fixtures this
+# script created, from bytes it saved itself — never with Git.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+WORK="$(mktemp -d)"
+SNAPSHOT="$WORK/snapshot"
+
+# Fixtures owned by this script. Nothing outside this list is ever created or removed.
+STALE_DIR="$ROOT/.next/dev/types"
+STALE="$STALE_DIR/validator.ts"
+FIXTURE_ID="typecheck-contract-${$}-${RANDOM}"
+ROUTE_PROBE="$ROOT/src/${FIXTURE_ID}-route.ts"
+ERROR_FILE="$ROOT/src/${FIXTURE_ID}-error.ts"
+CREATED_ROUTE_PROBE=0
+CREATED_ERROR_FILE=0
+
+# Directories this script had to create, outermost first. Cleanup removes only these.
+CREATED_DIRS=()
+
+tracked_files() {
+  git -C "$ROOT" ls-files
+}
+
+# Repo-relative path plus content hash, so a failure report names the file rather than a
+# machine-specific absolute path.
+tracked_hashes() {
+  local file
+  while IFS= read -r file; do
+    if [ -f "$ROOT/$file" ]; then
+      printf '%s  %s\n' "$(sha256sum < "$ROOT/$file" | cut -d' ' -f1)" "$file"
+    else
+      printf '%-64s  %s\n' "ABSENT" "$file"
+    fi
+  done < <(tracked_files)
+}
+
+# A byte-for-byte copy of every tracked file, so a violation can be reported as a real diff
+# instead of only a pair of hashes. Read-only reference: nothing is ever restored from it.
+snapshot_tracked() {
+  mkdir -p "$SNAPSHOT"
+  git -C "$ROOT" ls-files -z | (cd "$ROOT" && xargs -0 cp --parents -t "$SNAPSHOT")
+}
+
+record_created_dirs() {
+  local dir="$STALE_DIR"
+  while [ ! -d "$dir" ] && [ "$dir" != "$ROOT" ] && [ "$dir" != "/" ]; do
+    CREATED_DIRS=("$dir" "${CREATED_DIRS[@]+"${CREATED_DIRS[@]}"}")
+    dir="$(dirname "$dir")"
+  done
+}
+
+# Puts back exactly what was there before, using bytes saved by this script. A `next dev` server
+# may legitimately own $STALE, so it is restored rather than deleted when it already existed.
+restore_fixtures() {
+  [ "$CREATED_ROUTE_PROBE" -eq 1 ] && rm -f "$ROUTE_PROBE"
+  [ "$CREATED_ERROR_FILE" -eq 1 ] && rm -f "$ERROR_FILE"
+
+  if [ -f "$WORK/stale.orig" ]; then
+    cp -p "$WORK/stale.orig" "$STALE"
+  else
+    rm -f "$STALE"
+  fi
+
+  local index
+  for (( index=${#CREATED_DIRS[@]}-1; index>=0; index-- )); do
+    rmdir "${CREATED_DIRS[index]}" 2>/dev/null || true
+  done
+}
+
+# Never overwrite or delete a developer's source file. The names are run-unique, but noclobber
+# makes a collision fail safe rather than turning this test into a destructive cleanup script.
+create_source_fixture() {
+  local target="$1" content="$2"
+  if ! (set -C; : > "$target") 2>/dev/null; then
+    echo "FAIL: refusing to overwrite pre-existing test fixture path: $target" >&2
+    exit 1
+  fi
+  printf '%s' "$content" > "$target"
+}
+
+report_mutations() {
+  echo "FAIL: typecheck mutated tracked files" >&2
+  echo "--- mutated tracked files ---" >&2
+  diff "$WORK/before" "$WORK/after" \
+    | awk '/^[<>]/ { sub(/^[<>][[:space:]]+[^[:space:]]+[[:space:]]+/, ""); print }' \
+    | sort -u > "$WORK/mutated"
+
+  local file
+  while IFS= read -r file; do
+    echo "  $file" >&2
+  done < "$WORK/mutated"
+
+  echo "--- diffs (before -> after) ---" >&2
+  while IFS= read -r file; do
+    echo "### $file" >&2
+    diff -u "$SNAPSHOT/$file" "$ROOT/$file" >&2 || true
+  done < "$WORK/mutated"
+}
+
+verify_tracked_unchanged() {
+  tracked_hashes > "$WORK/after"
+  if cmp -s "$WORK/before" "$WORK/after"; then
+    return 0
+  fi
+  report_mutations
+  return 1
+}
+
+cleanup() {
+  local status=$?
+  trap - EXIT
+  restore_fixtures
+  verify_tracked_unchanged || status=1
+  rm -rf "$WORK"
+  exit "$status"
+}
+
+typecheck() {
+  (cd "$ROOT" && pnpm typecheck)
+}
+
+tracked_hashes > "$WORK/before"
+snapshot_tracked
+trap cleanup EXIT
+
+# 1. A concurrently running dev server writes transient, sometimes half-written bytes here.
+if [ -f "$STALE" ]; then
+  cp "$STALE" "$WORK/stale.orig"
+fi
+record_created_dirs
+mkdir -p "$STALE_DIR"
+printf 'this is malformed generated bytes\n' > "$STALE"
+
+if ! typecheck; then
+  echo "FAIL: malformed stale dev output broke an otherwise clean typecheck" >&2
+  exit 1
+fi
+
+# 2. Next's generated route types must reach the program. If they were dropped, `PageProps` would
+#    be an unresolved name and this known-good route would not compile.
+create_source_fixture "$ROUTE_PROBE" $'export type Probe = PageProps<"/admin">;\n'
+CREATED_ROUTE_PROBE=1
+if ! typecheck; then
+  echo "FAIL: generated route types are missing from the typecheck program" >&2
+  exit 1
+fi
+
+# 3. Present is not the same as enforced: an unknown route must be rejected.
+printf 'export type Probe = PageProps<"/typecheck-contract-not-a-route">;\n' > "$ROUTE_PROBE"
+if typecheck; then
+  echo "FAIL: an unknown route was accepted, so the route contract is not enforced" >&2
+  exit 1
+fi
+rm -f "$ROUTE_PROBE"
+CREATED_ROUTE_PROBE=0
+
+# 4. Isolation must not come at the cost of catching real errors.
+create_source_fixture "$ERROR_FILE" $'const value: string = 42;\nexport { value };\n'
+CREATED_ERROR_FILE=1
+if typecheck; then
+  echo "FAIL: real application type error was hidden" >&2
+  exit 1
+fi
+
+echo "ok — stale dev output is isolated, route types are enforced, and application errors still fail"

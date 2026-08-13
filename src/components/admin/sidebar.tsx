@@ -107,6 +107,73 @@ function activeHref(pathname: string, items: readonly NavItem[]): string | null 
     );
 }
 
+interface VisibleNavGroup {
+  title: string | null;
+  items: NavItem[];
+}
+
+interface AdminNavigationGroupsProps {
+  groups: readonly VisibleNavGroup[];
+  current: string | null;
+}
+
+/**
+ * Renders the permitted sections as a list of labelled groups.
+ *
+ * Each group is a `section` with an accessible name rather than a bare `div`, and its title is a
+ * heading rather than a styled paragraph, so assistive technology can enumerate and jump between
+ * the groups instead of meeting one flat run of links. The title stays visually hidden on narrow
+ * widths exactly as before — `aria-label` on the section is what carries the name when the
+ * heading is not painted.
+ */
+function AdminNavigationGroups({ groups, current }: AdminNavigationGroupsProps) {
+  return (
+    <nav
+      aria-label="Secciones de administración"
+      className="flex gap-4 overflow-x-auto border-b border-white/10 p-4 md:flex-1 md:flex-col md:gap-6 md:overflow-visible md:border-b-0"
+    >
+      {groups.map((group) => (
+        <section
+          key={group.title ?? "principal"}
+          aria-label={group.title ?? "Principal"}
+          className="flex gap-1 md:flex-col md:gap-1"
+        >
+          {group.title ? (
+            <h3 className="hidden px-4 pb-2 text-[0.65rem] font-black uppercase tracking-[0.15em] text-white/35 md:block">
+              {group.title}
+            </h3>
+          ) : null}
+          {group.items.map((item) => {
+            const active = current === item.href;
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`group inline-flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+                  active
+                    ? "bg-brand-blue text-white shadow-lg shadow-brand-blue/20"
+                    : "text-white/60 hover:bg-white/5 hover:text-brand-accent"
+                }`}
+              >
+                <Icon aria-hidden="true" className="h-[1.15rem] w-[1.15rem] shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                {/* Marks the current section on the wide layout, where the row has the space
+                    for it. Decorative: aria-current above is what announces the state. */}
+                {active ? (
+                  <ChevronRight aria-hidden="true" className="hidden h-4 w-4 shrink-0 md:block" />
+                ) : null}
+              </Link>
+            );
+          })}
+        </section>
+      ))}
+    </nav>
+  );
+}
+
 export function AdminSidebar({ role }: { role: Role }) {
   const pathname = usePathname();
 
@@ -123,45 +190,7 @@ export function AdminSidebar({ role }: { role: Role }) {
 
   return (
     <div className="flex flex-col md:min-h-0 md:flex-1">
-      <nav
-        aria-label="Secciones de administración"
-        className="flex gap-4 overflow-x-auto border-b border-white/10 p-4 md:flex-1 md:flex-col md:gap-6 md:overflow-visible md:border-b-0"
-      >
-        {visibleGroups.map((group) => (
-          <div key={group.title ?? "principal"} className="flex gap-1 md:flex-col md:gap-1">
-            {group.title ? (
-              <p className="hidden px-4 pb-2 text-[0.65rem] font-black uppercase tracking-[0.15em] text-white/35 md:block">
-                {group.title}
-              </p>
-            ) : null}
-            {group.items.map((item) => {
-              const active = current === item.href;
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`group inline-flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-                    active
-                      ? "bg-brand-blue text-white shadow-lg shadow-brand-blue/20"
-                      : "text-white/60 hover:bg-white/5 hover:text-brand-accent"
-                  }`}
-                >
-                  <Icon aria-hidden="true" className="h-[1.15rem] w-[1.15rem] shrink-0" />
-                  <span className="flex-1">{item.label}</span>
-                  {/* Marks the current section on the wide layout, where the row has the space
-                      for it. Decorative: aria-current above is what announces the state. */}
-                  {active ? (
-                    <ChevronRight aria-hidden="true" className="hidden h-4 w-4 shrink-0 md:block" />
-                  ) : null}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
+      <AdminNavigationGroups groups={visibleGroups} current={current} />
 
       <form action={signOut} className="hidden border-t border-white/10 p-4 md:block">
         <button

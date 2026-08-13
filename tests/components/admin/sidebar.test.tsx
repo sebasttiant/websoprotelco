@@ -163,3 +163,43 @@ describe("AdminSidebar for a staff user", () => {
     }
   });
 });
+
+// The groups used to be bare divs with a styled paragraph on top, so a screen reader met one flat
+// run of links with no way to tell where a group started or to skip past one. Naming each group as
+// a region and promoting its title to a heading is what makes the structure navigable.
+describe("AdminSidebar group structure", () => {
+  test("exposes each visible group as a region carrying its own name", () => {
+    const nav = renderSidebar("/admin");
+
+    expect(
+      within(nav)
+        .getAllByRole("region")
+        .map((region) => region.getAttribute("aria-label")),
+    ).toEqual(["Principal", "Inventario", "Diseño y sitio", "Administración"]);
+  });
+
+  test("promotes each group title to a heading instead of a styled paragraph", () => {
+    const nav = renderSidebar("/admin");
+
+    expect(
+      within(nav)
+        .getAllByRole("heading", { level: 3 })
+        .map((heading) => heading.textContent),
+    ).toEqual(["Principal", "Inventario", "Diseño y sitio", "Administración"]);
+  });
+
+  test("keeps every link inside the region named for its group", () => {
+    const nav = renderSidebar("/admin");
+    const inventory = within(nav).getByRole("region", { name: "Inventario" });
+
+    expect(within(inventory).getByRole("link", { name: "Gestión de stock" })).toBeInTheDocument();
+    expect(within(inventory).queryByRole("link", { name: "Panel de control" })).not.toBeInTheDocument();
+  });
+
+  test("drops the region together with the group staff cannot open", () => {
+    const nav = renderSidebar("/admin", "staff");
+
+    expect(within(nav).queryByRole("region", { name: "Administración" })).not.toBeInTheDocument();
+    expect(within(nav).getByRole("region", { name: "Principal" })).toBeInTheDocument();
+  });
+});

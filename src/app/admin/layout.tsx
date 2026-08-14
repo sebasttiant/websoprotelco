@@ -16,8 +16,13 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
   // pages, each of which declares the permission it needs.
   const user = await requireSession();
 
+  // The content column is `minmax(0,1fr)` rather than `1fr`. A track sized `1fr` still carries an
+  // implicit `min-width: auto`, so it refuses to shrink below the intrinsic width of its content:
+  // a wide admin table blows the track out and the whole page scrolls sideways, while the
+  // `overflow-x-auto` the table component already provides never gets the chance to engage.
+
   return (
-    <div className="min-h-screen bg-brand-ice md:grid md:grid-cols-[15rem_1fr]">
+    <div className="min-h-screen bg-brand-ice md:grid md:grid-cols-[15rem_minmax(0,1fr)]">
       {/* A flex column so the nav can take the leftover space and push sign-out to the bottom
           edge, as the mockups place it. */}
       <aside className="bg-brand-navy text-white md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto">
@@ -25,8 +30,8 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
           <Image
             src="/assets/img/sp-logo-white.png"
             alt="SOPROTELCO"
-            width={2924}
-            height={1878}
+            width={500}
+            height={302}
             className="h-9 w-auto"
           />
           <span className="text-xs font-black uppercase tracking-widest text-brand-accent">Panel</span>

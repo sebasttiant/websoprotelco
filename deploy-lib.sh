@@ -99,8 +99,10 @@ manifest_entry_columns() {
 }
 
 manifest_append() {
+  local revision
+  revision="$(validate_git_revision "$1")" || return 1
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "${2:--}" "${3:--}" "${4:--}" "${5:--}" \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$revision" "${2:--}" "${3:--}" "${4:--}" "${5:--}" \
     >> "$MANIFEST_FILE"
 }
 
@@ -154,6 +156,164 @@ validate_git_revision() {
   resolved="$(git rev-parse --verify --quiet --end-of-options "${revision}^{commit}" 2>/dev/null)" || return 1
   [ -n "$resolved" ] || return 1
   printf '%s\n' "$resolved"
+}
+
+# ---------------------------------------------------------------------------
+# Deployment provenance
+# ---------------------------------------------------------------------------
+# Three files, each with one job:
+#
+#   last-deployed-sha    CURRENT provenance — the revision believed to be running successfully.
+#                        deploy.sh reads it as the next rollback target; rollback.sh must move it
+#                        to the RESTORED revision or the next deploy binds fresh snapshots to the
+#                        incident SHA it just rolled away from.
+#   rollback-manifest    the rollback points still available. rollback.sh consumes `tail -n 1`.
+#   deployment-history   append-only, never rewritten. The incident revision stays visible here
+#                        after its manifest entry is consumed, so a post-mortem can still see it.
+#
+# Moving between those three is not a single write, so it goes through a write-ahead journal:
+# provenance_journal_begin records the INTENDED end state, provenance_journal_apply reaches it,
+# and only then is the journal removed. Every apply step is idempotent, so an interruption at any
+# point is repaired by replaying the same journal rather than by guessing what got through.
+
+provenance_journal_file()   { printf '%s/provenance.journal\n' "$BACKUP_DIR"; }
+rollback_intent_file()      { printf '%s/rollback-intent.journal\n' "$BACKUP_DIR"; }
+deploy_intent_file()        { printf '%s/deploy-intent.journal\n' "$BACKUP_DIR"; }
+deployment_history_file()   { printf '%s/deployment-history\n' "$BACKUP_DIR"; }
+last_deployed_sha_file()    { printf '%s/last-deployed-sha\n' "$BACKUP_DIR"; }
+
+record_last_deployed_sha() {
+  local revision
+  revision="$(validate_git_revision "$1")" || return 1
+  atomic_write_file "$(last_deployed_sha_file)" "$revision"
+}
+
+read_last_deployed_sha() {
+  local file revision
+  file="$(last_deployed_sha_file)"
+  [ -s "$file" ] || return 1
+  revision="$(tr -d '\r\n' < "$file")"
+  validate_git_revision "$revision"
+}
+
+# Append-only. Tab-separated: 1 timestamp  2 event  3 sha  4 previous sha  5 detail.
+history_append() {
+  local line
+  line="$(printf '%s\t%s\t%s\t%s\t%s' "$1" "$2" "$3" "${4:--}" "${5:--}")"
+  # Replaying a journal must not double-write the incident record.
+  if [ -f "$(deployment_history_file)" ] && grep -Fxq "$line" "$(deployment_history_file)"; then
+    return 0
+  fi
+  printf '%s\n' "$line" >> "$(deployment_history_file)"
+}
+
+# The consumed manifest entry is carried through the journal base64-encoded: it contains tabs of
+# its own, and the journal is itself tab-separated.
+provenance_encode() { printf '%s' "$1" | base64 | tr -d '\n'; }
+provenance_decode() { printf '%s' "$1" | base64 -d; }
+
+provenance_journal_pending() {
+  [ -s "$(provenance_journal_file)" ]
+}
+
+# A rollback intent is written by rollback.sh before its first destructive transition. Applying a
+# provenance journal is what proves the rollback reached a verified end state, so clearing the
+# intent belongs here. rollback.sh brings the writer and the readers that fail closed on it.
+rollback_intent_clear() { rm -f "$(rollback_intent_file)"; }
+
+# A deploy can apply migrations before it publishes a new successful SHA.  Keep the rollback
+# point it was born with until success: retrying by taking a new snapshot would bind old code to
+# already-migrated state.  Operators must roll back that original point or investigate first.
+deploy_intent_pending() { [ -s "$(deploy_intent_file)" ]; }
+deploy_intent_begin() {
+  atomic_write_file "$(deploy_intent_file)" "$(printf '%s\t%s\t%s' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$(provenance_encode "${2:-}")")"
+}
+deploy_intent_clear() { rm -f "$(deploy_intent_file)"; }
+deploy_intent_rollback_entry() {
+  local encoded
+  encoded="$(tail -n 1 "$(deploy_intent_file)" | cut -f3)"
+  [ -n "$encoded" ] && provenance_decode "$encoded"
+}
+
+# A deploy intent is only resolved by the rollback point it was created with.  In particular,
+# a later manifest entry, a first-deploy empty entry, or a recovery to the incident revision must
+# leave it active: clearing any of those would let a subsequent deploy snapshot migrated state as
+# though it belonged to the pre-migration revision.
+deploy_intent_matches_rollback() {
+  local expected_entry="$1" incident_sha="$2" target_sha actual_entry
+  deploy_intent_pending || return 1
+  target_sha="$(tail -n 1 "$(deploy_intent_file)" | cut -f2)"
+  actual_entry="$(deploy_intent_rollback_entry)"
+  [ "$target_sha" = "$incident_sha" ] && [ -n "$expected_entry" ] && [ "$actual_entry" = "$expected_entry" ]
+}
+
+# Archive the resolution before clearing the active intent. history_append is idempotent, so a
+# replay after an interruption cannot erase the incident or create a duplicate record.
+deploy_intent_resolve_if_exact_rollback() {
+  local expected_entry="$1" incident_sha="$2" restored_sha="$3" timestamp="$4"
+  deploy_intent_matches_rollback "$expected_entry" "$incident_sha" || return 0
+  history_append "$timestamp" deploy-intent-resolved "$restored_sha" "$incident_sha" "exact pre-migration rollback point restored" || return 1
+  deploy_intent_clear
+}
+
+# $1 restored sha  $2 incident sha  $3 the manifest entry being consumed (may be empty)
+provenance_journal_begin() {
+  local ts
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  atomic_write_file "$(provenance_journal_file)" \
+    "$(printf '%s\t%s\t%s\t%s' "$ts" "$1" "$2" "$(provenance_encode "${3:-}")")"
+}
+
+# Drops the last manifest line, but only while it is still the entry the journal claimed. On a
+# replay where the rotation already landed, the tail no longer matches and this is a no-op —
+# which is what keeps the whole apply repeatable.
+manifest_drop_last_entry_if() {
+  local expected="$1" tmp
+  [ -n "$expected" ] || return 0
+  [ -s "$MANIFEST_FILE" ] || return 0
+  [ "$(tail -n 1 "$MANIFEST_FILE")" = "$expected" ] || return 0
+
+  tmp="$(mktemp "${MANIFEST_FILE}.tmp.XXXXXX")" || return 1
+  # `head -n -1` on a single-line file correctly yields an empty manifest.
+  head -n -1 "$MANIFEST_FILE" > "$tmp" || { rm -f "$tmp"; return 1; }
+  mv -f "$tmp" "$MANIFEST_FILE"
+}
+
+# Reaches the state the journal describes, then clears it. Safe to call repeatedly and safe to
+# call when no journal exists.
+provenance_journal_apply() {
+  local journal entry ts restored incident consumed_b64 consumed
+  journal="$(provenance_journal_file)"
+  [ -s "$journal" ] || return 0
+
+  entry="$(tail -n 1 "$journal")"
+  ts="$(printf '%s' "$entry" | cut -f1)"
+  restored="$(printf '%s' "$entry" | cut -f2)"
+  incident="$(printf '%s' "$entry" | cut -f3)"
+  consumed_b64="$(printf '%s' "$entry" | cut -f4)"
+
+  if [ -z "$ts" ] || [ -z "$restored" ]; then
+    echo "ERROR: provenance journal is malformed and cannot be applied: $journal" >&2
+    return 1
+  fi
+  restored="$(validate_git_revision "$restored")" || { echo "ERROR: provenance journal restored revision cannot be verified." >&2; return 1; }
+  incident="$(validate_git_revision "$incident")" || { echo "ERROR: provenance journal incident revision cannot be verified." >&2; return 1; }
+
+  consumed=""
+  [ -n "$consumed_b64" ] && consumed="$(provenance_decode "$consumed_b64")"
+
+  # Order is deliberate. Publishing the restored SHA first means an interruption before the
+  # rotation leaves a manifest entry that would simply be consumed again — the same restore, no
+  # data bound to the wrong revision. Rotating first would leave the incident SHA published with
+  # no rollback point, which is the failure this whole unit exists to prevent.
+  record_last_deployed_sha "$restored" || return 1
+  history_append "$ts" rollback "$restored" "$incident" "rolled back to restored revision" || return 1
+  manifest_drop_last_entry_if "$consumed" || return 1
+  deploy_intent_resolve_if_exact_rollback "$consumed" "$incident" "$restored" "$ts" || return 1
+
+  rm -f "$journal"
+  rollback_intent_clear
 }
 
 # ---------------------------------------------------------------------------

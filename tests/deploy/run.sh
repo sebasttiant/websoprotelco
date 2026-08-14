@@ -40,6 +40,27 @@ mk_archive() { # path, n files
 # shellcheck source=../../deploy-lib.sh disable=SC1091
 . "$ROOT/deploy-lib.sh"
 
+# manifest_append now resolves every revision through validate_git_revision, so the manifest
+# cases below need real commits rather than placeholder strings. They come from a throwaway
+# repository rather than this checkout: CI clones at depth 1, so HEAD~1 does not exist there.
+# validate_git_revision resolves against the working directory, hence the cd.
+REVISION_REPO="$WORK/revisions"
+mkdir -p "$REVISION_REPO"
+git -C "$REVISION_REPO" init -q -b main
+git -C "$REVISION_REPO" config user.email revisions@example.test
+git -C "$REVISION_REPO" config user.name 'Manifest Revisions'
+mk_revision() {
+  printf '%s\n' "$1" > "$REVISION_REPO/r.txt"
+  git -C "$REVISION_REPO" add -A
+  git -C "$REVISION_REPO" commit -qm "$1"
+  git -C "$REVISION_REPO" rev-parse HEAD
+}
+SHA_1="$(mk_revision 'first release')"
+SHA_2="$(mk_revision 'second release')"
+SHA_X="$(mk_revision 'older rollback point')"
+SHA_Y="$(mk_revision 'newest rollback point')"
+cd "$REVISION_REPO"
+
 echo "== no automatic documents migration state remains =="
 new_case no_state
 mk_archive "$BACKUP_DIR/documents-20260101-000000.tar.gz" 5
@@ -138,12 +159,12 @@ fi
 echo
 echo "== manifest =="
 new_case manifest
-manifest_append "sha1" "$BACKUP_DIR/db.dump" "appdb" "$BACKUP_DIR/u.tar.gz" "$BACKUP_DIR/d.tar.gz"
+manifest_append "$SHA_1" "$BACKUP_DIR/db.dump" "appdb" "$BACKUP_DIR/u.tar.gz" "$BACKUP_DIR/d.tar.gz"
 entry="$(manifest_last_entry)"
 is "six columns"        "$(manifest_entry_columns "$entry")" "6"
-is "column 2 is the SHA" "$(manifest_entry_field "$entry" 2)" "sha1"
+is "column 2 is the SHA" "$(manifest_entry_field "$entry" 2)" "$SHA_1"
 is "column 6 is documents" "$(manifest_entry_field "$entry" 6)" "$BACKUP_DIR/d.tar.gz"
-manifest_append "sha2" "" "appdb" "" ""
+manifest_append "$SHA_2" "" "appdb" "" ""
 entry="$(manifest_last_entry)"
 is "absent snapshots become '-'" "$(manifest_entry_field "$entry" 5)" "-"
 is "column count holds with '-'" "$(manifest_entry_columns "$entry")" "6"
@@ -167,10 +188,10 @@ is "all three present -> accept" "$(reject "$(printf 'ts\tsha\t/db.dump\tappdb\t
 echo
 echo "== rollback restores all three from ONE snapshot =="
 new_case triple
-manifest_append "shaX" "$BACKUP_DIR/db-1.dump" "appdb" "$BACKUP_DIR/uploads-1.tar.gz" "$BACKUP_DIR/documents-1.tar.gz"
-manifest_append "shaY" "$BACKUP_DIR/db-2.dump" "appdb" "$BACKUP_DIR/uploads-2.tar.gz" "$BACKUP_DIR/documents-2.tar.gz"
+manifest_append "$SHA_X" "$BACKUP_DIR/db-1.dump" "appdb" "$BACKUP_DIR/uploads-1.tar.gz" "$BACKUP_DIR/documents-1.tar.gz"
+manifest_append "$SHA_Y" "$BACKUP_DIR/db-2.dump" "appdb" "$BACKUP_DIR/uploads-2.tar.gz" "$BACKUP_DIR/documents-2.tar.gz"
 entry="$(manifest_last_entry)"
-is "uses the newest entry"        "$(manifest_entry_field "$entry" 2)" "shaY"
+is "uses the newest entry"        "$(manifest_entry_field "$entry" 2)" "$SHA_Y"
 is "db from that entry"           "$(basename "$(manifest_entry_field "$entry" 3)")" "db-2.dump"
 is "uploads from the SAME entry"  "$(basename "$(manifest_entry_field "$entry" 5)")" "uploads-2.tar.gz"
 is "documents from the SAME entry" "$(basename "$(manifest_entry_field "$entry" 6)")" "documents-2.tar.gz"

@@ -24,6 +24,10 @@ POSTGRES_PASSWORD=test
 DATABASE_URL=postgresql://u:p@db:5432/appdb
 ADMIN_EMAIL=admin@example.test
 ADMIN_PASSWORD=change-me
+STORAGE_PROVIDER=local
+MAINTENANCE_WINDOW_CONFIRMED=true
+KNOWN_UPLOAD_URL=/uploads/image.webp
+KNOWN_DOCUMENT_URL=/documents/manual/guide.pdf
 ENV
 
 cat > "$BIN/git" <<'GIT'
@@ -66,7 +70,7 @@ if [ "$1" = "compose" ]; then
       ;;
     run)
       for arg in "$@"; do
-        if [ "$arg" = "tar -czf - -C '/app/public/uploads' ." ] || [ "$arg" = "tar -czf - -C '/app/public/documents' ." ]; then
+        if [ "$arg" = "tar -czf - -C '/app/data/uploads' ." ] || [ "$arg" = "tar -czf - -C '/app/data/documents' ." ]; then
           make_archive
           exit 0
         fi
@@ -129,6 +133,7 @@ chmod +x "$BIN/pg_restore"
 
 export PATH="$BIN:$PATH"
 export APP_DIR="$APP"
+export MAINTENANCE_WINDOW_CONFIRMED=true KNOWN_UPLOAD_URL=/uploads/image.webp KNOWN_DOCUMENT_URL=/documents/manual/guide.pdf
 export FAKE_DOCKER_CALLS="$WORK/docker.calls"
 export FAKE_ARCHIVE_SRC="$ARCHIVE_SRC"
 : > "$FAKE_DOCKER_CALLS"

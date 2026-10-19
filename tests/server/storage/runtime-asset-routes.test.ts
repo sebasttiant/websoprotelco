@@ -20,11 +20,11 @@ const params = (segments: string[]) => ({ params: Promise.resolve({ path: segmen
 
 beforeEach(async () => {
   workspace = await mkdtemp(path.join(tmpdir(), "runtime-asset-routes-"));
-  await mkdir(path.join(workspace, "public", "uploads"), { recursive: true });
-  await mkdir(path.join(workspace, "public", "documents", "manual"), { recursive: true });
-  await writeFile(path.join(workspace, "public", "uploads", WEBP), "RIFF____WEBPdata");
-  await writeFile(path.join(workspace, "public", "documents", "manual", PDF), "%PDF-1.7 data");
-  // The handlers resolve their root from `process.cwd()/public`, exactly as in the container.
+  await mkdir(path.join(workspace, "data", "uploads"), { recursive: true });
+  await mkdir(path.join(workspace, "data", "documents", "manual"), { recursive: true });
+  await writeFile(path.join(workspace, "data", "uploads", WEBP), "RIFF____WEBPdata");
+  await writeFile(path.join(workspace, "data", "documents", "manual", PDF), "%PDF-1.7 data");
+  // The handlers resolve their root from `process.cwd()/data`, exactly as in the container.
   vi.spyOn(process, "cwd").mockReturnValue(workspace);
 });
 

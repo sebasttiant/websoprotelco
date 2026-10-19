@@ -17,8 +17,8 @@ import {
  * response, owning the descriptor's lifetime end to end.
  */
 
-function publicDirectory(): string {
-  return path.join(process.cwd(), "public");
+function dataDirectory(): string {
+  return path.join(process.cwd(), "data");
 }
 
 function notFound(): Response {
@@ -97,7 +97,7 @@ export async function serveRuntimeAsset(
   root: RuntimeAssetRoot,
   segments: readonly string[],
   request: Request,
-  baseDirectory: string = publicDirectory(),
+  baseDirectory: string = dataDirectory(),
 ): Promise<Response> {
   const opened = await openRuntimeAsset(root, segments, baseDirectory);
 

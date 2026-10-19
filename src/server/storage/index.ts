@@ -83,6 +83,8 @@ async function createConfiguredStorageAdapter(): Promise<ConfiguredStorageAdapte
 export async function checkStorageConfiguration(): Promise<{ ok: true; provider: StorageProvider } | { ok: false; error: string }> {
   try {
     await createConfiguredStorageAdapter();
+    const { checkRuntimeAssetRoots } = await import("./runtime-assets");
+    await checkRuntimeAssetRoots();
 
     // Building the adapter only proves the configuration parses. The failure that actually takes
     // uploads down in production is a volume that is mounted but not writable or readable by the

@@ -31,7 +31,7 @@ case "$1" in
   cat-file) exit 0 ;;
   status) exit 0 ;;
   rev-parse) printf 'current-sha\n' ;;
-  show) printf 'services:\n  web:\n    volumes:\n      - uploads-data:/app/public/uploads\n      - documents-data:/app/public/documents\n' ;;
+  show) printf 'services:\n  web:\n    volumes:\n      - uploads-data:/app/data/uploads\n      - documents-data:/app/data/documents\n' ;;
   reset) exit 77 ;;
   *) exit 0 ;;
 esac
@@ -94,6 +94,7 @@ chmod +x "$BIN/pg_restore"
 
 export PATH="$BIN:$PATH"
 export APP_DIR="$APP"
+export MAINTENANCE_WINDOW_CONFIRMED=true KNOWN_UPLOAD_URL=/uploads/image.webp KNOWN_DOCUMENT_URL=/documents/manual/guide.pdf
 export FAKE_DOCKER_CALLS="$WORK/docker.calls"
 export FAKE_ARCHIVE_SRC="$ARCHIVE_SRC"
 : > "$FAKE_DOCKER_CALLS"

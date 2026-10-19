@@ -28,8 +28,8 @@ export interface RuntimeAssetProbeResult {
   code?: string;
 }
 
-function publicDirectory(): string {
-  return path.join(process.cwd(), "public");
+function dataDirectory(): string {
+  return path.join(process.cwd(), "data");
 }
 
 async function readBack(probePath: string): Promise<Buffer> {
@@ -83,7 +83,7 @@ async function probeRoot(baseDirectory: string, root: RuntimeAssetRoot): Promise
 }
 
 export async function probeRuntimeAssetRoots(
-  baseDirectory: string = publicDirectory(),
+  baseDirectory: string = dataDirectory(),
 ): Promise<RuntimeAssetProbeResult> {
   for (const root of RUNTIME_ASSET_ROOT_VALUES) {
     const result = await probeRoot(baseDirectory, root);

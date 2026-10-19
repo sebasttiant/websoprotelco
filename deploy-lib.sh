@@ -7,6 +7,54 @@
 #
 # Callers must set: BACKUP_DIR, MANIFEST_FILE.
 
+# Deploy and rollback synchronize through this absolute pathname after its directory exists.
+deploy_lock_file() {
+  printf '%s/.deploy.lock\n' "$(cd "$BACKUP_DIR" && pwd -P)"
+}
+
+valid_runtime_asset_segment() {
+  [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] && [ "${#1}" -le 200 ]
+}
+
+valid_upload_evidence_url() {
+  [[ "$1" == /uploads/* ]] || return 1
+  local asset="${1#/uploads/}" directory="" filename
+  filename="$asset"
+  if [[ "$asset" == */* ]]; then
+    directory="${asset%%/*}"
+    filename="${asset#*/}"
+    [[ "$directory" = "banners" || "$directory" = "hero" ]] || return 1
+  fi
+  valid_runtime_asset_segment "$filename" && [[ "$filename" == *.jpg || "$filename" == *.png || "$filename" == *.webp ]]
+}
+
+valid_document_evidence_url() {
+  [[ "$1" == /documents/* ]] || return 1
+  local asset="${1#/documents/}" category filename
+  category="${asset%%/*}"
+  filename="${asset#*/}"
+  [[ "$asset" == */* ]] && [[ "$category" =~ ^(manual|datasheet|certificate|warranty|other)$ ]] \
+    && valid_runtime_asset_segment "$filename" && [[ "$filename" == *.pdf ]]
+}
+
+require_runtime_asset_evidence() {
+  if [ "${MAINTENANCE_WINDOW_CONFIRMED:-}" != "true" ]; then
+    echo "ERROR: MAINTENANCE_WINDOW_CONFIRMED=true is required before deployment." >&2
+    return 1
+  fi
+  if [ "${1:-required}" = "optional" ] && [ -z "${KNOWN_UPLOAD_URL:-}" ] && [ -z "${KNOWN_DOCUMENT_URL:-}" ]; then
+    return 0
+  fi
+  for evidence in KNOWN_UPLOAD_URL KNOWN_DOCUMENT_URL; do
+    value="${!evidence:-}"
+    case "$value" in
+      *'?'*|*'#'*|'') echo "ERROR: $evidence must be a same-origin asset path without query or fragment." >&2; return 1 ;;
+    esac
+  done
+  valid_upload_evidence_url "$KNOWN_UPLOAD_URL" && valid_document_evidence_url "$KNOWN_DOCUMENT_URL" \
+    || { echo "ERROR: known asset URLs do not match the runtime asset policy." >&2; return 1; }
+}
+
 # ---------------------------------------------------------------------------
 # Archives
 # ---------------------------------------------------------------------------
@@ -131,6 +179,18 @@ file_backup_plan() {
   esac
 }
 
+# This deliberately does not inspect PostgreSQL. The official image creates POSTGRES_DB during
+# its first start, so DB existence observed after `compose up db` cannot distinguish a fresh
+# install from a prior deployment. Capture this state before starting the database.
+deployment_state() {
+  local has_last_deployed_sha="$1" web_state="$2" manifest_nonempty="$3"
+  if [ "$has_last_deployed_sha" -eq 1 ] || [ "$web_state" != "absent" ] || [ "$manifest_nonempty" -eq 1 ]; then
+    echo "existing"
+  else
+    echo "first"
+  fi
+}
+
 # ---------------------------------------------------------------------------
 # Container introspection
 # ---------------------------------------------------------------------------
@@ -178,4 +238,9 @@ commit_mounts_volume() {
   local sha="$1" mount_line="$2"
   git show "${sha}:compose.yaml" 2>/dev/null \
     | grep -qE "^[[:space:]]+-[[:space:]]+${mount_line}[[:space:]]*$"
+}
+
+commit_mounts_runtime_volume() {
+  local sha="$1" volume="$2" kind="$3"
+  commit_mounts_volume "$sha" "$volume:/app/public/$kind" || commit_mounts_volume "$sha" "$volume:/app/data/$kind"
 }

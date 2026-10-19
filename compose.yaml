@@ -44,6 +44,8 @@ services:
       target: migrator
     restart: "no"
     environment:
+      CI: "1"
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
       DATABASE_URL: postgresql://${POSTGRES_USER:-local_dev_user}:${POSTGRES_PASSWORD:-local_dev_password_change_me}@db:5432/${POSTGRES_DB:-websoprotelco}
       DATABASE_SSL: ${DATABASE_SSL:-disable}
       DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}

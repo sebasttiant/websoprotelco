@@ -18,12 +18,20 @@ RUN pnpm build
 # sources, tsx, and the full dependency tree — zod in particular, which Next bundles into
 # its server chunks and therefore never ships in the standalone runner's node_modules.
 FROM builder AS migrator
+# builder copied node_modules as root; pnpm 12 verifyDepsBeforeRun tries to rewrite
+# sharp and fails with EACCES under USER node. Own the tree, skip the rewrite.
+RUN chown -R node:node /app
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV CI=1
 USER node
 CMD ["pnpm", "db:migrate"]
 
 # Seed creates the default admin and staff accounts. It refuses to run when
 # NODE_ENV=production, so the deploy script must not set that variable on this target.
 FROM builder AS seed
+RUN chown -R node:node /app
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV CI=1
 USER node
 CMD ["pnpm", "seed:users"]
 

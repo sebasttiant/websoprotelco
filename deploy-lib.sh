@@ -37,6 +37,29 @@ valid_document_evidence_url() {
     && valid_runtime_asset_segment "$filename" && [[ "$filename" == *.pdf ]]
 }
 
+# Load deploy evidence from the server .env when the shell has not already exported it.
+# Lets operators run `./deploy.sh` alone after confirming once in .env (never committed).
+load_deploy_evidence_from_env_file() {
+  local env_file="${1:-}"
+  local key line value
+  [ -n "$env_file" ] && [ -f "$env_file" ] || return 0
+  for key in MAINTENANCE_WINDOW_CONFIRMED KNOWN_UPLOAD_URL KNOWN_DOCUMENT_URL; do
+    if [ -n "${!key:-}" ]; then
+      continue
+    fi
+    line="$(grep -E "^[[:space:]]*${key}=" "$env_file" | tail -n 1 || true)"
+    [ -n "$line" ] || continue
+    value="${line#*=}"
+    value="${value%$'\r'}"
+    if [[ "$value" == \"*\" ]]; then
+      value="${value:1:${#value}-2}"
+    elif [[ "$value" == \'*\' ]]; then
+      value="${value:1:${#value}-2}"
+    fi
+    export "$key=$value"
+  done
+}
+
 require_runtime_asset_evidence() {
   if [ "${MAINTENANCE_WINDOW_CONFIRMED:-}" != "true" ]; then
     echo "ERROR: MAINTENANCE_WINDOW_CONFIRMED=true is required before deployment." >&2

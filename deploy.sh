@@ -62,6 +62,9 @@ if ! flock -n 9; then
   exit 1
 fi
 
+# Prefer shell exports; otherwise read once-confirmed evidence from the server .env.
+load_deploy_evidence_from_env_file "$APP_DIR/.env"
+
 # Validate supplied evidence before Git or container mutation. Optional only means a fresh
 # deployment may omit both URLs; any supplied prefixless URL still fails closed here.
 require_runtime_asset_evidence optional
@@ -147,6 +150,12 @@ DATABASE_SSL=disable
 # First super-admin, created automatically by this script on deploy.
 ADMIN_EMAIL=CHANGE_ME
 ADMIN_PASSWORD=CHANGE_ME
+
+# Deploy gate (existing servers). After the first successful cutover, keep these set so
+# future releases are just: ./deploy.sh
+# MAINTENANCE_WINDOW_CONFIRMED=true
+# KNOWN_UPLOAD_URL=/uploads/deploy-probe.png
+# KNOWN_DOCUMENT_URL=/documents/manual/deploy-probe.pdf
 ENV_SCAFFOLD
   echo "    Created $APP_DIR/.env from a template."
   echo "    Fill in every CHANGE_ME value (POSTGRES_PASSWORD, DATABASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD),"

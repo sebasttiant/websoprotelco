@@ -56,6 +56,26 @@ else
 fi
 
 echo
+echo "== .env can supply deploy evidence once confirmed =="
+new_case env_evidence
+printf '%s\n' \
+  'MAINTENANCE_WINDOW_CONFIRMED=true' \
+  'KNOWN_UPLOAD_URL=/uploads/deploy-probe.png' \
+  'KNOWN_DOCUMENT_URL=/documents/manual/deploy-probe.pdf' \
+  > "$CASE/.env"
+unset MAINTENANCE_WINDOW_CONFIRMED KNOWN_UPLOAD_URL KNOWN_DOCUMENT_URL
+load_deploy_evidence_from_env_file "$CASE/.env"
+if [ "${MAINTENANCE_WINDOW_CONFIRMED:-}" = "true" ] \
+  && [ "${KNOWN_UPLOAD_URL:-}" = "/uploads/deploy-probe.png" ] \
+  && [ "${KNOWN_DOCUMENT_URL:-}" = "/documents/manual/deploy-probe.pdf" ] \
+  && require_runtime_asset_evidence; then
+  ok "loads confirmed evidence from .env for ./deploy.sh alone"
+else
+  bad "failed to load deploy evidence from .env"
+fi
+unset MAINTENANCE_WINDOW_CONFIRMED KNOWN_UPLOAD_URL KNOWN_DOCUMENT_URL
+
+echo
 echo "== evidence grammar mirrors runtime routes =="
 MAINTENANCE_WINDOW_CONFIRMED=true KNOWN_UPLOAD_URL= KNOWN_DOCUMENT_URL=
 if require_runtime_asset_evidence optional; then ok "allows missing evidence only for a first deployment"; else bad "rejected first-deploy evidence contract"; fi

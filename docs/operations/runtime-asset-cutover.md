@@ -9,6 +9,7 @@ existing cutover, the operator provides these inputs; `deploy.sh` rejects missin
 query-bearing, or policy-invalid evidence before migrations or container recreation:
 
 ```sh
+# One-shot (or put the same three keys in the server .env, then just ./deploy.sh):
 MAINTENANCE_WINDOW_CONFIRMED=true \
 KNOWN_UPLOAD_URL=/uploads/<policy-valid-file> \
 KNOWN_DOCUMENT_URL=/documents/manual/<policy-valid-file>.pdf \

@@ -46,8 +46,14 @@ export interface CategoryRow extends QueryResultRow {
 const PRODUCT_COLUMNS = `p.id, p.slug, p.sku, p.name, p.description, p.price_cents, p.currency, p.brand, p.image_url, p.stock_quantity,
             c.name AS category_name, c.slug AS category_slug`;
 
-export async function findActiveProducts(filters: ProductListFilters = {}): Promise<ProductRow[]> {
-  const where: string[] = ["p.is_active = true"];
+export interface ActiveProductFilters extends ProductListFilters {
+  brand?: string;
+  inStock?: boolean;
+  offset?: number;
+}
+
+function activeWhere(filters: ActiveProductFilters, includeBrand = true): { where: string[]; values: unknown[] } {
+  const where = ["p.is_active = true"];
   const values: unknown[] = [];
 
   if (filters.search) {
@@ -65,19 +71,82 @@ export async function findActiveProducts(filters: ProductListFilters = {}): Prom
     where.push(`p.price_cents <= $${values.length}`);
   }
 
-  const orderBy = filters.sort === "price-low"
-    ? "p.price_cents ASC, p.name ASC"
-    : filters.sort === "price-high"
-      ? "p.price_cents DESC, p.name ASC"
-      : "p.created_at DESC, p.name ASC";
+  if (includeBrand && filters.brand) {
+    values.push(filters.brand);
+    where.push(`p.brand = $${values.length}`);
+  }
 
-  return query<ProductRow>(
-    `SELECT ${PRODUCT_COLUMNS}
+  if (filters.inStock) {
+    where.push("p.stock_quantity > 0");
+  }
+
+  return { where, values };
+}
+
+function activeOrderBy(sort: ProductListFilters["sort"]): string {
+  if (sort === "price-low") return "p.price_cents ASC, p.name ASC";
+  if (sort === "price-high") return "p.price_cents DESC, p.name ASC";
+  return "p.created_at DESC, p.name ASC";
+}
+
+// A caller-supplied limit is clamped. An absent limit keeps the historical full read, which
+// the admin order search no longer uses.
+function boundedLimit(limit: number | undefined): number | null {
+  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) return null;
+  return limit;
+}
+
+export async function findActiveProducts(filters: ActiveProductFilters = {}): Promise<ProductRow[]> {
+  const { where, values } = activeWhere(filters);
+  const limit = boundedLimit(filters.limit);
+  let sql = `SELECT ${PRODUCT_COLUMNS}
      FROM products p
      LEFT JOIN categories c ON c.id = p.category_id
      WHERE ${where.join(" AND ")}
-     ORDER BY ${orderBy}`,
+     ORDER BY ${activeOrderBy(filters.sort)}`;
+
+  if (limit !== null) {
+    values.push(limit);
+    sql += ` LIMIT $${values.length}`;
+    const offset = Number.isInteger(filters.offset) && (filters.offset as number) > 0 ? (filters.offset as number) : 0;
+    values.push(offset);
+    sql += ` OFFSET $${values.length}`;
+  }
+
+  return query<ProductRow>(sql, values);
+}
+
+export async function countActiveProducts(filters: ActiveProductFilters = {}): Promise<number> {
+  const { where, values } = activeWhere(filters);
+  const rows = await query<{ count: string }>(
+    `SELECT count(*) AS count
+     FROM products p
+     LEFT JOIN categories c ON c.id = p.category_id
+     WHERE ${where.join(" AND ")}`,
     values,
+  );
+  return Number.parseInt(rows[0]?.count ?? "0", 10);
+}
+
+export async function findActiveBrands(filters: ActiveProductFilters = {}): Promise<string[]> {
+  const { where, values } = activeWhere(filters, false);
+  const rows = await query<{ brand: string }>(
+    `SELECT DISTINCT p.brand AS brand
+     FROM products p
+     LEFT JOIN categories c ON c.id = p.category_id
+     WHERE ${where.join(" AND ")} AND p.brand IS NOT NULL AND btrim(p.brand) <> ''
+     ORDER BY p.brand ASC`,
+    values,
+  );
+  return rows.map((row) => row.brand);
+}
+
+export async function findPublicProductPaths(): Promise<{ slug: string; updated_at: string }[]> {
+  return query<{ slug: string; updated_at: string }>(
+    `SELECT slug, updated_at
+     FROM products
+     WHERE is_active = true
+     ORDER BY updated_at DESC`,
   );
 }
 
@@ -131,6 +200,7 @@ export interface ProductAdminRow extends QueryResultRow {
   stock_quantity: number;
   is_active: boolean;
   category_name: string | null;
+  image_url: string | null;
 }
 
 export interface ProductAdminDetailRow extends QueryResultRow {
@@ -190,6 +260,10 @@ export async function findAllProductsForAdmin(filters: ProductAdminListFilters =
     where.push(`p.is_active = $${values.length}`);
   }
 
+  if (filters.missingImage) {
+    where.push(`(p.image_url IS NULL OR btrim(p.image_url) = '')`);
+  }
+
   const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
   const countRows = await query<{ count: string }>(`SELECT count(*) FROM products p ${whereSql}`, values);
 
@@ -201,7 +275,7 @@ export async function findAllProductsForAdmin(filters: ProductAdminListFilters =
   const listValues = [...values, PRODUCT_ADMIN_PAGE_SIZE, (page - 1) * PRODUCT_ADMIN_PAGE_SIZE];
 
   const rows = await query<ProductAdminRow>(
-    `SELECT p.id, p.sku, p.slug, p.name, p.brand, p.price_cents, p.currency, p.stock_quantity, p.is_active, c.name AS category_name
+    `SELECT p.id, p.sku, p.slug, p.name, p.brand, p.price_cents, p.currency, p.stock_quantity, p.is_active, p.image_url, c.name AS category_name
      FROM products p
      LEFT JOIN categories c ON c.id = p.category_id
      ${whereSql}
@@ -260,6 +334,48 @@ export async function insertProduct(input: ProductAdminInput): Promise<void> {
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
     [input.categoryId, input.sku, input.slug, input.name, input.description, input.priceCents, input.currency, input.imageUrl, input.brand, input.stockQuantity, input.isActive],
   );
+}
+
+/** Upserts by SKU so CSV re-imports refresh existing catalog rows instead of failing. */
+export async function upsertProductBySku(input: ProductAdminInput): Promise<"inserted" | "updated"> {
+  const existing = await query<{ id: string }>("SELECT id FROM products WHERE lower(sku) = lower($1) LIMIT 1", [input.sku]);
+  if (existing[0]) {
+    await query(
+      `UPDATE products
+       SET category_id = $2, slug = $3, name = $4, description = $5, price_cents = $6,
+           currency = $7, brand = $8, stock_quantity = $9, is_active = $10, updated_at = now()
+       WHERE id = $1`,
+      [
+        existing[0].id,
+        input.categoryId,
+        input.slug,
+        input.name,
+        input.description,
+        input.priceCents,
+        input.currency,
+        input.brand,
+        input.stockQuantity,
+        input.isActive,
+      ],
+    );
+    return "updated";
+  }
+
+  await insertProduct(input);
+  return "inserted";
+}
+
+export async function findCategoryIdByName(name: string): Promise<string | null> {
+  const rows = await query<{ id: string }>(
+    "SELECT id FROM categories WHERE lower(name) = lower($1) LIMIT 1",
+    [name],
+  );
+  return rows[0]?.id ?? null;
+}
+
+export async function countAllProducts(): Promise<number> {
+  const rows = await query<{ count: string }>("SELECT count(*)::text AS count FROM products");
+  return Number.parseInt(rows[0]?.count ?? "0", 10);
 }
 
 export async function updateProductById(input: ProductAdminUpdateInput): Promise<void> {

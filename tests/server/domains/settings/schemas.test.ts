@@ -16,6 +16,12 @@ describe("settingUpdateInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  test("rejects an unknown setting key even if snake_case", () => {
+    const result = settingUpdateInputSchema.safeParse({ key: "secret_token", value: "x" });
+
+    expect(result.success).toBe(false);
+  });
+
   test("allows an empty value for a non-email setting", () => {
     const result = settingUpdateInputSchema.parse({ key: "facebook_url", value: "" });
 
@@ -41,5 +47,32 @@ describe("settingUpdateInputSchema", () => {
     const result = settingUpdateInputSchema.parse({ key: "contact_email", value: "" });
 
     expect(result).toEqual({ key: "contact_email", value: "" });
+  });
+
+  test("rejects a social URL that is not http(s)", () => {
+    const result = settingUpdateInputSchema.safeParse({ key: "instagram_url", value: "javascript:alert(1)" });
+
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts an https social URL", () => {
+    const result = settingUpdateInputSchema.parse({
+      key: "facebook_url",
+      value: "https://facebook.com/soprotelco",
+    });
+
+    expect(result).toEqual({ key: "facebook_url", value: "https://facebook.com/soprotelco" });
+  });
+
+  test("rejects a WhatsApp number without enough digits", () => {
+    const result = settingUpdateInputSchema.safeParse({ key: "whatsapp_number", value: "123" });
+
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts a WhatsApp number with country code", () => {
+    const result = settingUpdateInputSchema.parse({ key: "whatsapp_number", value: "+573001234567" });
+
+    expect(result).toEqual({ key: "whatsapp_number", value: "+573001234567" });
   });
 });

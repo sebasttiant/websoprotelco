@@ -18,7 +18,6 @@ export interface HeroSlide {
 export function HeroCarousel({ slides }: { slides: readonly HeroSlide[] }) {
   const [index, setIndex] = useState(0);
 
-  // With one banner the arrows and dots have nowhere to go, so they are not rendered.
   const isNavigable = slides.length > 1;
   const slide = slides[index];
   const linkUrl = isSafeDesignLink(slide.linkUrl) ? slide.linkUrl : null;
@@ -31,7 +30,7 @@ export function HeroCarousel({ slides }: { slides: readonly HeroSlide[] }) {
     <section
       aria-label="Banners destacados"
       aria-roledescription="carrusel"
-      className="relative overflow-hidden bg-brand-navy text-white"
+      className="relative overflow-hidden border-b border-brand-line bg-brand-navy text-white"
     >
       <Image
         key={slide.id}
@@ -41,20 +40,22 @@ export function HeroCarousel({ slides }: { slides: readonly HeroSlide[] }) {
         fill
         priority
         sizes="100vw"
-        className="object-cover opacity-40"
+        className="object-cover opacity-35 transition duration-700 ease-out motion-reduce:transition-none"
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-brand-navy via-brand-navy/80 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-r from-brand-navy via-brand-navy/85 to-brand-navy/40" />
 
-      <Container className="relative flex min-h-[28rem] flex-col justify-center gap-6 py-24 lg:min-h-[32rem]">
-        <div className="max-w-2xl space-y-6">
-          <h1 className="text-4xl font-black leading-tight tracking-tight sm:text-6xl">{slide.title}</h1>
+      <Container className="relative flex min-h-[20rem] flex-col justify-center gap-5 py-14 sm:py-16 lg:min-h-[24rem]">
+        <div key={slide.id} className="max-w-2xl animate-[fade-up_0.7s_ease-out] space-y-4 motion-reduce:animate-none">
+          <h1 className="text-balance text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
+            {slide.title}
+          </h1>
           {slide.subtitle ? (
-            <p className="text-lg font-medium leading-8 text-blue-100/80">{slide.subtitle}</p>
+            <p className="max-w-xl text-base font-medium leading-7 text-blue-100/85">{slide.subtitle}</p>
           ) : null}
           {linkUrl ? (
             <Link
               href={linkUrl}
-              className="inline-block rounded-2xl bg-brand-blue px-8 py-4 text-sm font-black uppercase tracking-widest text-white shadow-glow transition hover:bg-brand-primary"
+              className="inline-flex rounded-lg bg-white px-6 py-3 text-sm font-semibold text-brand-navy transition hover:bg-brand-ice"
             >
               Ver más
             </Link>
@@ -62,12 +63,12 @@ export function HeroCarousel({ slides }: { slides: readonly HeroSlide[] }) {
         </div>
 
         {isNavigable ? (
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => step(-1)}
               aria-label="Banner anterior"
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 text-lg transition hover:border-brand-accent hover:text-brand-accent"
+              className="grid h-10 w-10 place-items-center rounded-lg border border-white/25 text-lg transition hover:bg-white/10"
             >
               <span aria-hidden="true">&#8249;</span>
             </button>
@@ -75,7 +76,7 @@ export function HeroCarousel({ slides }: { slides: readonly HeroSlide[] }) {
               type="button"
               onClick={() => step(1)}
               aria-label="Banner siguiente"
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/20 text-lg transition hover:border-brand-accent hover:text-brand-accent"
+              className="grid h-10 w-10 place-items-center rounded-lg border border-white/25 text-lg transition hover:bg-white/10"
             >
               <span aria-hidden="true">&#8250;</span>
             </button>
@@ -89,7 +90,7 @@ export function HeroCarousel({ slides }: { slides: readonly HeroSlide[] }) {
                     aria-label={`Ir al banner ${position + 1}`}
                     aria-current={position === index ? "true" : undefined}
                     className={`block h-2 rounded-full transition-all ${
-                      position === index ? "w-8 bg-brand-accent" : "w-2 bg-white/30 hover:bg-white/60"
+                      position === index ? "w-7 bg-white" : "w-2 bg-white/35 hover:bg-white/60"
                     }`}
                   />
                 </li>

@@ -1,3 +1,5 @@
+import { adminInput } from "@/components/admin/ui";
+
 interface SearchInputProps {
   name?: string;
   defaultValue?: string;
@@ -12,7 +14,8 @@ export function SearchInput({ name = "q", defaultValue = "", placeholder = "Busc
       defaultValue={defaultValue}
       placeholder={placeholder}
       aria-label={placeholder}
-      className="w-full rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-blue focus:ring-4 focus:ring-blue-100"
+      autoComplete="off"
+      className={adminInput}
     />
   );
 }

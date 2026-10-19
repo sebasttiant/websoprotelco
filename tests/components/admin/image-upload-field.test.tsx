@@ -47,6 +47,21 @@ describe("ImageUploadField upload failure presentation (Spanish)", () => {
     vi.unstubAllGlobals();
   });
 
+  test("rejects disallowed types on the client before calling the API", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { container } = render(<ImageUploadField name="imageUrl" label="Imagen de producto" defaultValue="" />);
+    const file = new File(["bytes"], "bad.svg", { type: "image/svg+xml" });
+
+    await fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [file] },
+    });
+
+    expect(await screen.findByText("Solo se admiten imágenes JPG, PNG y WebP.")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   test("shows the localized API error when the upload is rejected", async () => {
     const fetchMock = vi.fn();
     fetchMock.mockResolvedValue(
@@ -55,7 +70,7 @@ describe("ImageUploadField upload failure presentation (Spanish)", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { container } = render(<ImageUploadField name="imageUrl" label="Imagen de producto" defaultValue="" />);
-    const file = new File(["bytes"], "bad.svg", { type: "image/svg+xml" });
+    const file = new File(["bytes"], "bad.png", { type: "image/png" });
 
     await fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement, {
       target: { files: [file] },

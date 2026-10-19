@@ -73,20 +73,20 @@ export default async function AdminDocumentsPage({ searchParams }: DocumentsPage
   const filterPrefix = filterQuery.toString() ? `${filterQuery.toString()}&` : "";
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Contenido</p>
-          <h1 className="text-3xl font-black text-slate-950">Documentación</h1>
+          <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Contenido</p>
+          <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Documentación</h1>
           <p className="mt-2 text-sm font-medium text-brand-muted">Recursos técnicos y catálogos</p>
         </div>
-        <div className="rounded-[28px] border border-brand-line bg-white px-6 py-4 shadow-xl shadow-blue-950/5">
+        <div className="rounded-2xl border border-brand-line bg-white px-6 py-4 shadow-sm shadow-blue-950/5">
           <p className="text-xs font-black uppercase tracking-widest text-brand-muted">Total documentos</p>
           <p className="mt-1 text-3xl font-black text-brand-navy">{result.total}</p>
         </div>
       </div>
 
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded-[28px] border border-brand-line bg-white p-4 shadow-xl shadow-blue-950/5">
+      <form method="get" className="flex flex-wrap items-end gap-3 rounded-2xl border border-brand-line bg-white p-4 shadow-sm shadow-blue-950/5">
         <div className="min-w-[14rem] flex-[2]">
           <label htmlFor="doc-search" className="block text-xs font-black uppercase tracking-widest text-brand-muted">
             Buscar por título
@@ -138,7 +138,7 @@ export default async function AdminDocumentsPage({ searchParams }: DocumentsPage
         </button>
       </form>
 
-      <div className="overflow-hidden rounded-[28px] border border-brand-line bg-white shadow-xl shadow-blue-950/5">
+      <div className="overflow-hidden rounded-2xl border border-brand-line bg-white shadow-sm shadow-blue-950/5">
         <table className="min-w-full divide-y divide-brand-line text-sm">
           <thead className="text-left text-xs font-black uppercase tracking-widest text-brand-muted">
             <tr>
@@ -240,7 +240,7 @@ export default async function AdminDocumentsPage({ searchParams }: DocumentsPage
 
       <div className="space-y-4">
         <h2 className="text-lg font-black text-slate-950">Subir nuevo documento</h2>
-        <form action={createDocument as unknown as FormAction} className="grid max-w-2xl gap-3 rounded-[28px] border border-brand-line bg-white p-6 shadow-xl shadow-blue-950/5">
+        <form action={createDocument as unknown as FormAction} className="grid max-w-2xl gap-3 rounded-2xl border border-brand-line bg-white p-6 shadow-sm shadow-blue-950/5">
           <div>
             <label htmlFor="title" className="block text-xs font-black uppercase tracking-widest text-brand-muted">
               Título

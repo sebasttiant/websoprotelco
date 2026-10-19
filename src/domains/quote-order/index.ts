@@ -31,4 +31,4 @@ export {
   type CartOrderActionState,
 } from "./actions";
 
-export { getQuotes, getQuotesForUser } from "./service";
+export { getQuoteDashboardCounts, getQuotes, getQuotesForUser } from "./service";

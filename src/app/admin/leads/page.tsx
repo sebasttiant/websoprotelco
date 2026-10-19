@@ -3,6 +3,8 @@ import Link from "next/link";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { InitialAvatar } from "@/components/admin/initial-avatar";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { StatusChangeForm } from "@/components/admin/status-change-form";
+import { adminEyebrow, adminLead, adminPage, adminTitle } from "@/components/admin/ui";
 import { formatDate, leadStatusLabel } from "@/lib/presentation";
 import {
   getLeads,
@@ -42,7 +44,7 @@ export default async function AdminLeadsPage({ searchParams }: LeadsPageProps) {
       key: "name",
       header: "Nombre",
       render: (row) => (
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           {/* Keyed to the email so two leads with the same display name still separate. */}
           <InitialAvatar name={row.name} seed={row.email} shape="circle" />
           <div className="min-w-0">
@@ -56,31 +58,33 @@ export default async function AdminLeadsPage({ searchParams }: LeadsPageProps) {
       key: "contact",
       header: "Contacto",
       render: (row) => (
-        <div>
-          <p>{row.email}</p>
-          <p>{row.phone ?? ""}</p>
+        <div className="min-w-0 max-w-[12rem]">
+          <p className="truncate text-sm">{row.email}</p>
+          <p className="truncate text-xs text-slate-500">{row.phone ?? ""}</p>
         </div>
       ),
     },
-    { key: "subject", header: "Asunto", render: (row) => row.subject ?? "—" },
-    { key: "status", header: "Estado", render: (row) => <StatusBadge status={row.status} label={leadStatusLabel(row.status)} /> },
+    {
+      key: "subject",
+      header: "Asunto",
+      render: (row) => <span className="block max-w-[10rem] truncate">{row.subject ?? "—"}</span>,
+    },
+    {
+      key: "status",
+      header: "Estado",
+      render: (row) => <StatusBadge status={row.status} label={leadStatusLabel(row.status)} />,
+    },
     {
       key: "change",
-      header: "Cambiar estado",
+      header: "Cambiar",
       render: (row) => (
-        <form action={updateLeadStatus as unknown as FormAction} className="flex gap-2">
-          <input type="hidden" name="id" value={row.id} />
-          <select name="status" defaultValue={row.status} className="rounded-full border border-slate-200 px-3 py-2 text-xs font-bold">
-            {LEAD_STATUSES.map((option) => (
-              <option key={option} value={option}>
-                {leadStatusLabel(option)}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white">
-            Guardar
-          </button>
-        </form>
+        <StatusChangeForm
+          action={updateLeadStatus as unknown as FormAction}
+          id={row.id}
+          currentStatus={row.status}
+          options={LEAD_STATUSES}
+          labelFor={leadStatusLabel}
+        />
       ),
     },
     {
@@ -95,15 +99,16 @@ export default async function AdminLeadsPage({ searchParams }: LeadsPageProps) {
   ];
 
   return (
-    <section className="space-y-6">
-      <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Solicitudes de contacto</p>
-        <h1 className="text-3xl font-black text-slate-950">Clientes potenciales</h1>
+    <section className={adminPage}>
+      <div className="min-w-0">
+        <p className={adminEyebrow}>Solicitudes de contacto</p>
+        <h1 className={adminTitle}>Clientes potenciales</h1>
+        <p className={adminLead}>Leads capturados desde el sitio y el panel</p>
       </div>
-      <nav className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-widest">
+      <nav className="flex min-w-0 flex-wrap gap-2 text-xs font-black uppercase tracking-widest">
         <Link
           href="/admin/leads"
-          className={`rounded-full px-4 py-2 ${status === "" ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}
+          className={`rounded-full px-3.5 py-2 ${status === "" ? "bg-slate-950 text-white" : "border border-brand-line bg-white text-slate-700"}`}
         >
           Todos
         </Link>
@@ -111,7 +116,7 @@ export default async function AdminLeadsPage({ searchParams }: LeadsPageProps) {
           <Link
             key={option}
             href={`/admin/leads?status=${option}`}
-            className={`rounded-full px-4 py-2 ${status === option ? "bg-slate-950 text-white" : "bg-white text-slate-700"}`}
+            className={`rounded-full px-3.5 py-2 ${status === option ? "bg-slate-950 text-white" : "border border-brand-line bg-white text-slate-700"}`}
           >
             {leadStatusLabel(option)}
           </Link>

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Eye, FileText } from "lucide-react";
 
+import { ProductImagePlaceholder } from "@/components/catalog/product-image-placeholder";
 import { Badge } from "@/components/ui/badge";
+import { RevealImage } from "@/components/ui/reveal-image";
 import type { ProductSummary } from "@/domains/catalog";
 import { getSafeCatalogImageUrl } from "@/domains/catalog/schemas";
 
@@ -21,54 +23,55 @@ export function ProductCard({ product }: ProductCardProps) {
   const imageUrl = getSafeCatalogImageUrl(product.imageUrl);
 
   return (
-    <article className="group overflow-hidden rounded-[32px] border border-slate-100 bg-white p-4 shadow-xl shadow-blue-950/5 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-950/10">
-      <Link href={`/producto/${product.slug}`} className="relative grid aspect-square place-items-center overflow-hidden rounded-3xl bg-brand-ice">
-        <Badge className="absolute left-4 top-4">{product.categoryName}</Badge>
+    <article className="group min-w-0 overflow-hidden rounded-2xl border border-brand-blue/25 bg-white p-3 shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:border-brand-blue hover:shadow-md hover:shadow-blue-950/10 sm:p-4">
+      <Link
+        href={`/producto/${product.slug}`}
+        className="relative grid aspect-square place-items-center overflow-hidden rounded-2xl bg-brand-ice"
+      >
+        <Badge className="absolute left-3 top-3 z-10">{product.categoryName}</Badge>
         {imageUrl ? (
-          // Plain <img> on purpose: images are pre-optimized to a bounded WebP at upload
-          // (~200 KB), so the per-request CPU of next/image's optimizer buys nothing on a small
-          // VPS. `loading="lazy"` keeps a long catalog grid from downloading off-screen cards
-          // until they scroll into view; the aspect-square container already reserves the box,
-          // so there is no layout shift.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <RevealImage
             src={imageUrl}
             alt={product.name}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-contain p-6 transition duration-500 group-hover:scale-105"
+            sizes="(min-width: 1280px) 20vw, (min-width: 640px) 40vw, 90vw"
+            className="p-4 transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
           />
         ) : (
-          <div className="text-center text-brand-blue/25">
-            <div className="mx-auto mb-4 grid h-24 w-24 place-items-center rounded-3xl border-2 border-current text-4xl font-black">SP</div>
-            <p className="text-xs font-black uppercase tracking-widest">Sin imagen</p>
-          </div>
+          <ProductImagePlaceholder label={product.name} />
         )}
       </Link>
 
-      <div className="space-y-4 p-3 pt-5">
+      <div className="min-w-0 space-y-3 p-2 pt-4 sm:p-3 sm:pt-5">
         <div className="flex items-center justify-between gap-3">
           <Badge variant={product.inStock ? "success" : "warning"}>{product.inStock ? "En stock" : "Consultar"}</Badge>
-          <span className="text-xs font-black uppercase tracking-widest text-slate-400">{product.sku}</span>
+          <span className="truncate text-xs font-black uppercase tracking-widest text-brand-muted">{product.sku}</span>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <Link href={`/producto/${product.slug}`}>
-            <h3 className="line-clamp-2 min-h-12 text-lg font-black leading-snug text-brand-navy transition hover:text-brand-blue">{product.name}</h3>
+            <h3 className="line-clamp-2 min-h-11 text-base font-black leading-snug text-brand-navy transition hover:text-brand-blue sm:text-lg">
+              {product.name}
+            </h3>
           </Link>
-          <p className="mt-2 line-clamp-2 text-sm font-medium leading-6 text-brand-muted">{product.description || "Producto profesional para proyectos de conectividad."}</p>
+          <p className="mt-2 line-clamp-2 text-sm font-medium leading-6 text-brand-muted">
+            {product.description || "Producto profesional para proyectos de conectividad."}
+          </p>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-          <p className="text-xl font-black text-brand-navy">{formatCurrency(product.priceCents, product.currency)}</p>
-          <Link href={`/contacto?producto=${encodeURIComponent(product.slug)}`} className="inline-flex items-center gap-2 rounded-full border border-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-brand-blue transition hover:bg-blue-50">
-            <FileText aria-hidden="true" className="h-4 w-4" />
-            Cotizar
-          </Link>
-          <Link href={`/producto/${product.slug}`} className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-blue-700">
-            <Eye aria-hidden="true" className="h-4 w-4" />
-            Ver
-          </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-line pt-3">
+          <p className="text-lg font-black text-brand-navy sm:text-xl">
+            {formatCurrency(product.priceCents, product.currency)}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/contacto?producto=${encodeURIComponent(product.slug)}`} className="inline-flex items-center gap-2 rounded-full border border-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-brand-blue transition hover:bg-brand-ice">
+              <FileText aria-hidden="true" className="h-4 w-4" />
+              Cotizar
+            </Link>
+            <Link href={`/producto/${product.slug}`} className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-brand-primary">
+              <Eye aria-hidden="true" className="h-4 w-4" />
+              Ver
+            </Link>
+          </div>
         </div>
       </div>
     </article>

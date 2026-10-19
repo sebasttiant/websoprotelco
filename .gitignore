@@ -31,6 +31,13 @@ pnpm-debug.log*
 public/uploads/*
 !public/uploads/.gitkeep
 
+# Runtime document uploads
+public/documents/*
+!public/documents/.gitkeep
+
+# Local ODD task scratch (feature docs stay optional; never ship agent scratch by default)
+odd/
+
 # OS/editor
 .DS_Store
 .idea/

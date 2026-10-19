@@ -3,6 +3,20 @@ import { describe, expect, test, vi } from "vitest";
 
 vi.mock("@/components/layout/header", () => ({ Header: () => null }));
 vi.mock("@/components/layout/footer", () => ({ Footer: () => null }));
+vi.mock("@/domains/settings", () => ({
+  getSiteSettings: vi.fn().mockResolvedValue({
+    siteName: "SOPROTELCO",
+    siteDescription: "Soluciones en telecomunicaciones.",
+    contactEmail: "ventas@soprotelco.com",
+    contactPhone: "+57 300 123 4567",
+    address: "Medellín, Colombia",
+    businessHours: "Lun-Vie: 8:00-18:00, Sáb: 9:00-13:00",
+    facebookUrl: null,
+    instagramUrl: null,
+    linkedinUrl: null,
+    whatsappNumber: "+573001234567",
+  }),
+}));
 
 const { default: ContactPage } = await import("@/app/contacto/page");
 
@@ -11,7 +25,7 @@ async function renderPage(producto?: string) {
 }
 
 describe("ContactPage", () => {
-  test("keeps the legacy contact fields accessible without a submitting form", async () => {
+  test("keeps the contact fields accessible and opens WhatsApp with the site number", async () => {
     await renderPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "Contáctanos" })).toBeInTheDocument();
@@ -19,13 +33,14 @@ describe("ContactPage", () => {
     expect(screen.getByLabelText("Correo Electrónico")).toHaveAttribute("type", "email");
     expect(screen.getByLabelText("WhatsApp / Teléfono")).toBeRequired();
     expect(screen.getByLabelText("Tu mensaje")).toBeRequired();
-    expect(screen.getByRole("status")).toHaveTextContent(/envío en línea todavía no está disponible/i);
-    expect(document.querySelector("form")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/se abre en WhatsApp/i);
+    expect(screen.getByText("Medellín, Colombia")).toBeInTheDocument();
+    expect(document.querySelector("form")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Contactar por WhatsApp" })).toHaveAttribute(
       "href",
       "https://wa.me/573001234567",
     );
-    expect(screen.getByRole("button", { name: "Preparar mensaje" })).toHaveAttribute("type", "button");
+    expect(screen.getByRole("button", { name: "Enviar por WhatsApp" })).toHaveAttribute("type", "submit");
   });
 
   test("preserves only a well-formed product handoff", async () => {

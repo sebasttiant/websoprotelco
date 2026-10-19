@@ -102,6 +102,8 @@ export type QuoteSummary = z.infer<typeof quoteSummarySchema>;
 export const quoteListFiltersSchema = z.object({
   status: quoteStatusSchema.optional(),
   kind: quoteKindSchema.optional(),
+  search: z.string().trim().min(1).max(120).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
 });
 
 export type QuoteListFilters = z.infer<typeof quoteListFiltersSchema>;

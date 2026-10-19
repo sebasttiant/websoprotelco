@@ -6,11 +6,12 @@
   --color-brand-blue: #1b6eac;
   --color-brand-accent: #06d3f9;
   --color-brand-accent-soft: #7cf3ff;
+  /* One storefront canvas: body, page shells, and ice surfaces share this tone. */
   --color-brand-bg: #f4f7fc;
+  --color-brand-ice: #f4f7fc;
   --color-brand-surface: #fff;
   --color-brand-ink: #0a1728;
   --color-brand-border: #e0e8f2;
-  --color-brand-ice: #f8fafc;
   --color-brand-muted: #5e6c80;
   --color-brand-line: #dbe6f3;
 
@@ -21,9 +22,9 @@
   --shadow-glow: 0 0 24px -4px color-mix(in oklab, var(--color-brand-accent) 45%, transparent);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-size-brand-xxl: clamp(32px, 5vw, 52px);
-  --font-size-brand-xl: clamp(26px, 3.5vw, 38px);
-  --font-size-brand-lg: 17.5px;
+  --font-size-brand-xxl: clamp(28px, 3.8vw, 40px);
+  --font-size-brand-xl: clamp(22px, 2.8vw, 30px);
+  --font-size-brand-lg: 16.5px;
 }
 
 /* These resets must stay layered. Unlayered CSS outranks every cascade layer regardless of
@@ -36,7 +37,7 @@
 
   body {
     margin: 0;
-    background: var(--color-brand-bg);
+    background: #fff;
     color: var(--color-brand-ink);
     font-family: var(--font-sans);
     font-size: 16.5px;
@@ -46,11 +47,18 @@
     text-rendering: optimizeLegibility;
   }
 
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
   h1 {
     margin: 0;
     font-size: var(--font-size-brand-xxl);
     font-weight: 900;
-    line-height: 1.1;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
   }
 
   h2 {
@@ -85,5 +93,103 @@
 
   to {
     transform: translateX(-50%);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(4%, -3%, 0) scale(1.06);
+  }
+}
+
+@keyframes fiber-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes fiber-pulse {
+  0%,
+  100% {
+    left: 0%;
+    opacity: 0.35;
+  }
+
+  50% {
+    left: calc(100% - 0.375rem);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes fade-up {
+    from,
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes hero-drift {
+    from,
+    to {
+      transform: none;
+    }
+  }
+
+  @keyframes fiber-ring {
+    from,
+    to {
+      opacity: 0;
+      transform: none;
+    }
+  }
+
+  @keyframes fiber-pulse {
+    from,
+    to {
+      left: 0%;
+      opacity: 0.5;
+    }
+  }
+}
+
+/* Admin reports → "PDF / Imprimir": hide chrome, keep chart colors on paper. */
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  :root {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    margin: 12mm;
   }
 }

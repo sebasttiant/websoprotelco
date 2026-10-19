@@ -21,7 +21,7 @@ describe("design tokens", () => {
     expect(themeToken("color-brand-navy")).toBe("#0c1a2a");
     expect(themeToken("color-brand-primary")).toBe("#0f4c81");
     expect(themeToken("color-brand-blue")).toBe("#1b6eac");
-    expect(themeToken("color-brand-ice")).toBe("#f8fafc");
+    expect(themeToken("color-brand-ice")).toBe("#f4f7fc");
     expect(themeToken("color-brand-muted")).toBe("#5e6c80");
     expect(themeToken("color-brand-line")).toBe("#dbe6f3");
   });
@@ -40,9 +40,9 @@ describe("design tokens", () => {
   });
 
   test("keeps the legacy heading scale available to the public shell", () => {
-    expect(themeToken("font-size-brand-xxl")).toBe("clamp(32px, 5vw, 52px)");
-    expect(themeToken("font-size-brand-xl")).toBe("clamp(26px, 3.5vw, 38px)");
-    expect(themeToken("font-size-brand-lg")).toBe("17.5px");
+    expect(themeToken("font-size-brand-xxl")).toBe("clamp(28px, 3.8vw, 40px)");
+    expect(themeToken("font-size-brand-xl")).toBe("clamp(22px, 2.8vw, 30px)");
+    expect(themeToken("font-size-brand-lg")).toBe("16.5px");
   });
 
   test("lets body inherit typography from the theme instead of hardcoding it", () => {

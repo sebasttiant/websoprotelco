@@ -41,8 +41,13 @@ export function CatalogFilters({
 
   function update(key: string, value: string): void {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete("page");
     setParam(params, key, value);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    // A category route already encodes the category in the path. Changing it has to leave
+    // that path, or the new choice is ignored.
+    const onCategoryPath = pathname.startsWith("/productos/") && pathname !== "/productos";
+    const target = onCategoryPath && key === "category" ? "/productos" : pathname;
+    router.replace(`${target}?${params.toString()}`, { scroll: false });
   }
 
   function submitSearch(): void {
@@ -51,7 +56,7 @@ export function CatalogFilters({
 
   return (
     <aside className="lg:col-span-1">
-      <div className="sticky top-24 space-y-8 rounded-[32px] bg-white p-8 shadow-xl shadow-blue-950/5">
+      <div className="space-y-8 rounded-3xl border border-brand-line bg-white p-6 shadow-sm shadow-blue-950/5 sm:p-8 lg:sticky lg:top-24">
         <h2 className="text-xl font-black text-brand-navy">Filtros</h2>
 
         <div className="space-y-3">
@@ -74,7 +79,7 @@ export function CatalogFilters({
         </div>
 
         <div className="space-y-3">
-          <label htmlFor="stock-filter" className="flex cursor-pointer items-center justify-between rounded-2xl bg-blue-50 p-4 text-sm font-black text-brand-navy">
+          <label htmlFor="stock-filter" className="flex cursor-pointer items-center justify-between rounded-2xl border border-brand-line bg-brand-ice p-4 text-sm font-black text-brand-navy">
             Solo en stock
             <input
               id="stock-filter"

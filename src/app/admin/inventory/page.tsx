@@ -77,11 +77,11 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
   const products = await getStockLevels(search);
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Inventario</p>
-          <h1 className="text-3xl font-black text-slate-950">Gestión de stock</h1>
+          <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Inventario</p>
+          <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Gestión de stock</h1>
           <p className="mt-2 text-sm font-medium text-brand-muted">
             Controla las existencias y disponibilidad de tus productos
           </p>
@@ -112,7 +112,7 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
         <input type="hidden" name="threshold" value={threshold} />
       </form>
 
-      <div className="overflow-hidden rounded-[28px] border border-brand-line bg-white shadow-xl shadow-blue-950/5">
+      <div className="overflow-hidden rounded-2xl border border-brand-line bg-white shadow-sm shadow-blue-950/5">
         <table className="min-w-full divide-y divide-brand-line text-sm">
           <thead className="text-left text-xs font-black uppercase tracking-widest text-brand-muted">
             <tr>
@@ -177,7 +177,7 @@ export default async function AdminInventoryPage({ searchParams }: InventoryPage
         </p>
         <form
           action={recordStockMovement as unknown as FormAction}
-          className="grid max-w-2xl gap-3 rounded-[28px] border border-brand-line bg-white p-6 shadow-xl shadow-blue-950/5 sm:grid-cols-2"
+          className="grid max-w-2xl gap-3 rounded-2xl border border-brand-line bg-white p-6 shadow-sm shadow-blue-950/5 sm:grid-cols-2"
         >
           <div className="sm:col-span-2">
             <label htmlFor="productId" className="block text-xs font-black uppercase tracking-widest text-brand-muted">

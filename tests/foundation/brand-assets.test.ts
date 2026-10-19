@@ -5,22 +5,37 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const brandRoot = resolve(process.cwd(), "public/assets/brand");
-const logoPath = resolve(brandRoot, "soprotelco-logo-white.png");
+const imgRoot = resolve(process.cwd(), "public/assets/img");
+const logoWhitePath = resolve(brandRoot, "soprotelco-logo-white.png");
+const logoLightPath = resolve(imgRoot, "sp-logo.png");
+const logoDarkPath = resolve(imgRoot, "sp-logo-white.png");
 const globalsCss = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
 const footerSource = readFileSync(resolve(process.cwd(), "src/components/layout/footer.tsx"), "utf8");
-const APPROVED_LOGO_SHA256 = "17a2ff85ed9c58ece86b4c0260ddb49c624413f59d1dabcaa7d0d47efdc30f26";
-const APPROVED_LOGO_DIMENSIONS = { width: 2924, height: 1878 };
+const brandLogoSource = readFileSync(resolve(process.cwd(), "src/components/brand/brand-logo.tsx"), "utf8");
+const APPROVED_LOGO_WHITE_SHA256 =
+  "1cfe1120c6ef54b8232c122ab18bb0e510a9fbfd325654543e1dcbe9e3453081";
+const APPROVED_LOGO_LIGHT_SHA256 =
+  "6e4f35fc2ce89ca0cf880fbec9b8d6db4c7f96b99c3f5535ab530d492d417291";
+const APPROVED_LOGO_DIMENSIONS = { width: 394, height: 238 };
+
+function assertPng(path: string, sha256: string) {
+  const logo = readFileSync(path);
+
+  expect(lstatSync(path).isSymbolicLink()).toBe(false);
+  expect(logo.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  expect(logo.readUInt32BE(16)).toBe(APPROVED_LOGO_DIMENSIONS.width);
+  expect(logo.readUInt32BE(20)).toBe(APPROVED_LOGO_DIMENSIONS.height);
+  expect(createHash("sha256").update(logo).digest("hex")).toBe(sha256);
+}
 
 describe("brand asset safety contract", () => {
-  test("keeps the approved SOPROTELCO logo byte-identical at its static brand path", () => {
-    const logo = readFileSync(logoPath);
-
-    expect(lstatSync(logoPath).isSymbolicLink()).toBe(false);
-    expect(logo.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-    expect(logo.readUInt32BE(16)).toBe(APPROVED_LOGO_DIMENSIONS.width);
-    expect(logo.readUInt32BE(20)).toBe(APPROVED_LOGO_DIMENSIONS.height);
-    expect(createHash("sha256").update(logo).digest("hex")).toBe(APPROVED_LOGO_SHA256);
-    expect(footerSource).toContain("/assets/brand/soprotelco-logo-white.png");
+  test("keeps the approved SOPROTELCO logos byte-identical at their static paths", () => {
+    assertPng(logoWhitePath, APPROVED_LOGO_WHITE_SHA256);
+    assertPng(logoLightPath, APPROVED_LOGO_LIGHT_SHA256);
+    assertPng(logoDarkPath, APPROVED_LOGO_WHITE_SHA256);
+    expect(brandLogoSource).toContain("/assets/img/sp-logo.png");
+    expect(brandLogoSource).toContain("/assets/img/sp-logo-white.png");
+    expect(footerSource).toContain("BrandLogo");
   });
 
   test("keeps the selective legacy palette and Inter typography in the global theme", () => {
@@ -44,7 +59,7 @@ describe("brand asset safety contract", () => {
   });
 
   test("excludes unsafe integration and encoded-data coupling from the brand surface", () => {
-    const brandSurface = [readFileSync(logoPath), globalsCss, footerSource].join("\n");
+    const brandSurface = [readFileSync(logoWhitePath), globalsCss, footerSource, brandLogoSource].join("\n");
 
     expect(brandSurface).not.toMatch(/supabase|data:image|base64/i);
   });

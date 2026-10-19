@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
+import { AdminFlashBanner } from "@/components/admin/flash-banner";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { roleLabel } from "@/lib/presentation";
 import { signOut } from "@/server/auth/actions";
@@ -17,46 +17,34 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
   const user = await requireSession();
 
   return (
-    <div className="min-h-screen bg-brand-ice md:grid md:grid-cols-[15rem_1fr]">
-      {/* A flex column so the nav can take the leftover space and push sign-out to the bottom
-          edge, as the mockups place it. */}
-      <aside className="bg-brand-navy text-white md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto">
-        <Link href="/admin" className="flex shrink-0 items-center gap-3 px-4 pt-6">
-          <Image
-            src="/assets/img/sp-logo-white.png"
-            alt="SOPROTELCO"
-            width={2924}
-            height={1878}
-            className="h-9 w-auto"
-          />
-          <span className="text-xs font-black uppercase tracking-widest text-brand-accent">Panel</span>
-        </Link>
+    <div className="min-h-screen overflow-x-clip bg-brand-bg md:grid md:grid-cols-[15rem_minmax(0,1fr)] lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <aside className="bg-brand-navy text-white print:hidden md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto">
         <AdminSidebar role={user.role} />
       </aside>
 
-      <div className="flex min-h-screen flex-col">
-        <header className="flex items-center justify-between gap-4 border-b border-brand-line bg-white px-6 py-4">
-          <Link href="/" className="text-xs font-black uppercase tracking-widest text-brand-muted transition hover:text-brand-blue">
+      <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip">
+        <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center justify-between gap-3 border-b border-brand-line/80 bg-white/95 px-4 backdrop-blur-xl print:hidden sm:px-6">
+          <Link
+            href="/"
+            className="shrink-0 text-[0.65rem] font-black uppercase tracking-widest text-brand-muted transition hover:text-brand-blue"
+          >
             ← Ver sitio
           </Link>
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right leading-tight sm:block">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="hidden min-w-0 text-right leading-tight sm:block">
               <p className="text-sm font-black text-brand-navy">{roleLabel(user.role)}</p>
-              <p className="text-xs font-medium text-brand-muted">{user.email}</p>
+              <p className="max-w-[14rem] truncate text-xs font-medium text-brand-muted">{user.email}</p>
             </div>
-            {/* Decorative: the identity is already stated in the text beside it, so announcing
-                a bare initial again would only add noise for a screen reader. */}
             <span
               aria-hidden="true"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-ice text-sm font-black uppercase text-brand-blue ring-1 ring-brand-line"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-ice text-sm font-black uppercase text-brand-blue ring-1 ring-brand-line"
             >
               {user.email.charAt(0)}
             </span>
-            {/* Only below md, where the sidebar's own sign-out control is hidden. */}
-            <form action={signOut} className="md:hidden">
+            <form action={signOut} className="shrink-0 md:hidden">
               <button
                 type="submit"
-                className="rounded-full border border-brand-line px-4 py-2 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue"
+                className="rounded-full border border-brand-line px-3 py-1.5 text-[0.65rem] font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue"
               >
                 Salir
               </button>
@@ -64,7 +52,12 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
           </div>
         </header>
 
-        <main className="flex-1 px-6 py-10">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-clip px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+          <Suspense fallback={null}>
+            <AdminFlashBanner />
+          </Suspense>
+          {children}
+        </main>
       </div>
     </div>
   );

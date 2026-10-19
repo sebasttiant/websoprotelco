@@ -14,25 +14,28 @@ export type {
   ProductAdminListFilters,
   ProductAdminListResult,
   ProductAdminSummary,
+  ProductCatalogPage,
   ProductDetail,
   ProductListFilters,
   ProductSort,
   ProductSummary,
 } from "./schemas";
 
-export { isSafeCatalogImagePath } from "./schemas";
+export { CATALOG_PAGE_SIZE, getSafeCatalogImageUrl, isSafeCatalogImagePath } from "./schemas";
 
 export {
   createCategory,
   createProduct,
   deleteCategory,
   deleteProduct,
+  importProductsCsv,
   updateCategory,
   updateProduct,
   type AdminActionState,
 } from "./actions";
 
 export {
+  countAllProducts,
   getCategories,
   getCategoriesForAdmin,
   getCategoryByIdForAdmin,
@@ -41,6 +44,8 @@ export {
   getFeaturedProducts,
   getProductByIdForAdmin,
   getProductBySlug,
+  getProductCatalog,
   getProducts,
   getProductsForAdmin,
+  listPublicProductPaths,
 } from "./service";

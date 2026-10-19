@@ -18,7 +18,7 @@ export default function AdminError({ error, reset }: AdminErrorProps) {
   }, [error]);
 
   return (
-    <section className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-[28px] bg-white p-10 text-center shadow-xl shadow-blue-950/5">
+    <section className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-2xl bg-white p-10 text-center shadow-xl shadow-blue-950/5">
       <p className="text-xs font-black uppercase tracking-widest text-red-600">Algo salió mal</p>
       <h1 className="text-2xl font-black text-slate-950">No pudimos cargar esta sección</h1>
       <p className="text-sm font-medium text-slate-500">

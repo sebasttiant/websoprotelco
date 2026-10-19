@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { getSiteSettings } from "@/domains/settings";
 
 import { SignUpForm } from "./sign-up-form";
@@ -15,16 +15,10 @@ export default async function RegisterPage() {
       {/* Brand panel. Decorative, so it collapses on narrow screens rather than stacking. */}
       <section className="hidden flex-col justify-between bg-brand-navy p-12 text-white lg:flex">
         <Link href="/" aria-label={`${settings.siteName} inicio`}>
-          <Image
-            src="/assets/img/sp-logo-white.png"
-            alt={settings.siteName}
-            width={2924}
-            height={1878}
-            className="h-14 w-auto"
-          />
+          <BrandLogo alt={settings.siteName} tone="dark" size="xl" priority />
         </Link>
-        <div className="space-y-6">
-          <h2 className="text-4xl font-black leading-tight">
+        <div className="space-y-5">
+          <h2 className="text-3xl font-black leading-snug tracking-tight">
             Creá tu cuenta para <span className="text-brand-accent">seguir tus cotizaciones</span>
           </h2>
           <p className="max-w-md text-sm font-medium leading-7 text-white/70">{settings.siteDescription}</p>
@@ -34,18 +28,12 @@ export default async function RegisterPage() {
 
       <section className="flex flex-col items-center justify-center gap-8 bg-brand-ice px-6 py-16">
         <Link href="/" className="lg:hidden" aria-label={`${settings.siteName} inicio`}>
-          <Image
-            src="/assets/img/sp-logo.png"
-            alt={settings.siteName}
-            width={394}
-            height={238}
-            className="h-14 w-auto"
-          />
+          <BrandLogo alt={settings.siteName} tone="light" size="lg" priority />
         </Link>
 
         <div className="w-full max-w-sm space-y-2 text-center">
           <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Cuenta</p>
-          <h1 className="text-3xl font-black text-brand-navy">Crear cuenta</h1>
+          <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Crear cuenta</h1>
           <p className="text-sm font-medium text-brand-muted">
             Registrate para guardar tus datos y consultar tus cotizaciones.
           </p>

@@ -20,12 +20,15 @@ export function HeaderMobileMenu({
   links,
   categories = [],
   isSignedIn = false,
+  tone = "light",
 }: {
   links: readonly HeaderNavLink[];
   categories?: readonly HeaderMobileCategory[];
   isSignedIn?: boolean;
+  tone?: "light" | "dark";
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const dark = tone === "dark";
 
   useEffect(() => {
     if (!isOpen) return;
@@ -39,13 +42,17 @@ export function HeaderMobileMenu({
   }, [isOpen]);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
         aria-label={isOpen ? "Cerrar menú" : "Abrir menú"}
-        className="grid h-11 w-11 place-items-center rounded-2xl border border-brand-line text-brand-navy transition hover:border-brand-accent hover:text-brand-blue"
+        className={`grid h-10 w-10 place-items-center rounded-xl border transition ${
+          dark
+            ? "border-white/25 text-white hover:border-brand-accent hover:text-brand-accent"
+            : "border-brand-blue/30 text-brand-navy hover:border-brand-blue hover:text-brand-blue"
+        }`}
       >
         <span aria-hidden="true" className="relative block h-4 w-5">
           <span
@@ -63,9 +70,14 @@ export function HeaderMobileMenu({
       {isOpen ? (
         <nav
           aria-label="Navegación móvil"
-          className="absolute inset-x-0 top-full border-b border-brand-line bg-white p-4 shadow-lg shadow-blue-950/5"
+          className="absolute inset-x-0 top-full border-b border-brand-line bg-white p-4 shadow-md shadow-blue-950/5"
         >
-          <form action="/productos" method="get" role="search" className="mb-4 flex items-center rounded-full border border-brand-line bg-brand-ice pl-4 pr-1.5 focus-within:border-brand-accent">
+          <form
+            action="/productos"
+            method="get"
+            role="search"
+            className="mb-4 flex items-center rounded-lg border border-brand-line bg-white pl-3 pr-1 focus-within:border-brand-blue"
+          >
             <label htmlFor="mobile-search" className="sr-only">
               Buscar productos
             </label>
@@ -74,12 +86,12 @@ export function HeaderMobileMenu({
               type="search"
               name="q"
               placeholder="Buscar productos..."
-              className="w-full bg-transparent py-2.5 text-sm font-medium text-brand-navy outline-none placeholder:text-brand-muted"
+              className="w-full bg-transparent py-2.5 text-sm text-brand-navy outline-none placeholder:text-brand-muted"
             />
             <button
               type="submit"
               aria-label="Buscar"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-blue text-white transition hover:bg-brand-primary"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-brand-muted transition hover:bg-brand-ice hover:text-brand-navy"
             >
               <Search aria-hidden="true" className="h-4 w-4" />
             </button>
@@ -91,7 +103,7 @@ export function HeaderMobileMenu({
                 <Link
                   href={link.href}
                   onClick={() => setIsOpen(false)}
-                  className="block rounded-xl px-4 py-3 text-sm font-black text-brand-navy transition hover:bg-brand-ice hover:text-brand-blue"
+                  className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-brand-navy transition hover:bg-brand-ice hover:text-brand-blue"
                 >
                   {link.label}
                 </Link>
@@ -101,14 +113,14 @@ export function HeaderMobileMenu({
 
           {categories.length > 0 ? (
             <div className="mt-3 border-t border-brand-line pt-3">
-              <p className="px-4 pb-1 text-xs font-black uppercase tracking-widest text-brand-muted">Categorías</p>
+              <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-brand-muted">Categorías</p>
               <ul className="flex flex-col gap-1">
                 {categories.map((category) => (
                   <li key={category.slug}>
                     <Link
                       href={`/productos/${category.slug}`}
                       onClick={() => setIsOpen(false)}
-                      className="block rounded-xl px-4 py-2.5 text-sm font-bold text-brand-navy transition hover:bg-brand-ice hover:text-brand-blue"
+                      className="block rounded-lg px-3 py-2 text-sm font-medium text-brand-navy transition hover:bg-brand-ice hover:text-brand-blue"
                     >
                       {category.name}
                     </Link>
@@ -118,21 +130,19 @@ export function HeaderMobileMenu({
             </div>
           ) : null}
 
-          {/* The header's account controls are hidden below the sm breakpoint, so this is the
-              only way into (or out of) the account on a phone. */}
           {isSignedIn ? (
             <>
               <Link
                 href="/cuenta"
                 onClick={() => setIsOpen(false)}
-                className="mt-3 block rounded-full bg-brand-navy px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-white transition hover:bg-brand-blue"
+                className="mt-3 block rounded-lg bg-brand-navy px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-brand-primary"
               >
                 Mi cuenta
               </Link>
               <form action={signOut} className="mt-2">
                 <button
                   type="submit"
-                  className="w-full rounded-full border border-brand-line px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-brand-muted transition hover:border-brand-accent hover:text-brand-blue"
+                  className="w-full rounded-lg border border-brand-line px-4 py-3 text-center text-sm font-semibold text-brand-muted transition hover:border-brand-blue hover:text-brand-blue"
                 >
                   Cerrar sesión
                 </button>
@@ -143,14 +153,14 @@ export function HeaderMobileMenu({
               <Link
                 href="/login"
                 onClick={() => setIsOpen(false)}
-                className="mt-3 block rounded-full bg-brand-navy px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-white transition hover:bg-brand-blue"
+                className="mt-3 block rounded-lg bg-brand-navy px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-brand-primary"
               >
                 Iniciar sesión
               </Link>
               <Link
                 href="/registro"
                 onClick={() => setIsOpen(false)}
-                className="mt-2 block rounded-full border border-brand-line px-5 py-3 text-center text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent hover:text-brand-blue"
+                className="mt-2 block rounded-lg border border-brand-line px-4 py-3 text-center text-sm font-semibold text-brand-navy transition hover:border-brand-blue hover:text-brand-blue"
               >
                 Crear cuenta
               </Link>

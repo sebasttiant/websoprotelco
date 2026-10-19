@@ -38,11 +38,11 @@ export default async function EditCategoryPage({ params, searchParams }: EditCat
     <section className="mx-auto max-w-2xl space-y-6">
       <Link href="/admin/categories" className="text-sm font-bold text-brand-blue">← Volver a categorías</Link>
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
-        <h1 className="text-3xl font-black text-slate-950">Editar categoría</h1>
+        <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
+        <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Editar categoría</h1>
       </div>
       {error ? <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">No se pudo actualizar la categoría. Revisá los datos e intentá de nuevo.</p> : null}
-      <form action={updateCategory as unknown as FormAction} className="grid gap-4 rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
+      <form action={updateCategory as unknown as FormAction} className="grid gap-4 rounded-2xl bg-white p-6 shadow-sm shadow-blue-950/5">
         <input type="hidden" name="id" value={category.id} />
         <label className="grid gap-2 text-sm font-bold text-slate-700">Nombre<input name="name" required defaultValue={category.name} className={inputClass} /></label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">Slug<input name="slug" required defaultValue={category.slug} className={inputClass} /></label>

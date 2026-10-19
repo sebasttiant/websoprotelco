@@ -2,14 +2,14 @@
 // layout (title, stat row, content block) so the transition is calm rather than a blank flash.
 export default function AdminLoading() {
   return (
-    <div className="space-y-6" role="status" aria-busy="true" aria-label="Cargando">
-      <div className="h-8 w-56 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
-      <div className="grid gap-4 md:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="h-28 animate-pulse rounded-[28px] bg-slate-100 motion-reduce:animate-none" />
+    <div className="space-y-4" role="status" aria-busy="true" aria-label="Cargando">
+      <div className="h-7 w-48 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="h-24 animate-pulse rounded-2xl bg-slate-100 motion-reduce:animate-none" />
         ))}
       </div>
-      <div className="h-64 animate-pulse rounded-[28px] bg-slate-100 motion-reduce:animate-none" />
+      <div className="h-48 animate-pulse rounded-2xl bg-slate-100 motion-reduce:animate-none" />
       <span className="sr-only">Cargando contenido…</span>
     </div>
   );

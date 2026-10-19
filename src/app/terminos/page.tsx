@@ -6,7 +6,7 @@ import { getSiteSettings } from "@/domains/settings";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Términos y condiciones | SOPROTELCO",
+  title: "Términos y condiciones",
   description: "Términos y condiciones de uso del sitio y de los servicios de SOPROTELCO.",
 };
 

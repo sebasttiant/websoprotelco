@@ -24,8 +24,8 @@ export default async function AdminCategoriesPage() {
     <section className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
-          <h1 className="text-3xl font-black text-slate-950">Categorías</h1>
+          <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
+          <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Categorías</h1>
         </div>
         <Link href="/admin/categories/new" className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white">Nueva categoría</Link>
       </div>

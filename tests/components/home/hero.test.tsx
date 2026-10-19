@@ -66,11 +66,26 @@ describe("Hero without banners", () => {
     expect(screen.getByText("Stock disponible y envíos nacionales.")).toBeInTheDocument();
   });
 
-  test("keeps the home layout usable when its optional background image is absent", async () => {
+  test("uses the default field photo when no admin background is set", async () => {
     await renderHero([], { ...HERO_SETTINGS, backgroundImage: null });
 
     expect(screen.getByRole("heading", { level: 1, name: HERO_SETTINGS.title })).toBeInTheDocument();
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /fibra óptica/i })).toHaveAttribute(
+      "src",
+      expect.stringContaining("hero-fiber.jpg"),
+    );
+  });
+
+  test("prefers the admin background image over the default photo", async () => {
+    await renderHero([], {
+      ...HERO_SETTINGS,
+      backgroundImage: "/uploads/hero/3b2c1a4e-0000-4000-8000-000000000001_hero.png",
+    });
+
+    expect(screen.getByRole("img", { name: /fibra óptica/i })).toHaveAttribute(
+      "src",
+      expect.stringContaining("uploads%2Fhero%2F"),
+    );
   });
 
   test("renders the call to action from hero settings", async () => {

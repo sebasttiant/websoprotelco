@@ -39,6 +39,10 @@ export async function createLead(input: LeadCreateInput, source = "contact_form"
   await repository.createLead(input, source);
 }
 
+export async function countLeads(): Promise<number> {
+  return repository.countLeads();
+}
+
 export async function getLeads(status?: string): Promise<LeadSummary[]> {
   const rows = await repository.findAllLeads(status);
   return rows.map(mapLeadSummary);

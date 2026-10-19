@@ -9,7 +9,7 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <Header />
-      <div className="min-h-[60vh] bg-brand-ice">{children}</div>
+      <div className="min-h-[60vh] bg-white">{children}</div>
       <Footer />
     </>
   );

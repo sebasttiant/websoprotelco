@@ -168,12 +168,15 @@ export function formatDate(value: Date | string | number | null | undefined): st
     return "—";
   }
 
-  return new Intl.DateTimeFormat(LOCALE, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
+  // en-CA + parts keeps SSR/client identical (es-CO Intl can insert locale spaces).
+  const ymd = new Intl.DateTimeFormat("en-CA", {
     timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(date);
+  const [year, month, day] = ymd.split("-");
+  return `${day}/${month}/${year}`;
 }
 
 export function formatDateTime(value: Date | string | number | null | undefined): string {

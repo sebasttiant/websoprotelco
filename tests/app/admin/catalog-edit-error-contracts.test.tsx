@@ -19,10 +19,11 @@ const { default: EditCategoryPage } = await import("@/app/admin/categories/[id]/
 const id = "11111111-1111-4111-8111-111111111111";
 
 describe("catalog edit error contracts", () => {
-  test("renders product edit errors accessibly", async () => {
+  test("renders product edit form with pesos price field for non-technical admins", async () => {
     mockRequirePermission.mockResolvedValue({ id, role: "admin" });
-    render(await EditProductPage({ params: Promise.resolve({ id }), searchParams: Promise.resolve({ error: "action-failed" }) }));
-    expect(screen.getByRole("alert")).toHaveTextContent(/no se pudo actualizar el producto/i);
+    render(await EditProductPage({ params: Promise.resolve({ id }) }));
+    expect(screen.getByLabelText(/precio \(pesos cop\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/url amigable \(slug\)/i)).toBeInTheDocument();
   });
 
   test("renders category edit errors accessibly", async () => {

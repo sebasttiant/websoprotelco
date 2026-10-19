@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ProductCard } from "@/components/catalog/product-card";
 import { Container } from "@/components/ui/container";
+import { Reveal } from "@/components/ui/reveal";
 import type { ProductSummary } from "@/domains/catalog";
 
 interface FeaturedProductsProps {
@@ -10,12 +11,12 @@ interface FeaturedProductsProps {
 
 export function FeaturedProducts({ products }: FeaturedProductsProps) {
   return (
-    <section className="bg-brand-ice py-24">
+    <section className="border-b border-brand-line bg-white py-14 sm:py-16">
       <Container>
-        <div className="mb-12 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="mb-4 text-xs font-black uppercase tracking-widest text-brand-blue">Catálogo destacado</p>
-            <h2 className="text-4xl font-black tracking-tight text-brand-navy md:text-5xl">Productos para conectividad</h2>
+            <p className="mb-2 text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Catálogo destacado</p>
+            <h2 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Productos para conectividad</h2>
           </div>
           <Link href="/productos" className="text-sm font-black uppercase tracking-widest text-brand-blue hover:underline">
             Ver todo el catálogo
@@ -23,17 +24,25 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
         </div>
 
         {products.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {products.map((product, index) => (
+              <Reveal key={product.id} delayMs={Math.min(index, 5) * 70}>
+                <ProductCard product={product} />
+              </Reveal>
             ))}
           </div>
         ) : (
-          <div className="rounded-[40px] border border-dashed border-brand-line bg-white p-12 text-center shadow-inner">
-            <h3 className="text-2xl font-black text-brand-navy">The public catalog is ready for products</h3>
+          <div className="rounded-[32px] border border-dashed border-brand-line bg-white p-12 text-center shadow-inner">
+            <h3 className="text-balance text-2xl font-black text-brand-navy">El catálogo todavía no tiene productos publicados</h3>
             <p className="mx-auto mt-3 max-w-xl text-brand-muted">
-              Add active products from the admin/database seed and they will appear here automatically.
+              En cuanto haya equipos activos, van a aparecer acá. Mientras tanto puedes pedir una cotización.
             </p>
+            <Link
+              href="/contacto"
+              className="mt-8 inline-block rounded-full bg-brand-blue px-8 py-4 text-sm font-black uppercase tracking-widest text-white transition hover:bg-brand-primary"
+            >
+              Hablar con un asesor
+            </Link>
           </div>
         )}
       </Container>

@@ -167,7 +167,15 @@ export async function findQuotes(filters: QuoteListFilters = {}): Promise<QuoteR
     conditions.push(`qr.kind = $${values.length}`);
   }
 
+  if (filters.search) {
+    values.push(`%${filters.search}%`);
+    conditions.push(
+      `(qr.reference ILIKE $${values.length} OR qr.contact_name ILIKE $${values.length} OR qr.contact_email ILIKE $${values.length} OR COALESCE(qr.contact_phone, '') ILIKE $${values.length})`,
+    );
+  }
+
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const limitSql = filters.limit ? `LIMIT ${filters.limit}` : "";
 
   // The total collapses to NULL as soon as ONE line lacks a price snapshot. SUM() skips NULLs
   // silently, so a request with a $500.000 priced line and an unpriced legacy line would
@@ -184,9 +192,54 @@ export async function findQuotes(filters: QuoteListFilters = {}): Promise<QuoteR
      LEFT JOIN quote_request_items qri ON qri.quote_request_id = qr.id
      ${where}
      GROUP BY qr.id
-     ORDER BY qr.created_at DESC`,
+     ORDER BY qr.created_at DESC
+     ${limitSql}`,
     values,
   );
+}
+
+export interface QuoteDashboardCounts {
+  totalOrders: number;
+  pendingOrders: number;
+  openQuotes: number;
+  revenueCents: number;
+  wonWithoutTotal: number;
+}
+
+export async function findQuoteDashboardCounts(): Promise<QuoteDashboardCounts> {
+  const rows = await query<{
+    total_orders: string;
+    pending_orders: string;
+    open_quotes: string;
+    revenue_cents: string;
+    won_without_total: string;
+  }>(
+    `SELECT
+       count(*) FILTER (WHERE kind = 'order')::text AS total_orders,
+       count(*) FILTER (WHERE kind = 'order' AND status IN ('received', 'in_review'))::text AS pending_orders,
+       count(*) FILTER (WHERE kind = 'quote' AND status IN ('received', 'in_review'))::text AS open_quotes,
+       COALESCE(sum(line_total) FILTER (WHERE kind = 'order' AND status = 'won' AND line_total IS NOT NULL), 0)::text AS revenue_cents,
+       count(*) FILTER (WHERE kind = 'order' AND status = 'won' AND line_total IS NULL)::text AS won_without_total
+     FROM (
+       SELECT qr.kind, qr.status,
+              CASE
+                WHEN bool_or(qri.id IS NOT NULL AND qri.unit_price_cents IS NULL) THEN NULL
+                ELSE COALESCE(sum(qri.quantity * qri.unit_price_cents), 0)
+              END AS line_total
+       FROM quote_requests qr
+       LEFT JOIN quote_request_items qri ON qri.quote_request_id = qr.id
+       GROUP BY qr.id
+     ) totals`,
+  );
+
+  const row = rows[0];
+  return {
+    totalOrders: Number.parseInt(row?.total_orders ?? "0", 10),
+    pendingOrders: Number.parseInt(row?.pending_orders ?? "0", 10),
+    openQuotes: Number.parseInt(row?.open_quotes ?? "0", 10),
+    revenueCents: Number.parseInt(row?.revenue_cents ?? "0", 10),
+    wonWithoutTotal: Number.parseInt(row?.won_without_total ?? "0", 10),
+  };
 }
 
 // Reads the most recent quote requests owned by a single user. The caller MUST pass

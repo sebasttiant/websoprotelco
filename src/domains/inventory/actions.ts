@@ -53,7 +53,13 @@ export async function recordStockMovement(formData: FormData): Promise<Inventory
 
     await inventoryService.recordMovement(input, user.id);
     revalidatePath("/admin/inventory");
-    redirect("/admin/inventory?success=movement-recorded");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin");
+
+    const returnTo = stringValue(formData, "returnTo").trim();
+    const safeReturn =
+      returnTo.startsWith("/admin/") && !returnTo.startsWith("//") ? returnTo.split("?")[0] : "/admin/inventory";
+    redirect(`${safeReturn}?success=movement-recorded`);
   } catch (error) {
     return errorState(error);
   }

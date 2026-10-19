@@ -10,7 +10,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     "Soluciones integrales en telecomunicaciones, fibra óptica, redes y conectividad para proyectos empresariales en Colombia.",
   contactEmail: "ventas@soprotelco.com",
   contactPhone: "+57 300 123 4567",
-  address: "Bogotá, Colombia",
+  address: "Medellín, Colombia",
   businessHours: "Lun-Vie: 8:00-18:00, Sáb: 9:00-13:00",
   facebookUrl: null,
   instagramUrl: null,

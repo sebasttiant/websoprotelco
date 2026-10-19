@@ -17,10 +17,10 @@ export default async function NewCategoryPage() {
     <section className="mx-auto max-w-2xl space-y-6">
       <Link href="/admin/categories" className="text-sm font-bold text-brand-blue">← Volver a categorías</Link>
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
-        <h1 className="text-3xl font-black text-slate-950">Nueva categoría</h1>
+        <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
+        <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Nueva categoría</h1>
       </div>
-      <form action={createCategory as unknown as FormAction} className="grid gap-4 rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
+      <form action={createCategory as unknown as FormAction} className="grid gap-4 rounded-2xl bg-white p-6 shadow-sm shadow-blue-950/5">
         <label className="grid gap-2 text-sm font-bold text-slate-700">Nombre<input name="name" required className={inputClass} /></label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">Slug<input name="slug" required className={inputClass} /></label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">Categoría padre<select name="parentId" defaultValue="" className={inputClass}><option value="">Sin categoría padre</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>

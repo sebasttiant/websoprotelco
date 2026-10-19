@@ -64,12 +64,15 @@ describe("sessionCookieOptions", () => {
   });
 
   test("marks the cookie secure outside development", () => {
+    // Local .env sets SESSION_COOKIE_SECURE=false for HTTP preview; clear it for this case.
+    vi.stubEnv("SESSION_COOKIE_SECURE", "");
     vi.stubEnv("NODE_ENV", "production");
 
     expect(sessionCookieOptions(expiresAt).secure).toBe(true);
   });
 
   test("allows a non-secure cookie in development so plain-HTTP localhost still works", () => {
+    vi.stubEnv("SESSION_COOKIE_SECURE", "");
     vi.stubEnv("NODE_ENV", "development");
 
     expect(sessionCookieOptions(expiresAt).secure).toBe(false);

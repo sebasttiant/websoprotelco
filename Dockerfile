@@ -39,7 +39,7 @@ CMD ["pnpm", "seed:users"]
 FROM base AS sharp-runtime
 WORKDIR /sharp
 RUN npm init -y >/dev/null 2>&1 \
-  && npm_config_update_notifier=false npm install --os=linux --cpu=x64 sharp@0.35.3
+  && npm_config_update_notifier=false npm install --os=linux --cpu=x64 sharp@0.35.5
 
 FROM base AS runner
 ENV NODE_ENV=production

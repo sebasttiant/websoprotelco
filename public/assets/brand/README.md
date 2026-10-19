@@ -1,11 +1,11 @@
-# SOPROTELCO Brand Assets
+# Brand assets
 
-## Approved Legacy Source
+Canonical SOPROTELCO mark (SP + check + legal line), prepared for light and dark surfaces.
 
-- `soprotelco-logo-white.png` was copied from the read-only legacy source:
-  `/home/sebastian/Documentos/DEV/SOPROTELCO/web/web_completo/web/public/assets/img/sp-logo-white.png`.
-- Provenance check: SHA-256 `17a2ff85ed9c58ece86b4c0260ddb49c624413f59d1dabcaa7d0d47efdc30f26`.
-- Dimensions: 2924 × 1878 pixels, RGBA PNG.
+- `soprotelco-logo-source.png` — original upload (transparent background; mixed greys).
+- `soprotelco-logo.png` — light-surface mark (navy SP/text, pale check square). Mirrored at `/assets/img/sp-logo.png`.
+- `soprotelco-logo-white.png` — dark-surface mark (white SP/text). Mirrored at `/assets/img/sp-logo-white.png`.
 
-Only verified static brand assets belong in this directory. Do not add Supabase URLs,
-credentials, Base64 data URIs, generated build output, or runtime data exports.
+Dimensions: **394 × 238** pixels, RGBA PNG.
+
+UI must load logos through `BrandLogo` (`src/components/brand/brand-logo.tsx`) so header, footer, auth and admin stay aligned.

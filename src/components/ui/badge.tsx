@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
 const BADGE_VARIANT = {
-  default: "bg-blue-50 text-brand-blue",
+  default: "bg-brand-ice text-brand-blue ring-1 ring-brand-line",
   success: "bg-emerald-50 text-emerald-700",
   warning: "bg-amber-50 text-amber-700",
-  neutral: "bg-slate-100 text-slate-600",
+  neutral: "bg-brand-ice text-brand-muted ring-1 ring-brand-line",
 } as const;
 
 type BadgeVariant = keyof typeof BADGE_VARIANT;

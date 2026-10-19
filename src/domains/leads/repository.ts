@@ -38,6 +38,11 @@ export async function createLead(input: LeadCreateInput, source: string): Promis
   );
 }
 
+export async function countLeads(): Promise<number> {
+  const rows = await query<{ count: string }>("SELECT count(*)::text AS count FROM leads");
+  return Number.parseInt(rows[0]?.count ?? "0", 10);
+}
+
 export async function findAllLeads(status?: string): Promise<LeadRow[]> {
   const values: unknown[] = [];
   let where = "";

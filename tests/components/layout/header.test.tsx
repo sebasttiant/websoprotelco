@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
@@ -29,7 +29,7 @@ const SETTINGS: SiteSettings = {
   siteDescription: "Soluciones en telecomunicaciones.",
   contactEmail: "ventas@soprotelco.com",
   contactPhone: "+57 300 123 4567",
-  address: "Bogotá, Colombia",
+  address: "Medellín, Colombia",
   businessHours: "Lun-Vie: 8:00-18:00",
   facebookUrl: null,
   instagramUrl: null,
@@ -74,25 +74,15 @@ describe("Header", () => {
     expect(screen.getByRole("link", { name: /soprotelco/i })).toHaveAttribute("href", "/");
   });
 
-  test("shows the contact phone and business hours from settings", async () => {
+  test("keeps the header free of phone and business hours", async () => {
     await renderHeader({
       contactPhone: "+57 311 999 0000",
       businessHours: "Lun-Vie: 7:00-17:00",
     });
 
-    const topBar = screen.getByRole("complementary", { name: /contacto/i });
-    expect(within(topBar).getByText("+57 311 999 0000")).toBeInTheDocument();
-    expect(within(topBar).getByText("Lun-Vie: 7:00-17:00")).toBeInTheDocument();
-  });
-
-  test("makes the phone number callable", async () => {
-    await renderHeader({ contactPhone: "+57 311 999 0000" });
-
-    // The href strips spaces because tel: URIs must not contain them.
-    expect(screen.getByRole("link", { name: "+57 311 999 0000" })).toHaveAttribute(
-      "href",
-      "tel:+573119990000",
-    );
+    // Contact details live in footer / contact page — not the sticky chrome.
+    expect(screen.queryByRole("link", { name: "+57 311 999 0000" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Lun-Vie: 7:00-17:00")).not.toBeInTheDocument();
   });
 
   test("renders the main navigation links", async () => {
@@ -102,6 +92,20 @@ describe("Header", () => {
     expect(within(nav).getByRole("link", { name: "Inicio" })).toHaveAttribute("href", "/");
     expect(within(nav).getByRole("link", { name: "Productos" })).toHaveAttribute("href", "/productos");
     expect(within(nav).getByRole("link", { name: "Contáctanos" })).toHaveAttribute("href", "/contacto");
+  });
+
+  test("offers a floating WhatsApp link from settings and hides it when the number is blank", async () => {
+    await renderHeader();
+
+    expect(screen.getByRole("link", { name: "Escribir por WhatsApp" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("https://wa.me/573001234567"),
+    );
+
+    cleanup();
+    await renderHeader({ whatsappNumber: "   " });
+
+    expect(screen.queryByRole("link", { name: "Escribir por WhatsApp" })).not.toBeInTheDocument();
   });
 
   test("exposes the cart as a dedicated icon link", async () => {

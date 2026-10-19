@@ -25,7 +25,7 @@ export default async function AccountPage() {
       </section>
 
       <section className="grid gap-6 md:grid-cols-[1fr_320px]">
-        <div className="rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
+        <div className="rounded-[28px] border border-brand-line bg-white p-6 shadow-sm shadow-blue-950/5">
           <h2 className="text-2xl font-black text-brand-navy">Perfil</h2>
           <dl className="mt-6 grid gap-4 text-sm">
             <div>
@@ -43,7 +43,7 @@ export default async function AccountPage() {
           </dl>
         </div>
 
-        <div className="grid content-start gap-3 rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
+        <div className="grid content-start gap-3 rounded-[28px] border border-brand-line bg-white p-6 shadow-sm shadow-blue-950/5">
           <Link
             href="/cuenta/perfil"
             className="rounded-full bg-brand-blue px-5 py-3 text-center text-sm font-black text-white transition hover:bg-brand-primary"
@@ -59,7 +59,7 @@ export default async function AccountPage() {
         </div>
       </section>
 
-      <section className="rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
+      <section className="rounded-[28px] border border-brand-line bg-white p-6 shadow-sm shadow-blue-950/5">
         <h2 className="text-2xl font-black text-brand-navy">Cotizaciones recientes</h2>
         {quotes.length > 0 ? (
           <div className="mt-5 divide-y divide-brand-line">

@@ -1,9 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-const { mockGetCategories, mockGetProducts, mockGetProductBySlug, mockNotFound } = vi.hoisted(() => ({
+const { mockGetCategories, mockGetProducts, mockGetProductCatalog, mockGetProductBySlug, mockNotFound } = vi.hoisted(() => ({
   mockGetCategories: vi.fn(),
   mockGetProducts: vi.fn(),
+  mockGetProductCatalog: vi.fn(),
   mockGetProductBySlug: vi.fn(),
   mockNotFound: vi.fn(() => {
     throw new Error("NOT_FOUND");
@@ -13,6 +14,7 @@ const { mockGetCategories, mockGetProducts, mockGetProductBySlug, mockNotFound }
 vi.mock("@/domains/catalog", () => ({
   getCategories: mockGetCategories,
   getProducts: mockGetProducts,
+  getProductCatalog: mockGetProductCatalog,
   getProductBySlug: mockGetProductBySlug,
 }));
 
@@ -60,7 +62,7 @@ afterEach(() => {
 describe("storefront catalog routes", () => {
   test("shows browsable catalog products and Spanish filters", async () => {
     mockGetCategories.mockResolvedValue([{ id: "c1", slug: "fusionadoras", name: "Fusionadoras", imageUrl: null }]);
-    mockGetProducts.mockResolvedValue([product()]);
+    mockGetProductCatalog.mockResolvedValue({ products: [product()], total: 1, page: 1, pageSize: 24, brands: [] });
 
     render(await CatalogPage({ searchParams: Promise.resolve({}) }));
 
@@ -69,13 +71,15 @@ describe("storefront catalog routes", () => {
     expect(screen.getByRole("link", { name: "Cotizar" })).toHaveAttribute("href", "/contacto?producto=fusionadora-x");
     expect(screen.getByRole("navigation", { name: "Ruta de navegación" })).toBeInTheDocument();
     expect(screen.getByLabelText("Categoría")).toHaveValue("");
+    expect(screen.queryByText(/PostgreSQL/)).not.toBeInTheDocument();
+    expect(screen.getByText("Precios en pesos colombianos")).toBeInTheDocument();
   });
 
   test("shows an empty category with a catalog return link and accessible breadcrumb", async () => {
     mockGetCategories.mockResolvedValue([{ id: "c1", slug: "fusionadoras", name: "Fusionadoras", imageUrl: null }]);
-    mockGetProducts.mockResolvedValue([]);
+    mockGetProductCatalog.mockResolvedValue({ products: [], total: 0, page: 1, pageSize: 24, brands: [] });
 
-    render(await CategoryPage({ params: Promise.resolve({ category: "fusionadoras" }) }));
+    render(await CategoryPage({ params: Promise.resolve({ category: "fusionadoras" }), searchParams: Promise.resolve({}) }));
 
     expect(screen.getByRole("heading", { name: "Fusionadoras" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "No encontramos productos" })).toBeInTheDocument();
@@ -93,14 +97,14 @@ describe("storefront catalog routes", () => {
   test("uses the branded placeholder when a product has no approved image", () => {
     render(<ProductCard product={product()} />);
 
-    expect(screen.getByText("Sin imagen")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /imagen pendiente de fusionadora x/i })).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "Fusionadora X" })).not.toBeInTheDocument();
   });
 
   test("does not render an image element for an unsafe stored value", () => {
     render(<ProductCard product={product({ imageUrl: "https://remote.invalid/catalog.png" })} />);
 
-    expect(screen.getByText("Sin imagen")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /imagen pendiente de fusionadora x/i })).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: "Fusionadora X" })).not.toBeInTheDocument();
   });
 

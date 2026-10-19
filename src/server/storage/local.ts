@@ -3,24 +3,21 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 
 import {
-  ALLOWED_IMAGE_TYPES,
   type DesignImageStorageAdapter,
   type DocumentStorageAdapter,
   type StorageAdapter,
   type StoredFile,
 } from "./index";
-import { OPTIMIZED_IMAGE_EXTENSION, optimizeProductImage } from "./optimize-image";
+import {
+  OPTIMIZED_IMAGE_EXTENSION,
+  optimizeDesignImage,
+  optimizeProductImage,
+} from "./optimize-image";
 import { runtimeAssetRoots } from "./roots";
 
 const { uploads: uploadDirectory, documents: documentsDirectory } = runtimeAssetRoots();
 const bannerUploadsDirectory = path.join(uploadDirectory, "banners");
 const heroUploadsDirectory = path.join(uploadDirectory, "hero");
-
-const EXTENSIONS_BY_TYPE: Readonly<Record<string, string>> = {
-  [ALLOWED_IMAGE_TYPES.JPEG]: "jpg",
-  [ALLOWED_IMAGE_TYPES.PNG]: "png",
-  [ALLOWED_IMAGE_TYPES.WEBP]: "webp",
-};
 
 // Kept as a local list (not imported from `@/domains/documents`) so this low-level storage
 // module never depends on a higher-level domain. Must stay in sync with
@@ -153,20 +150,23 @@ export function createLocalStorageAdapter(): StorageAdapter & DocumentStorageAda
     },
 
     async saveDesignImage(file: File, target: "banners" | "hero"): Promise<StoredFile> {
-      const extension = EXTENSIONS_BY_TYPE[file.type] ?? "bin";
-      const safeFilename = sanitizeImageFilename(file.name, extension);
+      // Same optimize path as catalog images: EXIF-orient, bound long edge, WebP. Keeps banner
+      // uploads from blowing the hero and avoids shipping multi-MB phone photos.
+      const safeFilename = sanitizeImageFilename(file.name, OPTIMIZED_IMAGE_EXTENSION);
       const storedFilename = `${randomUUID()}_${safeFilename}`;
       const targetDirectory = target === "hero" ? heroUploadsDirectory : bannerUploadsDirectory;
       const pathname = path.join(targetDirectory, storedFilename);
 
       assertWithinDirectory(uploadDirectory, pathname);
-
-      const bytes = Buffer.from(await file.arrayBuffer());
-
+      // Reject symlink mounts before spending CPU on sharp, and before any write.
       await assertNoSymlinkComponents(uploadDirectory, pathname);
+
+      const original = Buffer.from(await file.arrayBuffer());
+      const optimized = await optimizeDesignImage(original);
+
       await mkdir(targetDirectory, { recursive: true });
       await assertNoSymlinkComponents(uploadDirectory, pathname);
-      await writeFile(pathname, bytes, { flag: "wx" });
+      await writeFile(pathname, optimized, { flag: "wx" });
 
       return {
         url: `/uploads/${target}/${storedFilename}`,

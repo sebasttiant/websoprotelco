@@ -18,7 +18,7 @@ const SETTINGS: SiteSettings = {
   siteDescription: "Soluciones integrales en telecomunicaciones.",
   contactEmail: "ventas@soprotelco.com",
   contactPhone: "+57 300 123 4567",
-  address: "Bogotá, Colombia",
+  address: "Medellín, Colombia",
   businessHours: "Lun-Vie: 8:00-18:00",
   facebookUrl: null,
   instagramUrl: null,
@@ -41,7 +41,7 @@ describe("Footer", () => {
 
     expect(screen.getByRole("img", { name: /soprotelco/i })).toHaveAttribute(
       "src",
-      expect.stringContaining("soprotelco-logo-white"),
+      expect.stringContaining("sp-logo.png"),
     );
     expect(screen.getByText("Fibra óptica y redes.")).toBeInTheDocument();
   });
@@ -104,10 +104,12 @@ describe("Footer", () => {
     expect(screen.getByRole("link", { name: /privacidad/i })).toHaveAttribute("href", "/privacidad");
   });
 
-  test("shows the current year in the copyright", async () => {
+  test("shows IL Asesorías copyright without using the site name", async () => {
     await renderFooter({ siteName: "SOPROTELCO" });
 
     const year = new Date().getFullYear();
-    expect(screen.getByText(new RegExp(`© ${year} SOPROTELCO`))).toBeInTheDocument();
+    expect(
+      screen.getByText(`© ${year} IL Asesorías S.A.S. Todos los derechos reservados.`),
+    ).toBeInTheDocument();
   });
 });

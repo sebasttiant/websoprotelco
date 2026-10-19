@@ -86,6 +86,19 @@ export async function checkStorageConfiguration(): Promise<{ ok: true; provider:
     const { checkRuntimeAssetRoots } = await import("./runtime-assets");
     await checkRuntimeAssetRoots();
 
+    // Building the adapter only proves the configuration parses. The failure that actually takes
+    // uploads down in production is a volume that is mounted but not writable or readable by the
+    // runtime user, which no configuration check can see — so the roots are probed for real.
+    // Dynamically imported to keep this module free of node:fs at import time.
+    const { probeRuntimeAssetRoots } = await import("./assets");
+    const probe = await probeRuntimeAssetRoots();
+
+    // The probe emits its own sanitized diagnostic (root, operation, errno — never a path), so
+    // the failure is reported once, here it only decides the outcome.
+    if (!probe.ok) {
+      return { ok: false, error: "Storage configuration check failed." };
+    }
+
     return { ok: true, provider: readStorageProvider() };
   } catch (error) {
     // The message can echo the configured value, so it is logged and not returned.

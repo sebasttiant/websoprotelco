@@ -1,5 +1,14 @@
 import type { NextConfig } from "next";
 
+/** Baseline browser hardening for every response. HSTS belongs on the TLS terminator (nginx/Cloudflare), not here — this app still serves plain HTTP on :8686 in preview. */
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "X-DNS-Prefetch-Control", value: "on" },
+] as const;
+
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
@@ -18,6 +27,10 @@ const nextConfig: NextConfig = {
   // maliciously crafted PDF is never rendered inline in the browser context.
   async headers() {
     return [
+      {
+        source: "/:path*",
+        headers: [...SECURITY_HEADERS],
+      },
       {
         source: "/documents/:path*",
         headers: [

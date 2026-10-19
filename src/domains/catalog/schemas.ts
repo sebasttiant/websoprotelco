@@ -8,14 +8,25 @@ export const productSortSchema = z.enum(PRODUCT_SORT_VALUES);
 
 export type ProductSort = z.infer<typeof productSortSchema>;
 
+export const CATALOG_PAGE_SIZE = 24;
+
 export const productListFiltersSchema = z.object({
   search: z.string().trim().min(1).optional(),
   categorySlug: z.string().trim().min(1).optional(),
   maxPriceCents: z.number().int().min(0).optional(),
   sort: productSortSchema.optional(),
+  limit: z.number().int().min(1).max(100).optional(),
 });
 
 export type ProductListFilters = z.infer<typeof productListFiltersSchema>;
+
+export interface ProductCatalogPage {
+  products: ProductSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  brands: string[];
+}
 
 export const productSummarySchema = z.object({
   id: z.uuid(),
@@ -166,6 +177,8 @@ export type ProductStatusFilter = z.infer<typeof productStatusFilterSchema>;
 export const productAdminListFiltersSchema = z.object({
   search: z.string().trim().min(1).optional(),
   status: productStatusFilterSchema.optional(),
+  /** When true, only products with no usable image path. */
+  missingImage: z.boolean().optional(),
   page: z.number().int().min(1).optional(),
 });
 
@@ -182,6 +195,7 @@ export const productAdminSummarySchema = z.object({
   stockQuantity: z.number().int(),
   isActive: z.boolean(),
   categoryName: z.string().nullable(),
+  imageUrl: z.string().nullable(),
 });
 
 export type ProductAdminSummary = z.infer<typeof productAdminSummarySchema>;

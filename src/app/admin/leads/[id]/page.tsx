@@ -42,11 +42,11 @@ export default async function AdminLeadDetailPage({ params }: LeadDetailPageProp
       </Link>
 
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Detalle del cliente potencial</p>
-        <h1 className="text-3xl font-black text-slate-950">{lead.name}</h1>
+        <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Detalle del cliente potencial</p>
+        <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">{lead.name}</h1>
       </div>
 
-      <div className="grid gap-2 rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
+      <div className="grid gap-2 rounded-2xl bg-white p-6 shadow-xl shadow-blue-950/5">
         <p>
           <span className="font-black text-slate-700">Correo:</span> {lead.email}
         </p>
@@ -70,7 +70,7 @@ export default async function AdminLeadDetailPage({ params }: LeadDetailPageProp
         </p>
       </div>
 
-      <form action={assignLead as unknown as FormAction} className="grid gap-4 rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
+      <form action={assignLead as unknown as FormAction} className="grid gap-4 rounded-2xl bg-white p-6 shadow-xl shadow-blue-950/5">
         <input type="hidden" name="id" value={lead.id} />
         <label className="grid gap-2 text-sm font-bold text-slate-700">
           Asignar a (ID de usuario)
@@ -81,7 +81,7 @@ export default async function AdminLeadDetailPage({ params }: LeadDetailPageProp
         </button>
       </form>
 
-      <div className="space-y-4 rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
+      <div className="space-y-4 rounded-2xl bg-white p-6 shadow-xl shadow-blue-950/5">
         <h2 className="text-xl font-black text-slate-950">Notas</h2>
         <ul className="space-y-3">
           {notes.length > 0 ? (

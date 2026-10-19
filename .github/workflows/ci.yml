@@ -99,6 +99,12 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Boots the standalone output the Docker runner ships and asserts over HTTP that a file
+      # written AFTER startup is served immediately. No unit test can see that: it is a property
+      # of the framework's boot-time public-file index, not of the handler.
+      - name: Runtime asset delivery contract
+        run: pnpm test:contract:assets
+
       - name: Collect PostgreSQL diagnostics on failure
         if: ${{ failure() }}
         run: docker ps --all --format 'table {{.Names}}\t{{.Status}}'

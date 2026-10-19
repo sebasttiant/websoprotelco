@@ -18,9 +18,13 @@ interface HeaderCartLinkProps {
 // This stays an anchor to /carrito rather than becoming a bare button. With JavaScript the
 // click is intercepted and the drawer opens; without it the link still navigates to the full
 // cart page, which keeps working. The drawer is an enhancement, not a replacement.
-export function HeaderCartLink({ whatsappNumber }: HeaderCartLinkProps) {
+export function HeaderCartLink({
+  whatsappNumber,
+  tone = "light",
+}: HeaderCartLinkProps & { tone?: "light" | "dark" }) {
   const [count, setCount] = useState(0);
   const [open, setOpen] = useState(false);
+  const dark = tone === "dark";
 
   useEffect(() => {
     const update = () => setCount(readCart().reduce((total, item) => total + item.quantity, 0));
@@ -55,11 +59,15 @@ export function HeaderCartLink({ whatsappNumber }: HeaderCartLinkProps) {
           event.preventDefault();
           setOpen(true);
         }}
-        className="relative inline-flex h-11 w-11 items-center justify-center rounded-full bg-brand-blue text-white shadow-glow transition hover:bg-brand-primary"
+        className={`relative inline-flex h-10 w-10 items-center justify-center rounded-xl border transition ${
+          dark
+            ? "border-white/25 text-white hover:border-brand-accent hover:text-brand-accent"
+            : "border-brand-blue/30 text-brand-navy hover:border-brand-blue hover:text-brand-blue"
+        }`}
       >
         <ShoppingCart aria-hidden="true" className="h-5 w-5" />
         {count > 0 ? (
-          <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand-accent px-1 text-[0.65rem] font-black text-brand-navy">
+          <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand-blue px-1 text-[0.65rem] font-bold text-white">
             {count > 99 ? "99+" : count}
           </span>
         ) : null}

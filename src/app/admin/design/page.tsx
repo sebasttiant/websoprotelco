@@ -20,15 +20,22 @@ export default async function AdminDesignPage({ searchParams }: { searchParams?:
   const error = (await searchParams)?.error;
 
   return (
-    <section className="space-y-10">
-      <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Administración</p>
-        <h1 className="text-3xl font-black text-slate-950">Diseño del sitio</h1>
+    <section className="min-w-0 space-y-6">
+      <div className="min-w-0">
+        <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Administración</p>
+        <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Diseño del sitio</h1>
       </div>
-      {error ? <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">No se pudo guardar el diseño. Usá una ruta interna o una URL http(s).</p> : null}
+      {error ? (
+        <p role="alert" className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">
+          No se pudo guardar el diseño. Usá una ruta interna o una URL http(s).
+        </p>
+      ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        <form action={updateHeroSettings as unknown as FormAction} className="space-y-4 rounded-lg border border-slate-200 p-4">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[1fr_1.2fr]">
+        <form
+          action={updateHeroSettings as unknown as FormAction}
+          className="min-w-0 space-y-4 rounded-2xl border border-brand-line bg-white p-4 shadow-sm shadow-blue-950/5"
+        >
           <div>
             <h2 className="text-lg font-black text-slate-950">Configuración del hero</h2>
             <p className="text-sm font-medium text-slate-500">Personaliza el contenido del hero de la página de inicio.</p>

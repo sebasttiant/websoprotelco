@@ -106,6 +106,10 @@ export async function getQuotes(filters: QuoteListFilters = {}): Promise<QuoteSu
   return rows.map(mapQuoteSummary);
 }
 
+export async function getQuoteDashboardCounts() {
+  return repository.findQuoteDashboardCounts();
+}
+
 function mapCustomerQuoteSummary(row: CustomerQuoteRow): CustomerQuoteSummary {
   return {
     id: row.id,

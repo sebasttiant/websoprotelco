@@ -66,7 +66,7 @@ INSERT INTO settings (key, value, description) VALUES
   ('site_description', 'Soluciones en telecomunicaciones', 'Site meta description'),
   ('contact_email', 'ventas@soprotelco.com', 'Contact email'),
   ('contact_phone', '+57 300 123 4567', 'Contact phone'),
-  ('address', 'Bogotá, Colombia', 'Business address'),
+  ('address', 'Medellín, Colombia', 'Business address'),
   ('business_hours', 'Lun-Vie: 8:00-18:00, Sáb: 9:00-13:00', 'Business hours'),
   ('facebook_url', '', 'Facebook page URL'),
   ('instagram_url', '', 'Instagram profile URL'),

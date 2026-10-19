@@ -13,6 +13,7 @@ import {
   getCategories,
   getFeaturedProducts,
   getProductBySlug,
+  getProductCatalog,
   getProducts,
   getProductsForAdmin,
 } from "@/domains/catalog/service";
@@ -83,6 +84,23 @@ describe("getProducts", () => {
     const [product] = await getProducts();
 
     expect(product?.inStock).toBe(false);
+  });
+});
+
+describe("getProductCatalog", () => {
+  test("loads one page and the total instead of the whole catalog", async () => {
+    mockQuery
+      .mockResolvedValueOnce([{ count: "50" }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ brand: "Fujikura" }]);
+
+    const page = await getProductCatalog({ page: 2 });
+
+    const listCall = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(listCall[0]).toContain("LIMIT");
+    expect(listCall[0]).toContain("OFFSET");
+    expect(listCall[1]?.slice(-2)).toEqual([24, 24]);
+    expect(page).toMatchObject({ total: 50, page: 2, pageSize: 24, brands: ["Fujikura"] });
   });
 });
 
@@ -170,6 +188,7 @@ describe("getProductsForAdmin", () => {
       stock_quantity: 0,
       is_active: false,
       category_name: null,
+      image_url: null,
     }]);
 
     const result = await getProductsForAdmin();
@@ -178,7 +197,7 @@ describe("getProductsForAdmin", () => {
     const [listSql] = mockQuery.mock.calls[1] as [string, unknown[]];
     expect(countSql).not.toContain("WHERE");
     expect(listSql).not.toContain("p.is_active =");
-    expect(result.rows[0]).toMatchObject({ isActive: false, priceCents: 1000 });
+    expect(result.rows[0]).toMatchObject({ isActive: false, priceCents: 1000, imageUrl: null });
   });
 
   test("narrows to only active or only inactive products when a status filter is given", async () => {

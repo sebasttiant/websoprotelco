@@ -1,6 +1,9 @@
+import { parsePesosInput, pesosToCents } from "@/lib/money";
+import { slugifyName } from "@/lib/slugify";
+
 import * as repository from "./repository";
 import type { ProductRow } from "./repository";
-import { getSafeCatalogImageUrl, PRODUCT_ADMIN_PAGE_SIZE, productAdminPageSchema } from "./schemas";
+import { CATALOG_PAGE_SIZE, getSafeCatalogImageUrl, PRODUCT_ADMIN_PAGE_SIZE, productAdminPageSchema } from "./schemas";
 import type {
   CategoryAdminDetail,
   CategoryAdminInput,
@@ -15,6 +18,7 @@ import type {
   ProductAdminListResult,
   ProductAdminSummary,
   ProductDetail,
+  ProductCatalogPage,
   ProductListFilters,
   ProductSummary,
 } from "./schemas";
@@ -67,6 +71,7 @@ function mapProductAdminSummary(row: repository.ProductAdminRow): ProductAdminSu
     stockQuantity: row.stock_quantity,
     isActive: row.is_active,
     categoryName: row.category_name,
+    imageUrl: row.image_url,
   };
 }
 
@@ -116,6 +121,38 @@ function mapCategoryAdminDetail(row: repository.CategoryAdminDetailRow): Categor
 export async function getProducts(filters: ProductListFilters = {}): Promise<ProductSummary[]> {
   const rows = await repository.findActiveProducts(filters);
   return rows.map(mapProductSummary);
+}
+
+export interface ProductCatalogQuery extends ProductListFilters {
+  brand?: string;
+  inStock?: boolean;
+  page?: number;
+}
+
+export async function getProductCatalog(filters: ProductCatalogQuery = {}): Promise<ProductCatalogPage> {
+  const total = await repository.countActiveProducts(filters);
+  const totalPages = Math.max(1, Math.ceil(total / CATALOG_PAGE_SIZE));
+  const requested = Number.isInteger(filters.page) && (filters.page as number) > 0 ? (filters.page as number) : 1;
+  const page = Math.min(requested, totalPages);
+  const [rows, brands] = await Promise.all([
+    total === 0
+      ? Promise.resolve([])
+      : repository.findActiveProducts({ ...filters, limit: CATALOG_PAGE_SIZE, offset: (page - 1) * CATALOG_PAGE_SIZE }),
+    repository.findActiveBrands(filters),
+  ]);
+
+  return {
+    products: rows.map(mapProductSummary),
+    total,
+    page,
+    pageSize: CATALOG_PAGE_SIZE,
+    brands,
+  };
+}
+
+export async function listPublicProductPaths(): Promise<{ slug: string; updatedAt: string }[]> {
+  const rows = await repository.findPublicProductPaths();
+  return rows.map((row) => ({ slug: row.slug, updatedAt: row.updated_at }));
 }
 
 export async function getFeaturedProducts(limit = 6): Promise<ProductSummary[]> {
@@ -185,6 +222,148 @@ export async function getCategoryByIdForAdmin(id: string): Promise<CategoryAdmin
 
 export async function createProduct(input: ProductAdminInput): Promise<void> {
   await repository.insertProduct(input);
+}
+
+export async function upsertProductBySku(input: ProductAdminInput): Promise<"inserted" | "updated"> {
+  return repository.upsertProductBySku(input);
+}
+
+export async function resolveCategoryIdByName(name: string): Promise<string | null> {
+  return repository.findCategoryIdByName(name.trim());
+}
+
+export async function countAllProducts(): Promise<number> {
+  return repository.countAllProducts();
+}
+
+export interface ProductCsvImportResult {
+  inserted: number;
+  updated: number;
+  skipped: number;
+  errors: string[];
+}
+
+/**
+ * Imports catalog rows from a simple CSV. Expected headers (Spanish or English):
+ * sku,name,category,price_pesos,stock,brand,description,active,slug
+ */
+export async function importProductsFromCsv(csvText: string): Promise<ProductCsvImportResult> {
+  const lines = csvText
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    return { inserted: 0, updated: 0, skipped: 0, errors: ["El CSV está vacío o solo tiene encabezados."] };
+  }
+
+  const header = splitCsvLine(lines[0]!).map((cell) => cell.trim().toLowerCase());
+  const indexOf = (aliases: string[]) => header.findIndex((cell) => aliases.includes(cell));
+
+  const skuIdx = indexOf(["sku", "codigo", "código"]);
+  const nameIdx = indexOf(["name", "nombre"]);
+  const categoryIdx = indexOf(["category", "categoria", "categoría"]);
+  const priceIdx = indexOf(["price_pesos", "precio", "price", "precio_pesos"]);
+  const stockIdx = indexOf(["stock", "stock_quantity", "cantidad"]);
+  const brandIdx = indexOf(["brand", "marca"]);
+  const descriptionIdx = indexOf(["description", "descripcion", "descripción"]);
+  const activeIdx = indexOf(["active", "activo", "is_active"]);
+  const slugIdx = indexOf(["slug", "url"]);
+
+  if (skuIdx < 0 || nameIdx < 0 || categoryIdx < 0 || priceIdx < 0) {
+    return {
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      errors: ["Faltan columnas obligatorias: sku, name/nombre, category/categoría, price_pesos/precio."],
+    };
+  }
+
+  let inserted = 0;
+  let updated = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (let i = 1; i < lines.length; i += 1) {
+    const rowNumber = i + 1;
+    const cells = splitCsvLine(lines[i]!);
+    const sku = (cells[skuIdx] ?? "").trim();
+    const name = (cells[nameIdx] ?? "").trim();
+    const categoryName = (cells[categoryIdx] ?? "").trim();
+    const priceRaw = (cells[priceIdx] ?? "").trim();
+
+    if (!sku || !name || !categoryName || !priceRaw) {
+      skipped += 1;
+      errors.push(`Fila ${rowNumber}: faltan sku, nombre, categoría o precio.`);
+      continue;
+    }
+
+    const categoryId = await repository.findCategoryIdByName(categoryName);
+    if (!categoryId) {
+      skipped += 1;
+      errors.push(`Fila ${rowNumber}: categoría "${categoryName}" no existe. Creala antes de importar.`);
+      continue;
+    }
+
+    const slugCell = slugIdx >= 0 ? (cells[slugIdx] ?? "").trim() : "";
+    const stockRaw = stockIdx >= 0 ? (cells[stockIdx] ?? "0").trim() : "0";
+    const brand = brandIdx >= 0 ? (cells[brandIdx] ?? "").trim() || null : null;
+    const description = descriptionIdx >= 0 ? (cells[descriptionIdx] ?? "").trim() : "";
+    const activeRaw = activeIdx >= 0 ? (cells[activeIdx] ?? "1").trim().toLowerCase() : "1";
+    const isActive = !["0", "false", "no", "inactivo", "inactive"].includes(activeRaw);
+
+    try {
+      const input = {
+        categoryId,
+        sku,
+        slug: slugCell || slugifyName(name),
+        name,
+        description,
+        priceCents: pesosToCents(parsePesosInput(priceRaw)),
+        currency: "COP",
+        imageUrl: null as string | null,
+        brand,
+        stockQuantity: Number.parseInt(stockRaw.replace(/[^\d]/g, "") || "0", 10) || 0,
+        isActive,
+      };
+      const outcome = await repository.upsertProductBySku(input);
+      if (outcome === "inserted") inserted += 1;
+      else updated += 1;
+    } catch (error) {
+      skipped += 1;
+      errors.push(`Fila ${rowNumber}: ${error instanceof Error ? error.message : "error al guardar"}`);
+    }
+  }
+
+  return { inserted, updated, skipped, errors: errors.slice(0, 20) };
+}
+
+function splitCsvLine(line: string): string[] {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i]!;
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (char === "," && !inQuotes) {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  cells.push(current);
+  return cells;
 }
 
 export async function updateProduct(input: ProductAdminUpdateInput): Promise<void> {

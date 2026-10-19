@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 
 import { z } from "zod";
 
+import { parsePesosInput, pesosToCents } from "@/lib/money";
+import { slugifyName } from "@/lib/slugify";
 import { requirePermission } from "@/server/auth/guards";
 
 import { catalogDeleteInputSchema, categoryAdminInputSchema, isSafeCatalogImagePath, productAdminInputSchema } from "./schemas";
@@ -25,15 +27,30 @@ function stringValue(formData: FormData, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function resolvePriceCents(formData: FormData): string {
+  // Prefer human pesos from the admin form. Legacy/tests may still post priceCents.
+  const pesosRaw = stringValue(formData, "pricePesos");
+  if (pesosRaw !== undefined && pesosRaw.trim() !== "") {
+    return String(pesosToCents(parsePesosInput(pesosRaw)));
+  }
+  return stringValue(formData, "priceCents") ?? "0";
+}
+
+function resolveSlug(formData: FormData): string {
+  const explicit = stringValue(formData, "slug")?.trim() ?? "";
+  if (explicit) return explicit;
+  return slugifyName(stringValue(formData, "name") ?? "");
+}
+
 function productInput(formData: FormData): Record<string, unknown> {
   const input: Record<string, unknown> = {
     id: stringValue(formData, "id"),
     categoryId: stringValue(formData, "categoryId"),
     sku: stringValue(formData, "sku"),
-    slug: stringValue(formData, "slug"),
+    slug: resolveSlug(formData),
     name: stringValue(formData, "name"),
     description: stringValue(formData, "description") ?? "",
-    priceCents: stringValue(formData, "priceCents"),
+    priceCents: resolvePriceCents(formData),
     currency: stringValue(formData, "currency") ?? "COP",
     brand: stringValue(formData, "brand"),
     stockQuantity: stringValue(formData, "stockQuantity") ?? "0",
@@ -44,11 +61,13 @@ function productInput(formData: FormData): Record<string, unknown> {
 }
 
 function categoryInput(formData: FormData): Record<string, unknown> {
+  const name = stringValue(formData, "name");
+  const explicitSlug = stringValue(formData, "slug")?.trim() ?? "";
   const input: Record<string, unknown> = {
     id: stringValue(formData, "id"),
     parentId: stringValue(formData, "parentId") ?? null,
-    slug: stringValue(formData, "slug"),
-    name: stringValue(formData, "name"),
+    slug: explicitSlug || slugifyName(name ?? ""),
+    name,
     displayOrder: stringValue(formData, "displayOrder") ?? "0",
   };
   if (formData.has("imageUrl")) input.imageUrl = stringValue(formData, "imageUrl");
@@ -125,6 +144,39 @@ export async function updateProduct(formData: FormData): Promise<AdminActionStat
   }
 }
 
+export async function importProductsCsv(formData: FormData): Promise<AdminActionState> {
+  await requirePermission("catalog:write");
+
+  try {
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      redirectWithError("/admin/products/import", "import-failed");
+    }
+
+    const text = await file.text();
+    if (text.length > 2_000_000) {
+      redirectWithError("/admin/products/import", "import-failed");
+    }
+
+    const result = await catalogService.importProductsFromCsv(text);
+    revalidatePath("/admin/products");
+    revalidatePath("/productos");
+    revalidatePath("/admin");
+
+    if (result.inserted + result.updated === 0) {
+      redirectWithError("/admin/products/import", "import-failed");
+    }
+
+    redirectWithSuccess(
+      `/admin/products?imported=${result.inserted}&updated=${result.updated}&skipped=${result.skipped}`,
+      "products-imported",
+    );
+  } catch (error) {
+    errorState(error);
+    redirectWithError("/admin/products/import", "import-failed");
+  }
+}
+
 export async function deleteProduct(formData: FormData): Promise<AdminActionState> {
   await requirePermission("catalog:write");
 
@@ -175,6 +227,31 @@ export async function updateCategory(formData: FormData): Promise<AdminActionSta
     errorState(error);
     redirectWithError(categoryId ? `/admin/categories/${categoryId}` : "/admin/categories");
   }
+}
+
+export interface OrderProductMatch {
+  id: string;
+  name: string;
+  sku: string;
+  priceCents: number;
+  categoryName: string;
+}
+
+// The order screen used to ship every active product to the browser. With a catalog of
+// thousands that freezes the panel, so the operator searches a bounded page instead.
+export async function searchOrderProducts(term: string): Promise<OrderProductMatch[]> {
+  await requirePermission("quote:write");
+  const parsed = z.string().trim().max(80).safeParse(term);
+  if (!parsed.success || parsed.data.length < 2) return [];
+
+  const products = await catalogService.getProducts({ search: parsed.data, limit: 8 });
+  return products.map((product) => ({
+    id: product.id,
+    name: product.name,
+    sku: product.sku,
+    priceCents: product.priceCents,
+    categoryName: product.categoryName,
+  }));
 }
 
 export async function deleteCategory(formData: FormData): Promise<AdminActionState> {

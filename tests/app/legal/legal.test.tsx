@@ -15,7 +15,7 @@ const { default: PrivacyPage } = await import("@/app/privacidad/page");
 const SETTINGS = {
   siteName: "SOPROTELCO SAS",
   contactEmail: "ventas@soprotelco.com",
-  address: "Bogotá, Colombia",
+  address: "Medellín, Colombia",
 };
 
 afterEach(() => {

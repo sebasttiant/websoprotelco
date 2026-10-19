@@ -6,7 +6,7 @@ import { getSiteSettings } from "@/domains/settings";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Política de privacidad | SOPROTELCO",
+  title: "Política de privacidad",
   description: "Política de tratamiento de datos personales de SOPROTELCO, conforme a la Ley 1581 de 2012.",
 };
 

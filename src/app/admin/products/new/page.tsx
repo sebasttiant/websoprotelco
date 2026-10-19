@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { createProduct, getCategoryOptions, type CategoryOption } from "@/domains/catalog";
-import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { ProductFormFields } from "@/components/admin/product-form-fields";
+import { createProduct, getCategoryOptions } from "@/domains/catalog";
 import { requirePermission } from "@/server/auth/guards";
 
 export const dynamic = "force-dynamic";
@@ -14,44 +14,22 @@ export default async function NewProductPage() {
 
   return (
     <section className="mx-auto max-w-3xl space-y-6">
-      <Link href="/admin/products" className="text-sm font-bold text-brand-blue">← Volver a productos</Link>
+      <Link href="/admin/products" className="text-sm font-bold text-brand-blue">
+        ← Volver a productos
+      </Link>
       <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
-        <h1 className="text-3xl font-black text-slate-950">Nuevo producto</h1>
+        <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
+        <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Nuevo producto</h1>
+        <p className="mt-2 text-sm font-medium text-brand-muted">
+          Precio en pesos, slug automático e imagen opcional. Pensado para cargar sin complicaciones.
+        </p>
       </div>
-      <ProductForm action={createProduct as unknown as FormAction} categories={categories} submitLabel="Crear producto" />
+      <form action={createProduct as unknown as FormAction} className="grid gap-4 rounded-2xl bg-white p-6 shadow-sm shadow-blue-950/5">
+        <ProductFormFields categories={categories} />
+        <button type="submit" className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white transition hover:bg-brand-primary">
+          Crear producto
+        </button>
+      </form>
     </section>
-  );
-}
-
-function ProductForm({ action, categories, submitLabel }: { action: FormAction; categories: CategoryOption[]; submitLabel: string }) {
-  return (
-    <form action={action} className="grid gap-4 rounded-[28px] bg-white p-6 shadow-xl shadow-blue-950/5">
-      <ProductFields categories={categories} />
-      <button type="submit" className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white">{submitLabel}</button>
-    </form>
-  );
-}
-
-function ProductFields({ categories }: { categories: CategoryOption[] }) {
-  const inputClass = "rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900";
-  return (
-    <>
-      <label className="grid gap-2 text-sm font-bold text-slate-700">Nombre<input name="name" required className={inputClass} /></label>
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="grid gap-2 text-sm font-bold text-slate-700">SKU<input name="sku" required className={inputClass} /></label>
-        <label className="grid gap-2 text-sm font-bold text-slate-700">Slug<input name="slug" required className={inputClass} /></label>
-      </div>
-      <label className="grid gap-2 text-sm font-bold text-slate-700">Categoría<select name="categoryId" required className={inputClass}>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-      <label className="grid gap-2 text-sm font-bold text-slate-700">Descripción<textarea name="description" className={inputClass} rows={4} /></label>
-      <div className="grid gap-4 md:grid-cols-3">
-        <label className="grid gap-2 text-sm font-bold text-slate-700">Precio (en centavos)<input name="priceCents" type="number" min="0" defaultValue="0" className={inputClass} /></label>
-        <label className="grid gap-2 text-sm font-bold text-slate-700">Moneda<input name="currency" defaultValue="COP" maxLength={3} className={inputClass} /></label>
-        <label className="grid gap-2 text-sm font-bold text-slate-700">Stock<input name="stockQuantity" type="number" min="0" defaultValue="0" className={inputClass} /></label>
-      </div>
-      <label className="grid gap-2 text-sm font-bold text-slate-700">Marca<input name="brand" className={inputClass} /></label>
-      <ImageUploadField name="imageUrl" label="Imagen del producto" />
-      <label className="flex items-center gap-3 text-sm font-bold text-slate-700"><input type="checkbox" name="isActive" defaultChecked className="h-5 w-5" /> Activo</label>
-    </>
   );
 }

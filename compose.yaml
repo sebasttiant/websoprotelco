@@ -29,6 +29,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # Same habit as IL prod: keep container logs from eating the disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # One-shot deploy step: runs to completion, then `web` starts. Concurrent runs are
   # serialised by a PostgreSQL advisory lock, so this stays safe with multiple replicas.
@@ -109,6 +115,11 @@ services:
     volumes:
       - uploads-data:/app/data/uploads
       - documents-data:/app/data/documents
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres-data:

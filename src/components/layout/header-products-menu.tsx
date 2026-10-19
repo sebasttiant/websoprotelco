@@ -5,12 +5,20 @@ import type { CategorySummary } from "@/domains/catalog";
 
 // "Productos" stays a real link to the full catalog; the category dropdown is revealed on
 // hover and keyboard focus with CSS only, so no client JavaScript is needed.
-export function HeaderProductsMenu({ categories }: { categories: readonly CategorySummary[] }) {
+export function HeaderProductsMenu({
+  categories,
+  tone = "light",
+}: {
+  categories: readonly CategorySummary[];
+  tone?: "light" | "dark";
+}) {
   return (
     <div className="group relative">
       <Link
         href="/productos"
-        className="inline-flex items-center gap-1 transition-colors hover:text-brand-blue"
+        className={`inline-flex items-center gap-1 transition-colors ${
+          tone === "dark" ? "hover:text-brand-accent" : "hover:text-brand-blue"
+        }`}
       >
         Productos
         <ChevronDown aria-hidden="true" className="h-4 w-4 transition group-hover:rotate-180" />

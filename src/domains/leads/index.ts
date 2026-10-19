@@ -23,4 +23,4 @@ export {
   type LeadsActionState,
 } from "./actions";
 
-export { getLead, getLeadNotes, getLeads } from "./service";
+export { countLeads, getLead, getLeadNotes, getLeads } from "./service";

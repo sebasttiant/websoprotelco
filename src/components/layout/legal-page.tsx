@@ -20,7 +20,7 @@ export function LegalPage({ title, intro, updatedAt, sections }: LegalPageProps)
   return (
     <>
       <Header />
-      <main className="bg-brand-ice py-16">
+      <main className="bg-white py-16">
         <Container className="max-w-3xl">
           <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Legal</p>
           <h1 className="mt-2 text-4xl font-black text-brand-navy">{title}</h1>
@@ -29,7 +29,7 @@ export function LegalPage({ title, intro, updatedAt, sections }: LegalPageProps)
             Última actualización: {updatedAt}
           </p>
 
-          <div className="mt-10 space-y-8 rounded-[32px] bg-white p-8 shadow-xl shadow-blue-950/5">
+          <div className="mt-10 space-y-8 rounded-[32px] border border-brand-line bg-white p-8 shadow-sm shadow-blue-950/5">
             {sections.map((section, index) => (
               <section key={section.heading}>
                 <h2 className="text-xl font-black text-brand-navy">

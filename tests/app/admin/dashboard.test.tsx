@@ -1,33 +1,51 @@
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-const { mockGetCurrentUser, mockGetProductsForAdmin, mockGetQuotes, mockGetLeads, mockGetLowStockProducts } =
-  vi.hoisted(() => ({
-    mockGetCurrentUser: vi.fn(),
-    mockGetProductsForAdmin: vi.fn(),
-    mockGetQuotes: vi.fn(),
-    mockGetLeads: vi.fn(),
-    mockGetLowStockProducts: vi.fn(),
-  }));
+const {
+  mockGetCurrentUser,
+  mockCountAllProducts,
+  mockGetQuotes,
+  mockGetQuoteDashboardCounts,
+  mockCountLeads,
+  mockGetLowStockProducts,
+} = vi.hoisted(() => ({
+  mockGetCurrentUser: vi.fn(),
+  mockCountAllProducts: vi.fn(),
+  mockGetQuotes: vi.fn(),
+  mockGetQuoteDashboardCounts: vi.fn(),
+  mockCountLeads: vi.fn(),
+  mockGetLowStockProducts: vi.fn(),
+}));
 
 vi.mock("@/server/auth/guards", () => ({ getCurrentUser: mockGetCurrentUser }));
-vi.mock("@/domains/catalog", () => ({ getProductsForAdmin: mockGetProductsForAdmin }));
-vi.mock("@/domains/quote-order", () => ({ getQuotes: mockGetQuotes }));
-vi.mock("@/domains/leads", () => ({ getLeads: mockGetLeads }));
+vi.mock("@/domains/catalog", () => ({ countAllProducts: mockCountAllProducts }));
+vi.mock("@/domains/quote-order", () => ({
+  getQuotes: mockGetQuotes,
+  getQuoteDashboardCounts: mockGetQuoteDashboardCounts,
+}));
+vi.mock("@/domains/leads", () => ({ countLeads: mockCountLeads }));
 vi.mock("@/domains/inventory", () => ({ getLowStockProducts: mockGetLowStockProducts }));
 
 const { default: AdminDashboardPage } = await import("@/app/admin/page");
 
 async function renderDashboard({
-  products = { total: 0, rows: [] },
-  quotes = [] as unknown[],
-  leads = [] as unknown[],
+  productCount = 0,
+  commercial = {
+    totalOrders: 0,
+    pendingOrders: 0,
+    openQuotes: 0,
+    revenueCents: 0,
+    wonWithoutTotal: 0,
+  },
+  leadCount = 0,
+  recentOrders = [] as unknown[],
   lowStock = [] as unknown[],
 } = {}) {
   mockGetCurrentUser.mockResolvedValue({ id: "u1", email: "ana@empresa.com", role: "admin" });
-  mockGetProductsForAdmin.mockResolvedValue(products);
-  mockGetQuotes.mockResolvedValue(quotes);
-  mockGetLeads.mockResolvedValue(leads);
+  mockCountAllProducts.mockResolvedValue(productCount);
+  mockGetQuoteDashboardCounts.mockResolvedValue(commercial);
+  mockGetQuotes.mockResolvedValue(recentOrders);
+  mockCountLeads.mockResolvedValue(leadCount);
   mockGetLowStockProducts.mockResolvedValue(lowStock);
   render(await AdminDashboardPage());
 }
@@ -42,30 +60,19 @@ afterEach(() => {
 
 describe("AdminDashboardPage", () => {
   test("counts the products in the catalog", async () => {
-    await renderDashboard({ products: { total: 42, rows: [] } });
+    await renderDashboard({ productCount: 42 });
 
     expect(statValue(/^productos$/i)).toBe("42");
   });
 
-  test("counts only the quotes still awaiting a reply", async () => {
-    // "Awaiting a reply" is received + in_review. Once a quote is quoted, won, lost or
-    // cancelled it has been dealt with and must not keep nagging the admin.
-    await renderDashboard({
-      quotes: [
-        { status: "received" },
-        { status: "in_review" },
-        { status: "quoted" },
-        { status: "won" },
-        { status: "lost" },
-        { status: "cancelled" },
-      ],
-    });
+  test("shows open quotes from SQL dashboard counts", async () => {
+    await renderDashboard({ commercial: { totalOrders: 0, pendingOrders: 0, openQuotes: 2, revenueCents: 0, wonWithoutTotal: 0 } });
 
     expect(statValue(/cotizaciones abiertas/i)).toBe("2");
   });
 
   test("counts the leads", async () => {
-    await renderDashboard({ leads: [{ id: "l1" }, { id: "l2" }, { id: "l3" }] });
+    await renderDashboard({ leadCount: 3 });
 
     expect(statValue(/clientes potenciales/i)).toBe("3");
   });
@@ -89,20 +96,17 @@ describe("AdminDashboardPage", () => {
     expect(screen.getByText(/ana@empresa\.com/)).toBeInTheDocument();
   });
 
-  // The dashboard mock returns the same array for both getQuotes calls (quotes and orders), so
-  // these order-shaped rows stand in for the order list the recent-orders panel reads.
   const orderRows = [
     { id: "o1", reference: "WEB-AAA", contactName: "Pedro Páramo", status: "won", totalCents: 529700000, createdAt: "2026-03-06T10:00:00Z" },
     { id: "o2", reference: "WEB-BBB", contactName: "Emilio Contreras", status: "in_review", totalCents: 73800000, createdAt: "2026-03-07T10:00:00Z" },
   ];
 
   test("lists recent orders by reference, client and status", async () => {
-    await renderDashboard({ quotes: orderRows });
+    await renderDashboard({ recentOrders: orderRows });
 
     const panel = screen.getByRole("region", { name: /pedidos recientes/i });
     expect(within(panel).getByText("WEB-AAA")).toBeInTheDocument();
     expect(within(panel).getByText("Pedro Páramo")).toBeInTheDocument();
-    // "won" renders through the quote label helper as the feminine "Ganada".
     expect(within(panel).getByText(/ganada/i)).toBeInTheDocument();
   });
 

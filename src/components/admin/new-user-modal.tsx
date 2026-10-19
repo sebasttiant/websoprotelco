@@ -111,7 +111,7 @@ export function NewUserModal({ roles }: NewUserModalProps) {
               role="dialog"
               aria-modal="true"
               aria-label="Nuevo usuario"
-              className="relative flex w-full max-w-md flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl"
+              className="relative flex w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
             >
               <header className="flex items-start justify-between border-b border-brand-line px-7 py-5">
                 <div>

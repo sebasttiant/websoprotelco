@@ -6,6 +6,9 @@ import { Container } from "@/components/ui/container";
 import { getHeroSettings, getPublicBanners } from "@/domains/design";
 import { isSafeDesignLink } from "@/domains/design/schemas";
 
+/** Default field photo when admin has not uploaded a hero background yet. */
+const DEFAULT_HERO_IMAGE = "/assets/img/hero-fiber.jpg";
+
 export async function Hero() {
   const [banners, settings] = await Promise.all([getPublicBanners(), getHeroSettings()]);
 
@@ -21,72 +24,55 @@ export async function Hero() {
     return <HeroCarousel slides={slides} />;
   }
 
-  // No banners configured: the hero still comes from the design domain, which supplies its
-  // own defaults, so nothing here is hardcoded copy.
+  const heroImage = settings.backgroundImage ?? DEFAULT_HERO_IMAGE;
+
+  // White page surface under the sticky navy header. Split: copy left, photo right.
   return (
-    <section className="relative overflow-hidden bg-brand-navy py-24 text-white lg:py-32">
-      {settings.backgroundImage ? (
-        <Image
-          src={settings.backgroundImage}
-          alt=""
-          aria-hidden="true"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover opacity-30"
-        />
-      ) : (
-        <div className="absolute right-0 top-0 h-96 w-96 translate-x-1/3 rounded-full bg-brand-blue opacity-30 blur-3xl" />
-      )}
-
-      <Container className="relative grid gap-12 lg:grid-cols-[1.25fr_0.75fr] lg:items-center">
-        <div className="space-y-8 text-center lg:text-left">
-          <p className="inline-flex rounded-full bg-white/10 px-5 py-2 text-xs font-black uppercase tracking-widest text-brand-accent backdrop-blur">
-            Fibra Óptica · Conectividad · Infraestructura
-          </p>
-          <h1 className="text-4xl font-black leading-tight tracking-tight sm:text-6xl lg:text-7xl">
-            {settings.title}
-          </h1>
-          <p className="mx-auto max-w-2xl text-lg font-medium leading-8 text-blue-100/80 lg:mx-0">
-            {settings.subtitle}
-          </p>
-          <div className="flex flex-col justify-center gap-4 sm:flex-row lg:justify-start">
-            <Link
-              href={isSafeDesignLink(settings.ctaLink) ? settings.ctaLink : "/productos"}
-              className="rounded-2xl bg-brand-blue px-8 py-4 text-sm font-black uppercase tracking-widest text-white shadow-glow transition hover:bg-brand-primary"
-            >
-              {settings.ctaText}
-            </Link>
-            <Link
-              href="/contacto"
-              className="rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-sm font-black uppercase tracking-widest text-white backdrop-blur transition hover:bg-white hover:text-brand-blue"
-            >
-              Hablar con un asesor
-            </Link>
-          </div>
-        </div>
-
-        <div className="rounded-[40px] border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-xl">
-          <h2 className="text-2xl font-black">Asesoría para tu proyecto</h2>
-          <p className="mt-4 text-sm font-medium leading-7 text-blue-100/80">
-            Cuéntanos si necesitas fusionadoras, cableado, conectores, medición o diseño de red. Te ayudamos a elegir la solución correcta.
-          </p>
-          <div className="mt-8 grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-2xl bg-white/10 p-4">
-              <b className="block text-xl">+500</b>
-              <span className="text-xs font-bold text-blue-100/60">referencias</span>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-4">
-              <b className="block text-xl">48h</b>
-              <span className="text-xs font-bold text-blue-100/60">despachos</span>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-4">
-              <b className="block text-xl">B2B</b>
-              <span className="text-xs font-bold text-blue-100/60">soporte</span>
+    <section className="relative overflow-hidden border-b border-brand-line bg-white">
+      <div className="grid lg:grid-cols-2 lg:items-stretch">
+        <Container className="relative flex max-w-3xl flex-col justify-center py-14 sm:py-16 lg:max-w-none lg:py-20">
+          <div className="max-w-xl motion-safe:animate-[fade-up_0.7s_ease-out] motion-reduce:animate-none">
+            <p className="mb-4 text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">
+              Fibra Óptica · Conectividad · Infraestructura
+            </p>
+            <h1 className="text-balance text-2xl font-black leading-snug tracking-tight text-brand-navy sm:text-3xl lg:text-4xl lg:leading-tight">
+              {settings.title}
+            </h1>
+            <p className="mt-5 text-sm font-medium leading-6 text-brand-muted sm:text-base sm:leading-7">
+              {settings.subtitle}
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Link
+                href={isSafeDesignLink(settings.ctaLink) ? settings.ctaLink : "/productos"}
+                className="inline-flex items-center justify-center rounded-xl bg-brand-blue px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-brand-primary"
+              >
+                {settings.ctaText}
+              </Link>
+              <Link
+                href="/contacto"
+                className="inline-flex items-center justify-center rounded-xl border border-brand-line bg-white px-6 py-3 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-blue hover:text-brand-blue"
+              >
+                Hablar con un asesor
+              </Link>
             </div>
           </div>
+        </Container>
+
+        <div className="relative min-h-[14rem] sm:min-h-[18rem] lg:min-h-[22rem]">
+          <Image
+            src={heroImage}
+            alt="Técnico de fibra óptica empalmando cable en campo"
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover motion-safe:animate-[hero-drift_22s_ease-in-out_infinite] motion-reduce:animate-none"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-0 hidden w-24 bg-gradient-to-r from-white to-transparent lg:block"
+          />
         </div>
-      </Container>
+      </div>
     </section>
   );
 }

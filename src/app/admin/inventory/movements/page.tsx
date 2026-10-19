@@ -82,8 +82,8 @@ export default async function AdminMovementsPage({ searchParams }: MovementsPage
             <ArrowLeft aria-hidden="true" className="h-4 w-4" />
           </Link>
           <div>
-            <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Inventario</p>
-            <h1 className="text-3xl font-black text-slate-950">Historial de movimientos</h1>
+            <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Inventario</p>
+            <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Historial de movimientos</h1>
             <p className="mt-2 text-sm font-medium text-brand-muted">
               Registro detallado de entradas, salidas y ajustes
             </p>

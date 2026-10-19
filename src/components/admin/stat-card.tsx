@@ -38,25 +38,23 @@ export function StatCard({ label, value, href, display, hint, alert = false, ico
       href={href}
       role="group"
       aria-label={label}
-      className="rounded-[28px] border border-brand-line bg-white p-6 shadow-xl shadow-blue-950/5 transition hover:border-brand-accent"
+      className="rounded-2xl border border-brand-line bg-white p-4 shadow-sm shadow-blue-950/5 transition hover:border-brand-accent sm:p-5"
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-black uppercase tracking-widest text-brand-muted">{label}</p>
+        <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-muted">{label}</p>
         {Icon ? (
-          // Decorative: the label beside it already names the metric, so a second announcement
-          // of the icon would only repeat it for a screen reader.
-          <span aria-hidden="true" className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${TONE_ICON_CLASSES[tone]}`}>
-            <Icon className="h-5 w-5" />
+          <span aria-hidden="true" className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${TONE_ICON_CLASSES[tone]}`}>
+            <Icon className="h-4 w-4" />
           </span>
         ) : null}
       </div>
       <p
         role="status"
-        className={`mt-3 text-4xl font-black ${alert && value > 0 ? "text-amber-600" : "text-brand-navy"}`}
+        className={`mt-2 text-3xl font-black tracking-tight ${alert && value > 0 ? "text-amber-600" : "text-brand-navy"}`}
       >
         {display ?? value}
       </p>
-      {hint ? <p className="mt-2 text-xs font-medium text-brand-muted">{hint}</p> : null}
+      {hint ? <p className="mt-1.5 text-xs font-medium text-brand-muted">{hint}</p> : null}
     </Link>
   );
 }

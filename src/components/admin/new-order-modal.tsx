@@ -6,21 +6,12 @@ import { useRouter } from "next/navigation";
 
 // From ./actions, never the domain barrel: the barrel reaches the repository's
 // `import "server-only"` and fails the client build. See the note in domains/quote-order/index.ts.
+import { searchOrderProducts, type OrderProductMatch } from "@/domains/catalog/actions";
 import { createAdminOrder, type CartOrderActionState } from "@/domains/quote-order/actions";
 import { Portal } from "@/components/ui/portal";
 import { formatCurrencyCents } from "@/lib/presentation";
 
-export interface OrderProductOption {
-  id: string;
-  name: string;
-  sku: string;
-  priceCents: number;
-  categoryName: string;
-}
-
-interface NewOrderModalProps {
-  products: readonly OrderProductOption[];
-}
+export type OrderProductOption = OrderProductMatch;
 
 interface CustomerForm {
   name: string;
@@ -34,10 +25,11 @@ const EMPTY_FORM: CustomerForm = { name: "", email: "", phone: "", notes: "" };
 const MAX_QUANTITY = 99;
 const MAX_RESULTS = 8;
 
-export function NewOrderModal({ products }: NewOrderModalProps) {
+export function NewOrderModal() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [matches, setMatches] = useState<OrderProductOption[]>([]);
   const [lines, setLines] = useState<{ product: OrderProductOption; quantity: number }[]>([]);
   const [form, setForm] = useState<CustomerForm>(EMPTY_FORM);
   const [pending, setPending] = useState(false);
@@ -62,25 +54,34 @@ export function NewOrderModal({ products }: NewOrderModalProps) {
     };
   }, [open]);
 
-  // Matching happens over the already-loaded catalog, so results appear as the operator types
-  // with no round trip. Products already on the order drop out of the list — offering a line
-  // that is present would only invite a duplicate.
+  // A catalog of thousands cannot live in the browser. Two characters trigger a bounded
+  // server search. Lines already on the order drop out so the operator cannot add them twice.
+  useEffect(() => {
+    const term = search.trim();
+    if (term.length < 2) return;
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void searchOrderProducts(term).then((found) => {
+        if (!cancelled) setMatches(found);
+      }).catch(() => {
+        if (!cancelled) setMatches([]);
+      });
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search]);
+
   const results = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (term === "") return [];
+    const term = search.trim();
+    if (term.length < 2) return [];
 
     const chosen = new Set(lines.map((line) => line.product.id));
-
-    return products
-      .filter(
-        (product) =>
-          !chosen.has(product.id) &&
-          (product.name.toLowerCase().includes(term) ||
-            product.sku.toLowerCase().includes(term) ||
-            product.categoryName.toLowerCase().includes(term)),
-      )
-      .slice(0, MAX_RESULTS);
-  }, [products, search, lines]);
+    return matches.filter((product) => !chosen.has(product.id)).slice(0, MAX_RESULTS);
+  }, [matches, search, lines]);
 
   // Indicative only. The authoritative total is computed server-side from the products table
   // when the order is written, and it is that figure the confirmation reports back.
@@ -164,7 +165,7 @@ export function NewOrderModal({ products }: NewOrderModalProps) {
             role="dialog"
             aria-modal="true"
             aria-label="Nuevo pedido"
-            className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl"
+            className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
           >
             <header className="flex items-start justify-between border-b border-brand-line px-7 py-5">
               <div>

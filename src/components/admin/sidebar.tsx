@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import {
+  BarChart3,
   Boxes,
   ChevronRight,
   FileText,
@@ -10,6 +12,7 @@ import {
   History,
   LayoutDashboard,
   LogOut,
+  Menu,
   type LucideIcon,
   Package,
   Palette,
@@ -17,8 +20,11 @@ import {
   ShoppingCart,
   Users,
   UsersRound,
+  X,
 } from "lucide-react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
+import { Portal } from "@/components/ui/portal";
 // signOut carries "use server", so importing it here ships an RPC reference rather than any
 // server code. Keeping the control in the sidebar puts it where the mockups place it, below
 // the sections, instead of in the top bar.
@@ -50,6 +56,7 @@ const GROUPS: readonly NavGroup[] = [
     title: "Principal",
     items: [
       { href: "/admin", label: "Panel de control", permission: null, icon: LayoutDashboard },
+      { href: "/admin/reports", label: "Reportes", permission: "quote:read", icon: BarChart3 },
       // Orders and quotes are the same table split by `kind`, so they share one permission.
       { href: "/admin/orders", label: "Pedidos", permission: "quote:read", icon: ShoppingCart },
       { href: "/admin/leads", label: "Clientes potenciales", permission: "leads:read", icon: UsersRound },
@@ -107,6 +114,174 @@ function activeHref(pathname: string, items: readonly NavItem[]): string | null 
     );
 }
 
+interface VisibleNavGroup {
+  title: string | null;
+  items: NavItem[];
+}
+
+function focusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  );
+}
+
+function AdminMobileNavigation({
+  groups,
+  current,
+}: {
+  groups: readonly VisibleNavGroup[];
+  current: string | null;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  function close(): void {
+    setIsOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const desktopMediaQuery = window.matchMedia("(min-width: 768px)");
+    const closeForDesktop = () => {
+      if (desktopMediaQuery.matches) {
+        setIsOpen(false);
+      }
+    };
+
+    // Tailwind only hides the drawer at md+. Close its state too, so the modal's global
+    // listeners and body-scroll lock cannot survive an orientation change or resize.
+    closeRef.current?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialogRef.current) return;
+
+      const focusable = focusableElements(dialogRef.current);
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) return;
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    desktopMediaQuery.addEventListener("change", closeForDesktop);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      desktopMediaQuery.removeEventListener("change", closeForDesktop);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setIsOpen(true)}
+        aria-expanded={isOpen}
+        aria-controls="admin-mobile-navigation"
+        aria-label="Abrir menú"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-white/20 text-white transition hover:border-brand-accent hover:text-brand-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent md:hidden"
+      >
+        <Menu aria-hidden="true" className="h-4 w-4" />
+      </button>
+
+      {isOpen ? (
+        <Portal>
+          <div className="fixed inset-0 z-[100] md:hidden">
+            <button
+              type="button"
+              aria-label="Cerrar menú al hacer clic fuera"
+              onClick={close}
+              className="absolute inset-0 bg-brand-navy/55 backdrop-blur-sm"
+            />
+            <div
+              ref={dialogRef}
+              id="admin-mobile-navigation"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="admin-mobile-navigation-title"
+              className="relative flex h-dvh w-[min(20rem,calc(100vw-1.5rem))] flex-col overflow-y-auto bg-brand-navy text-white shadow-2xl"
+            >
+              <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                <h2 id="admin-mobile-navigation-title" className="text-sm font-black">
+                  Menú
+                </h2>
+                <button
+                  ref={closeRef}
+                  type="button"
+                  onClick={close}
+                  aria-label="Cerrar menú"
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent"
+                >
+                  <X aria-hidden="true" className="h-4 w-4" />
+                </button>
+              </header>
+
+              <nav aria-label="Secciones de administración móvil" className="flex flex-1 flex-col gap-5 p-3 pb-6">
+                {groups.map((group) => (
+                  <section
+                    key={group.title ?? "principal"}
+                    aria-label={group.title ?? "Principal"}
+                    className="flex flex-col gap-0.5"
+                  >
+                    {group.title ? (
+                      <h3 className="px-3 pb-1 text-[0.65rem] font-black uppercase tracking-[0.14em] text-white/45">
+                        {group.title}
+                      </h3>
+                    ) : null}
+                    {group.items.map((item) => {
+                      const active = current === item.href;
+                      const Icon = item.icon;
+
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={close}
+                          aria-current={active ? "page" : undefined}
+                          className={`inline-flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent ${
+                            active
+                              ? "bg-brand-blue text-white shadow-md shadow-brand-blue/20"
+                              : "text-white/75 hover:bg-white/10 hover:text-brand-accent"
+                          }`}
+                        >
+                          <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </section>
+                ))}
+              </nav>
+            </div>
+          </div>
+        </Portal>
+      ) : null}
+    </>
+  );
+}
+
 export function AdminSidebar({ role }: { role: Role }) {
   const pathname = usePathname();
 
@@ -123,16 +298,28 @@ export function AdminSidebar({ role }: { role: Role }) {
 
   return (
     <div className="flex flex-col md:min-h-0 md:flex-1">
+      <div className="flex items-center justify-between gap-3 px-3 py-3 md:block md:px-4 md:pb-2 md:pt-5">
+        <Link href="/admin" className="flex min-w-0 items-center gap-2.5" aria-label="SOPROTELCO panel">
+          <BrandLogo alt="SOPROTELCO" tone="dark" size="sm" className="md:h-11" />
+          <span className="shrink-0 text-[0.65rem] font-black uppercase tracking-widest text-brand-accent">Panel</span>
+        </Link>
+        <AdminMobileNavigation groups={visibleGroups} current={current} />
+      </div>
+
       <nav
         aria-label="Secciones de administración"
-        className="flex gap-4 overflow-x-auto border-b border-white/10 p-4 md:flex-1 md:flex-col md:gap-6 md:overflow-visible md:border-b-0"
+        className="hidden gap-4 p-3 md:flex md:flex-1 md:flex-col md:gap-5 md:overflow-visible md:px-3 md:pb-3"
       >
         {visibleGroups.map((group) => (
-          <div key={group.title ?? "principal"} className="flex gap-1 md:flex-col md:gap-1">
+          <section
+            key={group.title ?? "principal"}
+            aria-label={group.title ?? "Principal"}
+            className="flex flex-col gap-0.5"
+          >
             {group.title ? (
-              <p className="hidden px-4 pb-2 text-[0.65rem] font-black uppercase tracking-[0.15em] text-white/35 md:block">
+              <h3 className="px-3 pb-1.5 text-[0.65rem] font-black uppercase tracking-[0.14em] text-white/35">
                 {group.title}
-              </p>
+              </h3>
             ) : null}
             {group.items.map((item) => {
               const active = current === item.href;
@@ -143,32 +330,30 @@ export function AdminSidebar({ role }: { role: Role }) {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
-                  className={`group inline-flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+                  className={`group inline-flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-bold transition ${
                     active
-                      ? "bg-brand-blue text-white shadow-lg shadow-brand-blue/20"
+                      ? "bg-brand-blue text-white shadow-md shadow-brand-blue/20"
                       : "text-white/60 hover:bg-white/5 hover:text-brand-accent"
                   }`}
                 >
-                  <Icon aria-hidden="true" className="h-[1.15rem] w-[1.15rem] shrink-0" />
+                  <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
                   <span className="flex-1">{item.label}</span>
-                  {/* Marks the current section on the wide layout, where the row has the space
-                      for it. Decorative: aria-current above is what announces the state. */}
                   {active ? (
-                    <ChevronRight aria-hidden="true" className="hidden h-4 w-4 shrink-0 md:block" />
+                    <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0" />
                   ) : null}
                 </Link>
               );
             })}
-          </div>
+          </section>
         ))}
       </nav>
 
-      <form action={signOut} className="hidden border-t border-white/10 p-4 md:block">
+      <form action={signOut} className="mt-auto hidden border-t border-white/10 p-3 md:block">
         <button
           type="submit"
-          className="inline-flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+          className="inline-flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
         >
-          <LogOut aria-hidden="true" className="h-[1.15rem] w-[1.15rem] shrink-0" />
+          <LogOut aria-hidden="true" className="h-4 w-4 shrink-0" />
           Cerrar sesión
         </button>
       </form>

@@ -1,5 +1,16 @@
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { StatusChangeForm } from "@/components/admin/status-change-form";
+import {
+  adminDarkBtn,
+  adminEyebrow,
+  adminFilterBarCompact,
+  adminInput,
+  adminLead,
+  adminPage,
+  adminSelect,
+  adminTitle,
+} from "@/components/admin/ui";
 import { formatDate, quoteStatusLabel } from "@/lib/presentation";
 import {
   getQuotes,
@@ -26,31 +37,89 @@ export default async function AdminQuotesPage({ searchParams }: QuotesPageProps)
   await requirePermission("quote:read");
   const params = await searchParams;
   const status = firstParam(params.status).trim();
+  const search = firstParam(params.q).trim();
   // Always scoped to kind "quote". Without it this screen would also list every order, which
   // is precisely the conflation the legacy dashboard shipped.
-  const rows = await getQuotes(isQuoteStatus(status) ? { kind: "quote", status } : { kind: "quote" });
+  const rows = await getQuotes({
+    kind: "quote",
+    status: isQuoteStatus(status) ? status : undefined,
+    search: search || undefined,
+  });
 
   const columns: DataTableColumn<QuoteSummary>[] = [
-    { key: "reference", header: "Referencia", render: (row) => <div><p className="font-black text-slate-950">{row.reference}</p><p className="text-xs font-bold text-slate-500">{formatDate(row.createdAt)}</p></div> },
-    { key: "contact", header: "Contacto", render: (row) => <div><p className="font-bold text-slate-900">{row.contactName}</p><p>{row.contactEmail}</p><p>{row.contactPhone ?? ""}</p></div> },
-    { key: "company", header: "Empresa", render: (row) => row.companyName ?? "—" },
+    {
+      key: "reference",
+      header: "Referencia",
+      render: (row) => (
+        <div className="min-w-0">
+          <p className="truncate font-black text-slate-950">{row.reference}</p>
+          <p className="text-xs font-bold text-slate-500">{formatDate(row.createdAt)}</p>
+        </div>
+      ),
+    },
+    {
+      key: "contact",
+      header: "Contacto",
+      render: (row) => (
+        <div className="min-w-0 max-w-[12rem]">
+          <p className="truncate font-bold text-slate-900">{row.contactName}</p>
+          <p className="truncate text-xs text-slate-600">{row.contactEmail}</p>
+          <p className="truncate text-xs text-slate-500">{row.contactPhone ?? ""}</p>
+        </div>
+      ),
+    },
+    {
+      key: "company",
+      header: "Empresa",
+      render: (row) => <span className="block max-w-[10rem] truncate">{row.companyName ?? "—"}</span>,
+    },
     { key: "items", header: "Ítems", render: (row) => row.itemCount },
-    { key: "status", header: "Estado", render: (row) => <StatusBadge status={row.status} label={quoteStatusLabel(row.status)} /> },
-    { key: "change", header: "Cambiar estado", render: (row) => <form action={updateQuoteStatus as unknown as FormAction} className="flex gap-2"><input type="hidden" name="id" value={row.id} /><select name="status" defaultValue={row.status} className="rounded-full border border-slate-200 px-3 py-2 text-xs font-bold">{QUOTE_STATUSES.map((option) => <option key={option} value={option}>{quoteStatusLabel(option)}</option>)}</select><button type="submit" className="rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white">Guardar</button></form> },
+    {
+      key: "status",
+      header: "Estado",
+      render: (row) => <StatusBadge status={row.status} label={quoteStatusLabel(row.status)} />,
+    },
+    {
+      key: "change",
+      header: "Cambiar",
+      render: (row) => (
+        <StatusChangeForm
+          action={updateQuoteStatus as unknown as FormAction}
+          id={row.id}
+          currentStatus={row.status}
+          options={QUOTE_STATUSES}
+          labelFor={quoteStatusLabel}
+        />
+      ),
+    },
   ];
 
   return (
-    <section className="space-y-6">
-      <div>
-        <p className="text-xs font-black uppercase tracking-widest text-brand-blue">Flujo comercial</p>
-        <h1 className="text-3xl font-black text-slate-950">Cotizaciones</h1>
+    <section className={adminPage}>
+      <div className="min-w-0">
+        <p className={adminEyebrow}>Flujo comercial</p>
+        <h1 className={adminTitle}>Cotizaciones</h1>
+        <p className={adminLead}>Seguimiento de solicitudes comerciales</p>
       </div>
-      <form className="flex max-w-sm gap-3 rounded-[28px] bg-white p-4 shadow-xl shadow-blue-950/5">
-        <select name="status" defaultValue={status} className="min-w-0 flex-1 rounded-full border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700">
+      <form className={adminFilterBarCompact}>
+        <input
+          name="q"
+          defaultValue={search}
+          placeholder="Buscar referencia, cliente, email o teléfono"
+          autoComplete="off"
+          className={adminInput}
+        />
+        <select name="status" defaultValue={status} className={`${adminSelect} w-full`}>
           <option value="">Todos los estados</option>
-          {QUOTE_STATUSES.map((option) => <option key={option} value={option}>{quoteStatusLabel(option)}</option>)}
+          {QUOTE_STATUSES.map((option) => (
+            <option key={option} value={option}>
+              {quoteStatusLabel(option)}
+            </option>
+          ))}
         </select>
-        <button type="submit" className="rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white">Filtrar</button>
+        <button type="submit" className={adminDarkBtn}>
+          Filtrar
+        </button>
       </form>
       <DataTable rows={rows} columns={columns} emptyMessage="No se encontraron cotizaciones." />
     </section>

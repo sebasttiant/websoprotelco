@@ -53,9 +53,9 @@ Start the local stack:
 docker compose up --build
 ```
 
-The web app is exposed on port `8585`, so the local URL is <http://localhost:8585>. By default Compose binds both the web app and PostgreSQL to `127.0.0.1` only.
+The web app is exposed on port `8686`, so the local URL is <http://127.0.0.1:8686>. By default Compose binds both the web app and PostgreSQL to `127.0.0.1` only. `pnpm dev` / `pnpm start` use the same port so local and VPS stay aligned.
 
-For a VPS, keep `WEB_HOST=127.0.0.1` when a local reverse proxy (Caddy, nginx, or Traefik) terminates TLS and proxies to `http://127.0.0.1:8585`. Only set `WEB_HOST=0.0.0.0` intentionally, and only with host firewall rules that restrict direct access.
+For a VPS, keep `WEB_HOST=127.0.0.1` when a local reverse proxy (Caddy, nginx, or Traefik) terminates TLS and proxies to `http://127.0.0.1:8686`. Only set `WEB_HOST=0.0.0.0` intentionally, and only with host firewall rules that restrict direct access.
 
 ## Database
 
@@ -98,7 +98,7 @@ The reset and seed helpers (`pnpm test:db:reset`, `pnpm test:db:seed`) refuse to
 
 ## Health check
 
-`GET /api/health` returns `{"status":"ok"}` without touching the database; the container `HEALTHCHECK` calls it on port `8585` and relies on this staying cheap.
+`GET /api/health` returns `{"status":"ok"}` without touching the database; the container `HEALTHCHECK` calls it on port `8686` and relies on this staying cheap.
 
 `GET /api/health?check=db` additionally runs `SELECT 1` and returns `503` with `{"status":"degraded"}` when the database is unreachable.
 

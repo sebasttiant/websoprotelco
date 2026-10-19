@@ -3,8 +3,10 @@ import { describe, expect, test } from "vitest";
 import sharp from "sharp";
 
 import {
+  MAX_DESIGN_IMAGE_DIMENSION,
   MAX_IMAGE_DIMENSION,
   OPTIMIZED_IMAGE_CONTENT_TYPE,
+  optimizeDesignImage,
   optimizeProductImage,
 } from "@/server/storage/optimize-image";
 
@@ -74,5 +76,18 @@ describe("optimizeProductImage", () => {
 
     // sharp exposes EXIF as a Buffer when present; the re-encode drops it.
     expect(meta.exif).toBeUndefined();
+  });
+});
+
+describe("optimizeDesignImage", () => {
+  test("allows a wider long edge than catalog product images", async () => {
+    const wide = await makePng(3000, 1200);
+
+    const meta = await sharp(await optimizeDesignImage(wide)).metadata();
+
+    expect(meta.format).toBe("webp");
+    expect(meta.width).toBe(MAX_DESIGN_IMAGE_DIMENSION);
+    expect(meta.height).toBe(Math.round((1200 / 3000) * MAX_DESIGN_IMAGE_DIMENSION));
+    expect(MAX_DESIGN_IMAGE_DIMENSION).toBeGreaterThan(MAX_IMAGE_DIMENSION);
   });
 });

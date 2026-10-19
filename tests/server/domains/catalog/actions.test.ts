@@ -60,7 +60,8 @@ describe("catalog product actions", () => {
       slug: "sp-100",
       name: "Fiber tool",
       description: "Professional tool",
-      priceCents: "120000",
+      // Admin UI posts whole pesos; the action converts to centavos (×100).
+      pricePesos: "1200",
       currency: "cop",
       // Only an adapter-generated local path is accepted; unsafe image URLs (remote
       // URL, data URI, traversal, legacy string) are rejected with a Spanish validation

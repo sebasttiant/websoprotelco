@@ -2,7 +2,7 @@
 
 ## Technical Approach
 
-Use pinned Node `24.18.0` `FileHandle.createReadStream({ autoClose: true })` plus `Readable.toWeb()`. A server-only roots registry aligns readers, writers/deletes, probes, tests, and scripts. Thin handlers preserve URLs. Old containers mount the named volumes at `/app/public/uploads|documents`; the atomic candidate mounts those same identities at `/app/data/uploads|documents`.
+Use pinned Node `24.22.0` `FileHandle.createReadStream({ autoClose: true })` plus `Readable.toWeb()`. A server-only roots registry aligns readers, writers/deletes, probes, tests, and scripts. Thin handlers preserve URLs. Old containers mount the named volumes at `/app/public/uploads|documents`; the atomic candidate mounts those same identities at `/app/data/uploads|documents`.
 
 ## Architecture Decisions
 

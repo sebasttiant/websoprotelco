@@ -2,10 +2,10 @@
   "name": "websoprotelco",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.13.0",
+  "packageManager": "pnpm@12.14.0",
   "engines": {
-    "node": "24.18.0",
-    "pnpm": "11.13.0"
+    "node": "24.22.0",
+    "pnpm": "12.14.0"
   },
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 8686",

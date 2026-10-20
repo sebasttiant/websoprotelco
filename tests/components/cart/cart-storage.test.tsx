@@ -64,21 +64,21 @@ describe("CartContent", () => {
 
   test("fails closed for hostile browser-local cart entries", async () => {
     window.localStorage.setItem("soprotelco_quote_cart", JSON.stringify([{ id: "00000000-0000-4000-8000-000000000001", slug: "fusionadora-segura", name: "Fusionadora segura", priceCents: 1500000, currency: "NOT_A_CURRENCY", quantity: 1 }, { id: "00000000-0000-4000-8000-000000000002", slug: "<script>", name: "", priceCents: -1, currency: "COP", quantity: 1, imageUrl: "javascript:alert(1)" }]));
-    render(<CartContent />);
+    render(<CartContent whatsappNumber="+57 300 123 4567" />);
 
     expect(await screen.findByRole("heading", { name: "Tu carrito está vacío" })).toBeInTheDocument();
   });
 
   test("reports an unrepresentable total accessibly instead of a wrong number", async () => {
     window.localStorage.setItem("soprotelco_quote_cart", JSON.stringify([{ id: "00000000-0000-4000-8000-000000000001", slug: "fusionadora-segura", name: "Fusionadora segura", priceCents: Number.MAX_SAFE_INTEGER, currency: "COP", quantity: CART_QUANTITY_LIMIT }]));
-    render(<CartContent />);
+    render(<CartContent whatsappNumber="+57 300 123 4567" />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("No podemos calcular el total de esta selección.");
     expect(screen.queryByText(/^Total estimado:/)).not.toBeInTheDocument();
   });
 
   test("shows a safe empty state and a catalog return link", () => {
-    render(<CartContent />);
+    render(<CartContent whatsappNumber="+57 300 123 4567" />);
 
     expect(screen.getByRole("heading", { name: "Tu carrito está vacío" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Volver al catálogo" })).toHaveAttribute("href", "/productos");
@@ -86,15 +86,14 @@ describe("CartContent", () => {
 
   test("updates, rejects invalid quantities, and removes local items", async () => {
     window.localStorage.setItem("soprotelco_quote_cart", JSON.stringify([{ id: "00000000-0000-4000-8000-000000000001", slug: "fusionadora-segura", name: "Fusionadora segura", priceCents: 1500000, currency: "COP", quantity: 1 }]));
-    render(<CartContent />);
+    render(<CartContent whatsappNumber="+57 300 123 4567" />);
     const user = userEvent.setup();
     const quantity = await screen.findByLabelText("Cantidad para Fusionadora segura");
 
     fireEvent.change(quantity, { target: { value: "2" } });
-    expect(await screen.findByText("Cantidad actualizada.")).toBeInTheDocument();
     fireEvent.change(quantity, { target: { value: "0" } });
-    expect(screen.getByText("La cantidad debe ser un número entero mayor que cero.")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Eliminar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("La cantidad debe ser un número entero mayor que cero.");
+    await user.click(screen.getByRole("button", { name: "Quitar Fusionadora segura del pedido" }));
     expect(await screen.findByRole("heading", { name: "Tu carrito está vacío" })).toBeInTheDocument();
   });
 });

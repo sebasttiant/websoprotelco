@@ -25,7 +25,7 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
   const whatsappHref = toWhatsAppHref(settings.whatsappNumber);
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-brand-ice">
       <Header />
       <section className="border-b border-brand-line bg-white py-12 sm:py-14">
         <Container>

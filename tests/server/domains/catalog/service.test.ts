@@ -256,6 +256,19 @@ describe("importProductsFromCsv", () => {
     expect(result.errors[0]).toContain("comillas");
     expect(mockQuery).not.toHaveBeenCalled();
   });
+
+  test.each(['"Cable"junk', 'Ca""ble'])(
+    "rejects balanced malformed quote placement %s before any catalog lookup or write",
+    async (name) => {
+      const result = await importProductsFromCsv(
+        `sku,name,category,price_pesos,stock\nSKU-1,${name},Fiber,25000,2`,
+      );
+
+      expect(result).toMatchObject({ inserted: 0, updated: 0, skipped: 1 });
+      expect(result.errors[0]).toContain("comillas");
+      expect(mockQuery).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("getProductsForAdmin", () => {

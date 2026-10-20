@@ -369,46 +369,76 @@ interface InvalidCsvRows {
   rowNumber: number;
 }
 
+const CSV_CELL_STATE = {
+  UNQUOTED: "unquoted",
+  QUOTED: "quoted",
+  AFTER_QUOTE: "after-quote",
+} as const;
+
+type CsvCellState = (typeof CSV_CELL_STATE)[keyof typeof CSV_CELL_STATE];
+
 function parseCsvRows(csvText: string): ParsedCsvRows | InvalidCsvRows {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";
-  let inQuotes = false;
+  let state: CsvCellState = CSV_CELL_STATE.UNQUOTED;
 
   const pushRow = () => {
     row.push(cell);
     if (row.some((value) => value.trim() !== "")) rows.push(row);
     row = [];
     cell = "";
+    state = CSV_CELL_STATE.UNQUOTED;
   };
 
   for (let index = 0; index < csvText.length; index += 1) {
     const char = csvText[index]!;
 
-    if (char === '"') {
-      if (inQuotes && csvText[index + 1] === '"') {
-        cell += '"';
-        index += 1;
+    if (state === CSV_CELL_STATE.QUOTED) {
+      if (char === '"') {
+        if (csvText[index + 1] === '"') {
+          cell += '"';
+          index += 1;
+        } else {
+          state = CSV_CELL_STATE.AFTER_QUOTE;
+        }
+      } else if (char === "\n" || char === "\r") {
+        cell += "\n";
+        if (char === "\r" && csvText[index + 1] === "\n") index += 1;
       } else {
-        inQuotes = !inQuotes;
+        cell += char;
       }
       continue;
     }
 
-    if (char === "," && !inQuotes) {
+    if (state === CSV_CELL_STATE.AFTER_QUOTE) {
+      if (char === ",") {
+        row.push(cell);
+        cell = "";
+        state = CSV_CELL_STATE.UNQUOTED;
+      } else if (char === "\n" || char === "\r") {
+        pushRow();
+        if (char === "\r" && csvText[index + 1] === "\n") index += 1;
+      } else if (char !== " " && char !== "\t") {
+        return { ok: false, rowNumber: rows.length + 1 };
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      if (cell !== "") return { ok: false, rowNumber: rows.length + 1 };
+      state = CSV_CELL_STATE.QUOTED;
+      continue;
+    }
+
+    if (char === ",") {
       row.push(cell);
       cell = "";
       continue;
     }
 
-    if ((char === "\n" || char === "\r") && !inQuotes) {
+    if (char === "\n" || char === "\r") {
       pushRow();
-      if (char === "\r" && csvText[index + 1] === "\n") index += 1;
-      continue;
-    }
-
-    if ((char === "\n" || char === "\r") && inQuotes) {
-      cell += "\n";
       if (char === "\r" && csvText[index + 1] === "\n") index += 1;
       continue;
     }
@@ -416,8 +446,8 @@ function parseCsvRows(csvText: string): ParsedCsvRows | InvalidCsvRows {
     cell += char;
   }
 
-  if (inQuotes) return { ok: false, rowNumber: rows.length + 1 };
-  if (cell !== "" || row.length > 0) pushRow();
+  if (state === CSV_CELL_STATE.QUOTED) return { ok: false, rowNumber: rows.length + 1 };
+  if (cell !== "" || row.length > 0 || state === CSV_CELL_STATE.AFTER_QUOTE) pushRow();
 
   return { ok: true, rows };
 }

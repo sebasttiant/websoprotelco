@@ -215,7 +215,7 @@ describe("CartDrawer order flow", () => {
     await user.click(screen.getByRole("button", { name: "Continuar con mis datos" }));
 
     const whatsapp = screen.getByRole("button", { name: "Confirmar pedido por WhatsApp" });
-    const email = screen.getByRole("button", { name: "Confirmar pedido por correo" });
+    const email = screen.getByRole("button", { name: "Enviar pedido por formulario" });
     expect(whatsapp).toBeDisabled();
     expect(email).toBeDisabled();
     expect(screen.queryByText("Tu pedido está vacío.")).not.toBeInTheDocument();
@@ -246,9 +246,15 @@ describe("CartDrawer order flow", () => {
     expect(screen.queryByText("Subtotal")).not.toBeInTheDocument();
     expect(screen.queryByText("Tu pedido está vacío.")).not.toBeInTheDocument();
 
-    const message = "Hola, acabo de confirmar el pedido PED-2026-0042 por " +
-      new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(32500) +
-      ". Quedo atento para coordinar pago y entrega.";
+    const format = (cents: number) =>
+      new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(cents / 100);
+    const message = [
+      "Hola, confirmo mi pedido PED-2026-0042:",
+      `2 × Fusionadora segura — ${format(3000000)}`,
+      `1 × Cable de fibra — ${format(250000)}`,
+      `Total: ${format(3250000)}`,
+      "Quedo atento para coordinar pago y entrega.",
+    ].join("\n");
     const link = screen.getByRole("link", { name: "Abrir WhatsApp" });
     expect(link).toHaveAttribute("href", `https://wa.me/573001234567?text=${encodeURIComponent(message)}`);
     expect(link).toHaveAttribute("target", "_blank");
@@ -263,7 +269,7 @@ describe("CartDrawer order flow", () => {
 
     await user.click(screen.getByRole("button", { name: "Continuar con mis datos" }));
     await fillContactForm(user);
-    await user.click(screen.getByRole("button", { name: "Confirmar pedido por correo" }));
+    await user.click(screen.getByRole("button", { name: "Enviar pedido por formulario" }));
 
     expect(await screen.findByText("PED-2026-0043")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Abrir WhatsApp" })).not.toBeInTheDocument();
@@ -277,7 +283,7 @@ describe("CartDrawer order flow", () => {
     await user.click(screen.getByRole("button", { name: "Continuar con mis datos" }));
 
     expect(screen.queryByRole("button", { name: "Confirmar pedido por WhatsApp" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirmar pedido por correo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enviar pedido por formulario" })).toBeInTheDocument();
   });
 
   test("keeps the cart and shows the server message when the order is rejected", async () => {
@@ -288,12 +294,12 @@ describe("CartDrawer order flow", () => {
 
     await user.click(screen.getByRole("button", { name: "Continuar con mis datos" }));
     await fillContactForm(user);
-    await user.click(screen.getByRole("button", { name: "Confirmar pedido por correo" }));
+    await user.click(screen.getByRole("button", { name: "Enviar pedido por formulario" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Revisá los datos de contacto y los productos del pedido.");
     expect(readCart()).toHaveLength(1);
     expect(screen.queryByRole("heading", { name: "Pedido recibido" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirmar pedido por correo" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Enviar pedido por formulario" })).toBeEnabled();
   });
 
   test("disables both confirmations and shows progress while the order is pending", async () => {
@@ -305,7 +311,7 @@ describe("CartDrawer order flow", () => {
 
     await user.click(screen.getByRole("button", { name: "Continuar con mis datos" }));
     await fillContactForm(user);
-    await user.click(screen.getByRole("button", { name: "Confirmar pedido por correo" }));
+    await user.click(screen.getByRole("button", { name: "Enviar pedido por formulario" }));
 
     const pending = screen.getAllByRole("button", { name: "Confirmando…" });
     expect(pending).toHaveLength(2);
@@ -323,7 +329,7 @@ describe("CartDrawer order flow", () => {
 
     await user.click(screen.getByRole("button", { name: "Continuar con mis datos" }));
     await fillContactForm(user);
-    await user.click(screen.getByRole("button", { name: "Confirmar pedido por correo" }));
+    await user.click(screen.getByRole("button", { name: "Enviar pedido por formulario" }));
     await user.click(await screen.findByRole("button", { name: "Volver a la tienda" }));
 
     expect(onClose).toHaveBeenCalledTimes(1);

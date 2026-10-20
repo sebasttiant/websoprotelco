@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ProductCard } from "@/components/catalog/product-card";
+import { AddToCartButton } from "@/components/cart/add-to-cart-button";
+import { CartProductCard } from "@/components/cart/cart-product-card";
 import { ProductImagePlaceholder } from "@/components/catalog/product-image-placeholder";
 import { WhatsAppCta } from "@/components/catalog/whatsapp-cta";
 import { Footer } from "@/components/layout/footer";
@@ -114,6 +115,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <p className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">
               {formatCurrency(product.priceCents, product.currency)}
             </p>
+            {product.inStock ? (
+              <div>
+                <AddToCartButton id={product.id} slug={product.slug} name={product.name} priceCents={product.priceCents} currency="COP" />
+              </div>
+            ) : null}
             <div className="flex flex-col gap-4 sm:flex-row">
               <Link href={`/contacto?producto=${encodeURIComponent(product.slug)}`} className="rounded-full bg-brand-blue px-8 py-4 text-center text-sm font-black uppercase tracking-widest text-white shadow-glow transition hover:bg-brand-primary">
                 Solicitar cotización
@@ -138,7 +144,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </p>
             <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {related.map((item) => (
-                <ProductCard key={item.id} product={item} />
+                <CartProductCard key={item.id} product={item} />
               ))}
             </div>
           </section>

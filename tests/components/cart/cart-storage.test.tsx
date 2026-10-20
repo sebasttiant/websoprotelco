@@ -52,6 +52,16 @@ describe("CartContent", () => {
     expect(screen.getByText("No disponible")).toBeInTheDocument();
   });
 
+  test("shows a visible confirmation when a product is added", async () => {
+    const user = userEvent.setup();
+    render(<CartProductCard product={{ id: "00000000-0000-4000-8000-000000000001", slug: "fusionadora-x", sku: "FUS-001", name: "Fusionadora X", description: "", priceCents: 1500000, currency: "COP", categoryName: "Prueba", categorySlug: "prueba", brand: "SP", imageUrl: null, inStock: true }} />);
+
+    await user.click(screen.getByRole("button", { name: "Agregar" }));
+
+    expect(await screen.findByText("Fusionadora X se agregó al carrito.")).toBeVisible();
+    expect(JSON.parse(window.localStorage.getItem("soprotelco_quote_cart") ?? "[]")).toHaveLength(1);
+  });
+
   test("fails closed for hostile browser-local cart entries", async () => {
     window.localStorage.setItem("soprotelco_quote_cart", JSON.stringify([{ id: "00000000-0000-4000-8000-000000000001", slug: "fusionadora-segura", name: "Fusionadora segura", priceCents: 1500000, currency: "NOT_A_CURRENCY", quantity: 1 }, { id: "00000000-0000-4000-8000-000000000002", slug: "<script>", name: "", priceCents: -1, currency: "COP", quantity: 1, imageUrl: "javascript:alert(1)" }]));
     render(<CartContent />);

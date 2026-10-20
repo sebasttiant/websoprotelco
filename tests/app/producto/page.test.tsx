@@ -58,6 +58,12 @@ describe("ProductPage", () => {
     expect(new URL(href).searchParams.get("text")).toContain("Fusionadora X");
   });
 
+  test("lets shoppers add the viewed product to the cart", async () => {
+    await renderPage();
+
+    expect(screen.getByRole("button", { name: "Agregar" })).toBeInTheDocument();
+  });
+
   test("offers the visible quote request link with the encoded product slug", async () => {
     await renderPage([], { slug: "fibra óptica" });
 

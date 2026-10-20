@@ -60,7 +60,7 @@ export function DrawerFooter({ step, total, canSubmit, pending, hasWhatsapp, onC
             className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-brand-blue px-6 py-4 text-xs font-black uppercase tracking-widest text-brand-blue transition hover:bg-brand-ice disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Send aria-hidden="true" className="h-4 w-4" />
-            {pending ? "Confirmando…" : "Confirmar pedido por correo"}
+            {pending ? "Confirmando…" : "Enviar pedido por formulario"}
           </button>
         </div>
       )}

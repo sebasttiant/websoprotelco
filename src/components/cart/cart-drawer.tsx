@@ -62,7 +62,7 @@ export function CartDrawer({ open, onClose, whatsappNumber }: CartDrawerProps) {
     setStep("done");
 
     if (channel === "whatsapp") {
-      setWhatsappHref(buildWhatsappHref(whatsappNumber, state.reference, state.totalCents));
+      setWhatsappHref(buildWhatsappHref(whatsappNumber, state.reference, state.totalCents, items));
     } else {
       setWhatsappHref("");
     }

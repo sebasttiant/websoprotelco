@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart } from "lucide-react";
+import { Check, ShoppingCart } from "lucide-react";
 import { useState } from "react";
 
 import { addCartItem, type CartItemInput } from "./cart-storage";
@@ -18,12 +18,17 @@ export function AddToCartButton({ id, slug, name, priceCents, currency }: AddToC
   }
 
   return (
-    <>
+    <span className="inline-flex flex-col items-start gap-1.5">
       <button type="button" onClick={add} className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-blue-700">
         <ShoppingCart aria-hidden="true" className="h-4 w-4" />
         Agregar
       </button>
-      <span className="sr-only" role="status">{status}</span>
-    </>
+      {status ? (
+        <span role="status" className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700">
+          <Check aria-hidden="true" className="h-3.5 w-3.5" />
+          {status}
+        </span>
+      ) : null}
+    </span>
   );
 }

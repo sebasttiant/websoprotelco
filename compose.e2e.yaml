@@ -1,0 +1,32 @@
+name: websoprotelco-e2e
+
+# Throwaway PostgreSQL for the authenticated Playwright suite (`pnpm test:e2e:auth`).
+#
+# This file is deliberately NOT part of compose.yaml and shares nothing with it:
+#   - its own project name, so `docker compose down -v` here can never touch the `websoprotelco`
+#     project (compose.yaml's postgres-data volume);
+#   - no named volume: data lives on tmpfs and disappears with the container;
+#   - a loopback-only, non-default host port (55432), so it neither collides with a development
+#     database on 5432 nor listens on the network;
+#   - no defaults for the credentials: tests/e2e/run-authenticated.ts generates them per run,
+#     and a bare `docker compose -f compose.e2e.yaml up` aborts instead of inventing a password.
+#
+# The host runner connects through 127.0.0.1:${E2E_DB_PORT}. The Compose-internal hostname `db`
+# is not resolvable from the host, which is exactly why the suite refuses it.
+
+services:
+  db-e2e:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: websoprotelco_e2e_test
+      POSTGRES_USER: e2e_user
+      POSTGRES_PASSWORD: ${E2E_DB_PASSWORD:?E2E_DB_PASSWORD is required (tests/e2e/run-authenticated.ts generates it)}
+    ports:
+      - "127.0.0.1:${E2E_DB_PORT:-55432}:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U e2e_user -d websoprotelco_e2e_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

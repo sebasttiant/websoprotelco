@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:auth": "tsx tests/e2e/run-authenticated.ts",
     "test:contract:assets": "node tests/deploy/runtime-assets-contract.mjs",
     "test:db:reset": "tsx tests/helpers/reset-database.ts",
     "test:db:seed": "tsx tests/helpers/seed-database.ts",

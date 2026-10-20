@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Sora } from "next/font/google";
 import { Suspense, type ReactNode } from "react";
 
 import { Toast } from "@/components/ui/toast";
@@ -11,6 +11,13 @@ const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
+});
+
+const sora = Sora({
+  subsets: ["latin"],
+  display: "swap",
+  weight: ["600", "700", "800"],
+  variable: "--font-sora",
 });
 
 const DESCRIPTION =
@@ -39,7 +46,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="es" className={inter.variable}>
+    <html lang="es" className={`${inter.variable} ${sora.variable}`}>
       <body className="min-h-screen bg-white text-brand-ink antialiased">
         {children}
         <Suspense fallback={null}>

@@ -22,6 +22,7 @@
   --shadow-glow: 0 0 24px -4px color-mix(in oklab, var(--color-brand-accent) 45%, transparent);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-size-brand-xxl: clamp(28px, 3.8vw, 40px);
   --font-size-brand-xl: clamp(22px, 2.8vw, 30px);
   --font-size-brand-lg: 16.5px;
@@ -50,6 +51,7 @@
   h1,
   h2,
   h3 {
+    font-family: var(--font-display);
     text-wrap: balance;
   }
 

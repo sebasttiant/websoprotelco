@@ -5,6 +5,7 @@ import { describe, expect, test, vi } from "vitest";
 // plain Node, so it has to be stubbed with the shape the loader would have produced.
 vi.mock("next/font/google", () => ({
   Inter: () => ({ variable: "__inter_variable", className: "__inter_class" }),
+  Sora: () => ({ variable: "__sora_variable", className: "__sora_class" }),
 }));
 
 const { default: RootLayout } = await import("@/app/layout");
@@ -18,6 +19,10 @@ function renderHtmlElement(): ReactElement<{ lang?: string; className?: string }
 describe("root layout", () => {
   test("publishes the Inter font variable so the theme sans stack resolves", () => {
     expect(renderHtmlElement().props.className).toContain("__inter_variable");
+  });
+
+  test("publishes the Sora font variable so display headings resolve", () => {
+    expect(renderHtmlElement().props.className).toContain("__sora_variable");
   });
 
   test("keeps the document language as Spanish", () => {

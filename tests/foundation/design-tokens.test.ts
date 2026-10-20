@@ -39,6 +39,10 @@ describe("design tokens", () => {
     expect(themeToken("font-sans")).toContain("var(--font-inter)");
   });
 
+  test("routes the display stack through the Sora font variable", () => {
+    expect(themeToken("font-display")).toContain("var(--font-sora)");
+  });
+
   test("keeps the legacy heading scale available to the public shell", () => {
     expect(themeToken("font-size-brand-xxl")).toBe("clamp(28px, 3.8vw, 40px)");
     expect(themeToken("font-size-brand-xl")).toBe("clamp(22px, 2.8vw, 30px)");

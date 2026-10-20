@@ -3,6 +3,8 @@ import type { ContactForm } from "./contact";
 interface ContactFieldsProps {
   form: ContactForm;
   onChange: (key: keyof ContactForm, value: string) => void;
+  /** Keeps input ids unique when the fields render outside the drawer (cart page). */
+  idPrefix?: string;
 }
 
 const TEXT_FIELDS = [
@@ -11,16 +13,16 @@ const TEXT_FIELDS = [
   { key: "phone", label: "Teléfono", type: "tel", placeholder: "300 123 4567" },
 ] as const;
 
-export function ContactFields({ form, onChange }: ContactFieldsProps) {
+export function ContactFields({ form, onChange, idPrefix = "drawer" }: ContactFieldsProps) {
   return (
     <div className="space-y-4">
       {TEXT_FIELDS.map(({ key, label, type, placeholder }) => (
         <div key={key}>
-          <label htmlFor={`drawer-${key}`} className="text-xs font-black uppercase tracking-widest text-brand-muted">
+          <label htmlFor={`${idPrefix}-${key}`} className="text-xs font-black uppercase tracking-widest text-brand-muted">
             {label}
           </label>
           <input
-            id={`drawer-${key}`}
+            id={`${idPrefix}-${key}`}
             type={type}
             required
             autoComplete={key === "name" ? "name" : key === "email" ? "email" : "tel"}
@@ -32,11 +34,11 @@ export function ContactFields({ form, onChange }: ContactFieldsProps) {
         </div>
       ))}
       <div>
-        <label htmlFor="drawer-notes" className="text-xs font-black uppercase tracking-widest text-brand-muted">
+        <label htmlFor={`${idPrefix}-notes`} className="text-xs font-black uppercase tracking-widest text-brand-muted">
           Notas (opcional)
         </label>
         <textarea
-          id="drawer-notes"
+          id={`${idPrefix}-notes`}
           rows={3}
           placeholder="Dirección, observaciones…"
           value={form.notes}

@@ -1,50 +1,119 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-import { calculateCartTotal, CART_CURRENCIES, CART_QUANTITY_LIMIT, cartChangedEventName, readCart, type CartItem, validateQuantity, writeCart } from "./cart-storage";
+// Same server-action import contract as the drawer: ./actions carries "use server",
+// so none of the server implementation reaches the client bundle.
+import { submitCartOrder, type CartOrderActionState } from "@/domains/quote-order/actions";
 
-function formatCurrency(cents: number): string {
-  return new Intl.NumberFormat("es-CO", { style: "currency", currency: CART_CURRENCIES.COP, minimumFractionDigits: 0 }).format(cents / 100);
+import { calculateCartTotal } from "./cart-storage";
+import { CartLines } from "./cart-drawer/cart-lines";
+import { buildOrderInput, canSubmitContact, type ContactForm, EMPTY_FORM } from "./cart-drawer/contact";
+import { ContactFields } from "./cart-drawer/contact-fields";
+import { DrawerFooter } from "./cart-drawer/drawer-footer";
+import { OrderConfirmation } from "./cart-drawer/order-confirmation";
+import type { ConfirmedOrder } from "./cart-drawer/types";
+import { useCartItems } from "./cart-drawer/use-cart-items";
+import { buildWhatsappHref, toWaNumber } from "./cart-drawer/whatsapp";
+
+interface CartContentProps {
+  /** From settings.whatsapp_number. Empty when unset, which hides the WhatsApp path entirely. */
+  whatsappNumber: string;
 }
 
-export function CartContent() {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [status, setStatus] = useState("");
-
-  useEffect(() => {
-    const sync = () => setItems(readCart());
-    sync();
-    window.addEventListener(cartChangedEventName(), sync);
-    return () => window.removeEventListener(cartChangedEventName(), sync);
-  }, []);
-
-  function update(id: string, rawValue: string): void {
-    const result = validateQuantity(Number(rawValue));
-    if (!result.valid) {
-      setStatus(result.message);
-      return;
-    }
-    const next = items.map((item) => item.id === id ? { ...item, quantity: result.quantity } : item);
-    writeCart(next);
-    setItems(next);
-    setStatus(result.normalized ? `Cantidad ajustada al máximo de ${CART_QUANTITY_LIMIT}.` : "Cantidad actualizada.");
-  }
-
-  function remove(id: string): void {
-    const next = items.filter((item) => item.id !== id);
-    writeCart(next);
-    setItems(next);
-    setStatus("Producto eliminado del carrito.");
-  }
+/**
+ * Full checkout for the /carrito page: the same lines, contact form, channels and
+ * server-side order recording as the header drawer, laid out as a page instead of
+ * a dialog. Before this, the page only edited quantities and dead-ended into the
+ * contact form, so a shopper who landed here could never place the order.
+ */
+export function CartContent({ whatsappNumber }: CartContentProps) {
+  const { items, changeQuantity, removeItem, clear } = useCartItems();
+  const [form, setForm] = useState<ContactForm>(EMPTY_FORM);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [confirmed, setConfirmed] = useState<ConfirmedOrder | null>(null);
+  const [whatsappHref, setWhatsappHref] = useState("");
 
   const total = calculateCartTotal(items);
 
-  if (items.length === 0) {
-    return <section className="rounded-[32px] bg-white p-10 text-center shadow-xl shadow-blue-950/5"><h2 className="text-2xl font-black text-brand-navy">Tu carrito está vacío</h2><p className="mt-3 text-brand-muted">Agrega equipos del catálogo para preparar tu solicitud de cotización.</p><Link href="/productos" className="mt-6 inline-block rounded-full bg-brand-blue px-6 py-3 text-xs font-black uppercase tracking-widest text-white">Volver al catálogo</Link></section>;
+  async function confirm(channel: "whatsapp" | "email"): Promise<void> {
+    setPending(true);
+    setError("");
+
+    const state: CartOrderActionState = await submitCartOrder(buildOrderInput(form, items));
+
+    setPending(false);
+
+    if (!state.success) {
+      setError(state.message);
+      return;
+    }
+
+    // The order is recorded; the cart has done its job. WhatsApp is an extra channel
+    // offered as a link on the confirmation, never a precondition for the order existing.
+    clear();
+    setConfirmed({ reference: state.reference, totalCents: state.totalCents });
+    setWhatsappHref(channel === "whatsapp" ? buildWhatsappHref(whatsappNumber, state.reference, state.totalCents, items) : "");
   }
 
-  return <section aria-label="Productos del carrito" className="rounded-[32px] bg-white p-6 shadow-xl shadow-blue-950/5 sm:p-8"><p role="status" aria-live="polite" className="mb-4 text-sm font-bold text-brand-muted">{status}</p><div className="space-y-5">{items.map((item) => <article key={item.id} className="flex flex-col gap-4 border-b border-brand-line pb-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-black text-brand-navy">{item.name}</h2><p className="text-sm font-bold text-brand-muted">{formatCurrency(item.priceCents)} por unidad</p></div><div className="flex items-center gap-3"><label className="text-sm font-bold text-brand-navy" htmlFor={`quantity-${item.id}`}>Cantidad</label><input id={`quantity-${item.id}`} aria-label={`Cantidad para ${item.name}`} type="number" min="1" max={CART_QUANTITY_LIMIT} step="1" value={item.quantity} onChange={(event) => update(item.id, event.target.value)} className="w-20 rounded-xl border border-brand-line px-3 py-2 text-center font-black text-brand-navy"/><button type="button" onClick={() => remove(item.id)} className="inline-flex items-center gap-1.5 text-sm font-black text-brand-blue hover:underline"><Trash2 aria-hidden="true" className="h-4 w-4"/>Eliminar</button></div></article>)}</div><div className="mt-6 flex flex-col gap-4 border-t border-brand-line pt-6 sm:flex-row sm:items-center sm:justify-between">{total.valid ? <p className="text-xl font-black text-brand-navy">Total estimado: <output>{formatCurrency(total.totalCents)}</output></p> : <p role="alert" className="text-sm font-bold text-brand-blue">{total.message}</p>}<Link href="/contacto" className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-6 py-3 text-center text-xs font-black uppercase tracking-widest text-white"><FileText aria-hidden="true" className="h-4 w-4"/>Preparar cotización</Link></div><p className="mt-4 text-sm text-brand-muted">Esta selección solo está en este navegador. Aún no envía una solicitud ni realiza pagos.</p></section>;
+  function reset(): void {
+    setForm(EMPTY_FORM);
+    setConfirmed(null);
+    setWhatsappHref("");
+    setError("");
+  }
+
+  if (confirmed) {
+    return (
+      <section className="rounded-[32px] bg-white p-10 shadow-xl shadow-blue-950/5">
+        <OrderConfirmation order={confirmed} whatsappHref={whatsappHref} onReset={reset} />
+      </section>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <section className="rounded-[32px] bg-white p-10 text-center shadow-xl shadow-blue-950/5">
+        <h2 className="text-2xl font-black text-brand-navy">Tu carrito está vacío</h2>
+        <p className="mt-3 text-brand-muted">Agrega equipos del catálogo para armar tu pedido.</p>
+        <Link href="/productos" className="mt-6 inline-block rounded-full bg-brand-blue px-6 py-3 text-xs font-black uppercase tracking-widest text-white">
+          Volver al catálogo
+        </Link>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-label="Productos del carrito" className="rounded-[32px] bg-white p-6 shadow-xl shadow-blue-950/5 sm:p-8">
+      {error ? (
+        <p role="alert" className="mb-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+          {error}
+        </p>
+      ) : null}
+
+      <CartLines
+        items={items}
+        idPrefix="page"
+        onQuantityChange={(id, rawValue) => setError(changeQuantity(id, rawValue))}
+        onRemove={removeItem}
+      />
+
+      <div className="mt-8 border-t border-brand-line pt-6">
+        <h2 className="mb-4 text-lg font-black text-brand-navy">Datos de contacto</h2>
+        <ContactFields idPrefix="page" form={form} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} />
+      </div>
+
+      <DrawerFooter
+        step="form"
+        total={total}
+        canSubmit={canSubmitContact(form)}
+        pending={pending}
+        hasWhatsapp={toWaNumber(whatsappNumber) !== ""}
+        onContinue={() => undefined}
+        onConfirm={confirm}
+      />
+    </section>
+  );
 }

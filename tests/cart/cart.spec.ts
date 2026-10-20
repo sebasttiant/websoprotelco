@@ -7,8 +7,8 @@ test.describe("Cart quote preparation", () => {
     await expect(page.getByText("Fusionadora segura se agregó al carrito.")).toBeAttached();
 
     // Navigated to directly rather than by clicking the cart icon: that icon now opens the
-    // drawer (covered by CART-E2E-004 below). /carrito remains the no-JavaScript fallback and
-    // this test is what keeps it working.
+    // drawer (covered by CART-E2E-004 below). /carrito is the full-page checkout with the
+    // same order flow, and this test is what keeps it working.
     await page.goto("/carrito");
     // `exact` because "Tu carrito" is a substring of the empty-state heading "Tu carrito está
     // vacío", which renders on the first paint before the cart hydrates from localStorage.
@@ -16,13 +16,14 @@ test.describe("Cart quote preparation", () => {
 
     // Waiting on the row itself is what proves hydration finished and the product is listed;
     // the page heading above is present either way.
-    const quantity = page.getByLabel(/Cantidad para Fusionadora segura/);
+    const quantity = page.locator("main").getByLabel(/Cantidad para Fusionadora segura/);
     await expect(quantity).toBeVisible();
     await quantity.fill("2");
-    await expect(page.getByText("Cantidad actualizada.")).toBeVisible();
-    await expect(page.getByText("Aún no envía una solicitud ni realiza pagos.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Eliminar" })).toBeVisible();
-    await page.getByRole("button", { name: "Eliminar" }).click();
+    // Two units at $ 15.000: the shared drawer footer owns the subtotal on this page too.
+    await expect(page.locator("main").getByText("$ 30.000")).toBeVisible();
+    await expect(page.locator("main").getByText("No se cobra en línea. Te contactaremos para coordinar pago y entrega.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Quitar Fusionadora segura del pedido" })).toBeVisible();
+    await page.getByRole("button", { name: "Quitar Fusionadora segura del pedido" }).click();
     await expect(page.getByRole("heading", { name: "Tu carrito está vacío" })).toBeVisible();
   });
 
@@ -36,7 +37,8 @@ test.describe("Cart quote preparation", () => {
 
     page.on("request", (request) => {
       const method = request.method().toUpperCase();
-      if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      // /__nextjs* is the dev server's own tooling traffic, not an application write.
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(method) && !new URL(request.url()).pathname.startsWith("/__nextjs")) {
         mutatingRequests.push(`${method} ${request.url()}`);
       }
       if (new URL(request.url()).pathname.startsWith("/api/")) {
@@ -49,11 +51,11 @@ test.describe("Cart quote preparation", () => {
     await expect(page.getByText("Fusionadora segura se agregó al carrito.")).toBeAttached();
 
     await page.goto("/carrito");
-    const quantity = page.getByLabel(/Cantidad para Fusionadora segura/);
+    const quantity = page.locator("main").getByLabel(/Cantidad para Fusionadora segura/);
     await quantity.fill("3");
-    await expect(page.getByText("Cantidad actualizada.")).toBeVisible();
+    await expect(quantity).toHaveValue("3");
 
-    await page.getByRole("button", { name: "Eliminar" }).click();
+    await page.getByRole("button", { name: "Quitar Fusionadora segura del pedido" }).click();
     await expect(page.getByRole("heading", { name: "Tu carrito está vacío" })).toBeVisible();
 
     expect(mutatingRequests).toEqual([]);

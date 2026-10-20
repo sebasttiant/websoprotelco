@@ -7,9 +7,11 @@ interface CartLinesProps {
   items: CartItem[];
   onQuantityChange: (id: string, rawValue: string) => void;
   onRemove: (id: string) => void;
+  /** Keeps input ids unique when the lines render outside the drawer (cart page). */
+  idPrefix?: string;
 }
 
-export function CartLines({ items, onQuantityChange, onRemove }: CartLinesProps) {
+export function CartLines({ items, onQuantityChange, onRemove, idPrefix = "drawer" }: CartLinesProps) {
   return (
     <ul className="space-y-4">
       {items.map((item) => (
@@ -17,11 +19,12 @@ export function CartLines({ items, onQuantityChange, onRemove }: CartLinesProps)
           <p className="font-black text-brand-navy">{item.name}</p>
           <p className="text-sm font-bold text-brand-muted">{formatCurrency(item.priceCents)} c/u</p>
           <div className="mt-3 flex items-center gap-3">
-            <label htmlFor={`drawer-qty-${item.id}`} className="text-xs font-black uppercase tracking-widest text-brand-muted">
+            <label htmlFor={`${idPrefix}-qty-${item.id}`} className="text-xs font-black uppercase tracking-widest text-brand-muted">
               Cantidad
             </label>
             <input
-              id={`drawer-qty-${item.id}`}
+              id={`${idPrefix}-qty-${item.id}`}
+              aria-label={`Cantidad para ${item.name}`}
               type="number"
               min="1"
               max={CART_QUANTITY_LIMIT}

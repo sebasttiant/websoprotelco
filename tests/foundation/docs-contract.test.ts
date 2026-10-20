@@ -16,6 +16,7 @@ const readme = readFileSync(resolve(ROOT, "README.md"), "utf8");
 const gitignore = readFileSync(resolve(ROOT, ".gitignore"), "utf8");
 const deployScript = readFileSync(resolve(ROOT, "deploy.sh"), "utf8");
 const composeConfig = readFileSync(resolve(ROOT, "compose.yaml"), "utf8");
+const runtimeAssetOpenSource = readFileSync(resolve(ROOT, "src/server/storage/assets/open.ts"), "utf8");
 
 describe("README facts", () => {
   test("names the runtime and framework versions pinned by package.json", () => {
@@ -86,8 +87,13 @@ describe("README authorization and credentials", () => {
 
   test("does not present local agent instructions or retired seed credentials as repository facts", () => {
     expect(readme).not.toContain("AGENTS.md");
-    expect(deployScript).not.toMatch(/seed.{0,120}credentials comm(?:it|itt)ed/is);
-    expect(composeConfig).not.toMatch(/seed.{0,120}credentials comm(?:it|itt)ed/is);
+    expect(deployScript).not.toMatch(/(?:dev seed|db\/seeds\/001-users\.ts).{0,300}(?:credentials? (?:are )?committed|hardcodes credentials)/is);
+    expect(composeConfig).not.toMatch(/(?:dev seed|db\/seeds\/001-users\.ts).{0,300}(?:credentials? (?:are )?committed|hardcodes credentials)/is);
+  });
+
+  test("describes runtime containment against data/ instead of the retired public/ roots", () => {
+    expect(runtimeAssetOpenSource).toContain("canonical `data` directory");
+    expect(runtimeAssetOpenSource).not.toMatch(/canonical `public`|public\/uploads/);
   });
 
   test("documents the data/ runtime asset roots and the first-deploy .env scaffold", () => {

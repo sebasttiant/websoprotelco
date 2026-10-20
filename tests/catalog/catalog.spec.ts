@@ -11,8 +11,8 @@ test.describe("Catalog PostgreSQL smoke", () => {
     await expect(page.getByRole("heading", { name: "Nuestros Productos" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Cotizar" }).first()).toHaveAttribute("href", "/contacto?producto=fusionadora-segura");
     await expect(page.getByRole("navigation", { name: "Ruta de navegación" })).toBeVisible();
-    await expect(page.getByText("Sin imagen").first()).toBeVisible();
-    await expect(page.getByRole("img", { name: "Imagen no segura" })).toHaveCount(0);
+    await expect(page.getByRole("img", { name: /imagen pendiente de/i }).first()).toBeVisible();
+    await expect(page.getByRole("img", { name: "Imagen no segura", exact: true })).toHaveCount(0);
     expect(remoteImageRequests).toEqual([]);
 
     await page.goto("/productos/fibra");

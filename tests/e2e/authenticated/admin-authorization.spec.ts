@@ -117,7 +117,9 @@ test.describe("isolated runtime storage", () => {
     "the app server writes to a throwaway workspace, never to the repository data directory",
     { tag: ["@critical", "@e2e", "@authenticated", "@AUTH-E2E-008"] },
     () => {
-      const repositoryData = realpathSync(repositoryDataRoot());
+      // A fresh checkout has no repository `data/` at all; that absence is itself
+      // proof nothing can leak into it, so the comparison is skipped, not failed.
+      const repositoryData = existsSync(repositoryDataRoot()) ? realpathSync(repositoryDataRoot()) : null;
 
       expect(realpathSync(environment.appDirectory)).not.toBe(realpathSync(process.cwd()));
       expect(readdirSync(environment.appDirectory).filter((name) => name.startsWith(".env"))).toEqual([]);
@@ -126,7 +128,7 @@ test.describe("isolated runtime storage", () => {
         const root = realpathSync(runtimeRoot(kind));
 
         expect(root.startsWith(path.join(realpathSync(environment.appDirectory), "data") + path.sep)).toBe(true);
-        expect(root === repositoryData || root.startsWith(repositoryData + path.sep)).toBe(false);
+        expect(repositoryData === null || (root !== repositoryData && !root.startsWith(repositoryData + path.sep))).toBe(true);
         // A fresh workspace starts empty: nothing from the developer's disk was carried over.
         expect(readdirSync(root)).toEqual([]);
       }

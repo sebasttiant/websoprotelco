@@ -33,7 +33,10 @@ export function DataTable<Row>({ rows, columns, emptyMessage, page = 1, totalPag
           <tbody className="divide-y divide-slate-100">
             {rows.length > 0 ? (
               rows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="align-middle">
+                <tr
+                  key={rowIndex}
+                  className="align-middle odd:bg-white even:bg-brand-ice/40 transition-colors hover:bg-brand-ice"
+                >
                   {columns.map((column) => (
                     <td key={column.key} className="px-3 py-2.5 text-slate-700 sm:px-4 sm:py-3">
                       <div className="min-w-0 max-w-[18rem] sm:max-w-none">{column.render(row)}</div>
@@ -43,7 +46,7 @@ export function DataTable<Row>({ rows, columns, emptyMessage, page = 1, totalPag
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center font-medium text-slate-500">
+                <td colSpan={columns.length} className="px-4 py-12 text-center font-medium text-slate-500">
                   {emptyMessage}
                 </td>
               </tr>
@@ -62,7 +65,7 @@ export function DataTable<Row>({ rows, columns, emptyMessage, page = 1, totalPag
           >
             Anterior
           </Link>
-          <span>
+          <span aria-current="page">
             Página {page} de {totalPages}
           </span>
           <Link

@@ -13,6 +13,7 @@ import {
 import type { MonthlyRevenue } from "@/domains/reports";
 import { formatCurrencyCents } from "@/lib/presentation";
 
+import { ChartDataTable } from "./chart-data-table";
 import { ChartMount } from "./chart-mount";
 import { CHART_CHROME, SERIES_COLORS } from "./palette";
 
@@ -41,8 +42,10 @@ export function RevenueBars({
   }));
 
   return (
-    <ChartMount className="h-72 w-full min-w-0">
-      <div className="h-72 w-full min-w-0">
+    <>
+      <div aria-hidden="true">
+        <ChartMount className="h-72 w-full min-w-0">
+          <div className="h-72 w-full min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: 4 }}>
             <CartesianGrid vertical={false} stroke={CHART_CHROME.grid} />
@@ -88,7 +91,18 @@ export function RevenueBars({
             />
           </BarChart>
         </ResponsiveContainer>
+          </div>
+        </ChartMount>
       </div>
-    </ChartMount>
+      <ChartDataTable
+        caption="Ingresos mensuales y pedidos ganados por mes"
+        headers={["Mes", "Ingresos", "Pedidos ganados"]}
+        rows={data.map((row) => [
+          row.month,
+          formatCurrencyCents(row.revenueCents),
+          row.orderCount,
+        ])}
+      />
+    </>
   );
 }

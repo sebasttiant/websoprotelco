@@ -13,6 +13,7 @@ import {
 
 import type { DailyTrendPoint } from "@/domains/reports";
 
+import { ChartDataTable } from "./chart-data-table";
 import { ChartMount } from "./chart-mount";
 import { CHART_CHROME, SERIES_COLORS } from "./palette";
 
@@ -36,8 +37,10 @@ export function TrendBars({
   }
 
   return (
-    <ChartMount className="h-72 w-full min-w-0">
-      <div className="h-72 w-full min-w-0">
+    <>
+      <div aria-hidden="true">
+        <ChartMount className="h-72 w-full min-w-0">
+          <div className="h-72 w-full min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
             <CartesianGrid vertical={false} stroke={CHART_CHROME.grid} />
@@ -94,7 +97,14 @@ export function TrendBars({
             />
           </BarChart>
         </ResponsiveContainer>
+          </div>
+        </ChartMount>
       </div>
-    </ChartMount>
+      <ChartDataTable
+        caption="Pedidos y cotizaciones por día"
+        headers={["Día", "Pedidos", "Cotizaciones"]}
+        rows={data.map((point) => [point.label, point.orders, point.quotes])}
+      />
+    </>
   );
 }

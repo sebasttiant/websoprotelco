@@ -31,7 +31,13 @@ export function StatusDonut({
   return (
     <ChartMount className="flex h-56 items-center justify-center text-sm font-medium text-brand-muted">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative mx-auto h-52 w-full max-w-[15rem] shrink-0 sm:mx-0 sm:h-48">
+        <p className="sr-only">
+          Total: {total} {unitLabel}
+        </p>
+        <div
+          aria-hidden="true"
+          className="relative mx-auto h-52 w-full max-w-[15rem] shrink-0 sm:mx-0 sm:h-48"
+        >
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie

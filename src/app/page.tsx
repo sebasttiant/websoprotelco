@@ -37,6 +37,7 @@ export default async function HomePage() {
         "@type": "Organization",
         name: settings.siteName,
         url: siteUrl,
+        logo: `${siteUrl}/assets/brand/soprotelco-logo.png`,
         email: settings.contactEmail,
         telephone: settings.contactPhone,
         address: { "@type": "PostalAddress", streetAddress: settings.address, addressCountry: "CO" },

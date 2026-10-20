@@ -14,6 +14,8 @@ import { RevealImage } from "@/components/ui/reveal-image";
 import { getProductBySlug, getProducts } from "@/domains/catalog";
 import { getDiscountPercent, getEffectivePriceCents, getSafeCatalogImageUrl } from "@/domains/catalog/schemas";
 import { getSiteSettings } from "@/domains/settings";
+import { buildProductJsonLd } from "@/lib/product-json-ld";
+import { publicSiteUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +53,9 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
       description,
       type: "website",
       url: `/producto/${product.slug}`,
-      ...(imageUrl ? { images: [{ url: imageUrl, alt: product.name }] } : {}),
+      // Without a photo the share card falls back to the brand card; a page-level
+      // openGraph replaces the root one, so the fallback must be named here.
+      images: [{ url: imageUrl ?? "/opengraph-image", alt: product.name }],
     },
   };
 }
@@ -66,10 +70,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   // The catalog has no "related" query, so the same-category listing is reused and the product
   // being viewed is filtered out of its own recommendations.
-  const [settings, categoryProducts] = await Promise.all([
+  const [settings, categoryProducts, siteUrl] = await Promise.all([
     getSiteSettings(),
     getProducts({ categorySlug: product.categorySlug, limit: RELATED_LIMIT + 1 }),
+    publicSiteUrl(),
   ]);
+  const jsonLd = buildProductJsonLd(product, siteUrl);
   const related = categoryProducts.filter((item) => item.slug !== product.slug).slice(0, RELATED_LIMIT);
   const imageUrl = getSafeCatalogImageUrl(product.imageUrl);
   const discountPercent = getDiscountPercent(product);
@@ -77,6 +83,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <main className="min-h-screen bg-brand-ice">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header />
       <Container className="py-12">
         <nav aria-label="Ruta de navegación" className="mb-8 text-sm font-bold text-brand-muted">

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
 import { Suspense, type ReactNode } from "react";
 
@@ -22,6 +22,11 @@ const sora = Sora({
 
 const DESCRIPTION =
   "Compra y venta de equipos de fibra óptica en Colombia: fusionadoras, cortadoras, conversores, kits y conectores. Asesoría técnica y despachos nacionales.";
+
+// The browser chrome wears the brand navy on mobile, matching the header.
+export const viewport: Viewport = {
+  themeColor: "#0C1A2A",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

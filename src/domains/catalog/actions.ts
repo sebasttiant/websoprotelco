@@ -10,7 +10,7 @@ import { parsePesosInput, pesosToCents } from "@/lib/money";
 import { slugifyName } from "@/lib/slugify";
 import { requirePermission } from "@/server/auth/guards";
 
-import { catalogDeleteInputSchema, categoryAdminInputSchema, isSafeCatalogImagePath, productAdminInputSchema } from "./schemas";
+import { catalogDeleteInputSchema, categoryAdminInputSchema, getEffectivePriceCents, isSafeCatalogImagePath, productAdminInputSchema, productAdminUpdateSchema } from "./schemas";
 import * as catalogService from "./service";
 
 export interface AdminActionState {
@@ -36,6 +36,17 @@ function resolvePriceCents(formData: FormData): string {
   return stringValue(formData, "priceCents") ?? "0";
 }
 
+function resolvePromoPriceCents(formData: FormData): number | null {
+  // Blank field means "no promotion". Legacy/tests may post promoPriceCents directly.
+  const pesosRaw = stringValue(formData, "promoPricePesos");
+  if (pesosRaw !== undefined) {
+    return pesosRaw.trim() === "" ? null : pesosToCents(parsePesosInput(pesosRaw));
+  }
+  const centsRaw = stringValue(formData, "promoPriceCents");
+  if (centsRaw === undefined || centsRaw.trim() === "") return null;
+  return Number.parseInt(centsRaw, 10);
+}
+
 function resolveSlug(formData: FormData): string {
   const explicit = stringValue(formData, "slug")?.trim() ?? "";
   if (explicit) return explicit;
@@ -51,6 +62,8 @@ function productInput(formData: FormData): Record<string, unknown> {
     name: stringValue(formData, "name"),
     description: stringValue(formData, "description") ?? "",
     priceCents: resolvePriceCents(formData),
+    promoPriceCents: resolvePromoPriceCents(formData),
+    isFeatured: formData.has("isFeatured"),
     currency: stringValue(formData, "currency") ?? "COP",
     brand: stringValue(formData, "brand"),
     stockQuantity: stringValue(formData, "stockQuantity") ?? "0",
@@ -130,7 +143,7 @@ export async function updateProduct(formData: FormData): Promise<AdminActionStat
 
   try {
     const currentProduct = productId ? await catalogService.getProductByIdForAdmin(productId).catch(() => null) : null;
-    const input = productAdminInputSchema.required({ id: true }).partial({ imageUrl: true }).parse(keepLegacyImageOnUnchangedUpdate(productInput(formData), currentProduct?.imageUrl));
+    const input = productAdminUpdateSchema.parse(keepLegacyImageOnUnchangedUpdate(productInput(formData), currentProduct?.imageUrl));
 
     await catalogService.updateProduct(input);
 
@@ -249,7 +262,8 @@ export async function searchOrderProducts(term: string): Promise<OrderProductMat
     id: product.id,
     name: product.name,
     sku: product.sku,
-    priceCents: product.priceCents,
+    // The preview must agree with what the server will charge: promo price when set.
+    priceCents: getEffectivePriceCents(product),
     categoryName: product.categoryName,
   }));
 }

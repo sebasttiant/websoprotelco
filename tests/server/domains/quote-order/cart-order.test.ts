@@ -145,3 +145,19 @@ describe("insertOrder rejections", () => {
     );
   });
 });
+
+describe("insertOrder promotional pricing", () => {
+  test("charges the promotional price when the product is on promotion", async () => {
+    mockClientQuery.mockResolvedValueOnce([{ id: productA, name: "Fusionadora Pro", price_cents: "360000" }]);
+    mockClientQuery.mockResolvedValueOnce([{ id: orderId }]);
+    mockClientQuery.mockResolvedValue([]);
+
+    const result = await insertOrder(baseOrder([{ productId: productA, quantity: 2 }]));
+
+    expect(result.totalCents).toBe(720_000);
+    const itemInsert = mockClientQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT INTO quote_request_items"));
+    expect(itemInsert?.[1]).toContain(360_000);
+    const pricingCall = mockClientQuery.mock.calls[0] as [string, unknown[]];
+    expect(pricingCall[0]).toContain("promo_price_cents");
+  });
+});

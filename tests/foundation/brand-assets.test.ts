@@ -29,13 +29,25 @@ function assertPng(path: string, sha256: string) {
 }
 
 describe("brand asset safety contract", () => {
-  test("keeps the approved SOPROTELCO logos byte-identical at their static paths", () => {
+  test("keeps the legacy approved SOPROTELCO PNGs byte-identical at their static paths", () => {
     assertPng(logoWhitePath, APPROVED_LOGO_WHITE_SHA256);
     assertPng(logoLightPath, APPROVED_LOGO_LIGHT_SHA256);
     assertPng(logoDarkPath, APPROVED_LOGO_WHITE_SHA256);
-    expect(brandLogoSource).toContain("/assets/img/sp-logo.png");
-    expect(brandLogoSource).toContain("/assets/img/sp-logo-white.png");
     expect(footerSource).toContain("BrandLogo");
+  });
+
+  test("serves the client-approved vector logos traced from the same artwork", () => {
+    const lightSvg = readFileSync(resolve(brandRoot, "soprotelco-logo.svg"), "utf8");
+    const darkSvg = readFileSync(resolve(brandRoot, "soprotelco-logo-white.svg"), "utf8");
+
+    for (const svg of [lightSvg, darkSvg]) {
+      expect(svg).toContain('viewBox="0 0 394 238"');
+      expect(svg).toContain('fill="#0f4c81"');
+      expect(svg).not.toMatch(/<image|data:image|base64/i);
+    }
+    expect(darkSvg).toContain('fill="#7cf3ff"');
+    expect(brandLogoSource).toContain("/assets/brand/soprotelco-logo.svg");
+    expect(brandLogoSource).toContain("/assets/brand/soprotelco-logo-white.svg");
   });
 
   test("keeps the selective legacy palette and Inter typography in the global theme", () => {

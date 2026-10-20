@@ -15,6 +15,8 @@ interface ProductFormFieldsProps {
     categoryId?: string;
     description?: string;
     priceCents?: number;
+    promoPriceCents?: number | null;
+    isFeatured?: boolean;
     currency?: string;
     stockQuantity?: number;
     brand?: string | null;
@@ -25,6 +27,7 @@ interface ProductFormFieldsProps {
 
 export function ProductFormFields({ categories, defaults = {} }: ProductFormFieldsProps) {
   const pricePesos = defaults.priceCents !== undefined ? centsToPesos(defaults.priceCents) : 0;
+  const promoPesos = defaults.promoPriceCents ? centsToPesos(defaults.promoPriceCents) : 0;
 
   return (
     <>
@@ -94,6 +97,28 @@ export function ProductFormFields({ categories, defaults = {} }: ProductFormFiel
             defaultValue={defaults.stockQuantity ?? 0}
             className={inputClass}
           />
+        </label>
+      </div>
+
+      <div className="grid gap-4 rounded-xl border border-brand-line bg-brand-ice/60 p-4">
+        <label className="grid gap-2 text-sm font-bold text-slate-700">
+          Precio promocional (pesos COP)
+          <input
+            name="promoPricePesos"
+            type="text"
+            inputMode="numeric"
+            defaultValue={promoPesos > 0 ? String(promoPesos) : ""}
+            placeholder="Vacío = sin promoción"
+            className={inputClass}
+          />
+          <span className="text-xs font-semibold text-slate-500">
+            Si lo completas, ese es el precio que paga el cliente y la tienda muestra el descuento. Debe ser menor que el precio normal; dejalo vacío para quitar la promoción.
+          </span>
+        </label>
+        <label className="flex items-center gap-3 text-sm font-bold text-slate-700">
+          <input type="checkbox" name="isFeatured" defaultChecked={defaults.isFeatured ?? false} className="h-5 w-5" />
+          Producto Top / destacado
+          <span className="text-xs font-semibold text-slate-500">Aparece en “Promociones y destacados” de la home con insignia Top.</span>
         </label>
       </div>
 

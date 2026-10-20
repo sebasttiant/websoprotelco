@@ -30,16 +30,21 @@ describe("toWaNumber", () => {
 
 describe("buildWhatsappHref", () => {
   test("returns an empty href when the number has no digits", () => {
-    expect(buildWhatsappHref("n/a", "PED-1", 100)).toBe("");
+    expect(buildWhatsappHref("n/a", "PED-1", 100, [])).toBe("");
   });
 
-  test("encodes the confirmation message for wa.me", () => {
-    const href = buildWhatsappHref("+57 300 123 4567", "PED-1", 250000);
+  test("encodes an itemized order message for wa.me", () => {
+    const href = buildWhatsappHref("+57 300 123 4567", "PED-1", 250000, [item("a", 2)]);
     const url = new URL(href);
 
     expect(url.origin + url.pathname).toBe("https://wa.me/573001234567");
     expect(url.searchParams.get("text")).toBe(
-      `Hola, acabo de confirmar el pedido PED-1 por ${formatCurrency(250000)}. Quedo atento para coordinar pago y entrega.`,
+      [
+        "Hola, confirmo mi pedido PED-1:",
+        `2 × Producto — ${formatCurrency(200000)}`,
+        `Total: ${formatCurrency(250000)}`,
+        "Quedo atento para coordinar pago y entrega.",
+      ].join("\n"),
     );
   });
 });

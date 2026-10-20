@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 
 import { CategoryStrip } from "@/components/home/category-strip";
 import { FeaturedProducts } from "@/components/home/featured-products";
+import { PromoProducts } from "@/components/home/promo-products";
 import { FiberFlowPanel } from "@/components/home/fiber-flow-panel";
 import { Hero } from "@/components/home/hero";
 import { Support } from "@/components/home/support";
 import { TrustStrip } from "@/components/home/trust-strip";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
-import { getCategories, getFeaturedProducts } from "@/domains/catalog";
+import { getCategories, getFeaturedProducts, getPromotedProducts } from "@/domains/catalog";
 import { getSiteSettings } from "@/domains/settings";
 import { publicSiteUrl } from "@/lib/site-url";
 
@@ -22,8 +23,9 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [featuredProducts, categories, settings, siteUrl] = await Promise.all([
+  const [featuredProducts, promotedProducts, categories, settings, siteUrl] = await Promise.all([
     getFeaturedProducts(6),
+    getPromotedProducts(4),
     getCategories(),
     getSiteSettings(),
     publicSiteUrl(),
@@ -61,6 +63,7 @@ export default async function HomePage() {
       <TrustStrip />
       <FiberFlowPanel />
       <CategoryStrip categories={categories} />
+      <PromoProducts products={promotedProducts} />
       <FeaturedProducts products={featuredProducts} />
       <Support />
       <Footer />

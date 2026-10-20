@@ -41,7 +41,7 @@ describe("Footer", () => {
 
     expect(screen.getByRole("img", { name: /soprotelco/i })).toHaveAttribute(
       "src",
-      expect.stringContaining("sp-logo.png"),
+      expect.stringContaining("soprotelco-logo.svg"),
     );
     expect(screen.getByText("Fibra óptica y redes.")).toBeInTheDocument();
   });

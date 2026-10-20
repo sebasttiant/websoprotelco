@@ -1,19 +1,34 @@
 import Image from "next/image";
 
 const LOGO = {
-  light: {
-    src: "/assets/img/sp-logo.png",
-    width: 394,
-    height: 238,
+  full: {
+    light: {
+      src: "/assets/brand/soprotelco-logo.svg",
+      width: 394,
+      height: 238,
+    },
+    dark: {
+      src: "/assets/brand/soprotelco-logo-white.svg",
+      width: 394,
+      height: 238,
+    },
   },
-  dark: {
-    src: "/assets/img/sp-logo-white.png",
-    width: 394,
-    height: 238,
+  symbol: {
+    light: {
+      src: "/assets/brand/soprotelco-symbol.svg",
+      width: 344,
+      height: 122,
+    },
+    dark: {
+      src: "/assets/brand/soprotelco-symbol-white.svg",
+      width: 344,
+      height: 122,
+    },
   },
 } as const;
 
-export type BrandLogoTone = keyof typeof LOGO;
+export type BrandLogoVariant = keyof typeof LOGO;
+export type BrandLogoTone = keyof (typeof LOGO)["full"];
 
 const SIZE_CLASS = {
   sm: "h-10 w-auto md:h-11",
@@ -28,6 +43,8 @@ interface BrandLogoProps {
   alt: string;
   /** `light` = navy mark for pale surfaces; `dark` = white mark for navy/black surfaces. */
   tone?: BrandLogoTone;
+  /** `full` includes the legend; `symbol` is the SP + box mark for tight spaces. */
+  variant?: BrandLogoVariant;
   size?: BrandLogoSize;
   className?: string;
   priority?: boolean;
@@ -40,11 +57,12 @@ interface BrandLogoProps {
 export function BrandLogo({
   alt,
   tone = "light",
+  variant = "full",
   size = "lg",
   className = "",
   priority = false,
 }: BrandLogoProps) {
-  const asset = LOGO[tone];
+  const asset = LOGO[variant][tone];
 
   return (
     <Image

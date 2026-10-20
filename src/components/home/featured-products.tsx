@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ProductCard } from "@/components/catalog/product-card";
+import { CartProductCard } from "@/components/cart/cart-product-card";
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 import type { ProductSummary } from "@/domains/catalog";
@@ -27,7 +27,7 @@ export function FeaturedProducts({ products }: FeaturedProductsProps) {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {products.map((product, index) => (
               <Reveal key={product.id} delayMs={Math.min(index, 5) * 70}>
-                <ProductCard product={product} />
+                <CartProductCard product={product} />
               </Reveal>
             ))}
           </div>

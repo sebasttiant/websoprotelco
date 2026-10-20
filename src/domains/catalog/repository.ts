@@ -25,6 +25,8 @@ export interface ProductRow extends QueryResultRow {
   name: string;
   description: string;
   price_cents: string;
+  promo_price_cents: string | null;
+  is_featured: boolean;
   currency: string;
   category_name: string | null;
   category_slug: string | null;
@@ -43,7 +45,7 @@ export interface CategoryRow extends QueryResultRow {
   image_url: string | null;
 }
 
-const PRODUCT_COLUMNS = `p.id, p.slug, p.sku, p.name, p.description, p.price_cents, p.currency, p.brand, p.image_url, p.stock_quantity,
+const PRODUCT_COLUMNS = `p.id, p.slug, p.sku, p.name, p.description, p.price_cents, p.promo_price_cents, p.is_featured, p.currency, p.brand, p.image_url, p.stock_quantity,
             c.name AS category_name, c.slug AS category_slug`;
 
 export interface ActiveProductFilters extends ProductListFilters {
@@ -68,7 +70,8 @@ function activeWhere(filters: ActiveProductFilters, includeBrand = true): { wher
 
   if (typeof filters.maxPriceCents === "number") {
     values.push(filters.maxPriceCents);
-    where.push(`p.price_cents <= $${values.length}`);
+    // Shoppers filter and sort by the price they actually pay, promo included.
+    where.push(`COALESCE(p.promo_price_cents, p.price_cents) <= $${values.length}`);
   }
 
   if (includeBrand && filters.brand) {
@@ -84,8 +87,8 @@ function activeWhere(filters: ActiveProductFilters, includeBrand = true): { wher
 }
 
 function activeOrderBy(sort: ProductListFilters["sort"]): string {
-  if (sort === "price-low") return "p.price_cents ASC, p.name ASC";
-  if (sort === "price-high") return "p.price_cents DESC, p.name ASC";
+  if (sort === "price-low") return "COALESCE(p.promo_price_cents, p.price_cents) ASC, p.name ASC";
+  if (sort === "price-high") return "COALESCE(p.promo_price_cents, p.price_cents) DESC, p.name ASC";
   return "p.created_at DESC, p.name ASC";
 }
 
@@ -162,9 +165,22 @@ export async function findFeaturedProducts(limit: number): Promise<ProductRow[]>
   );
 }
 
+/** Featured ("Top") and on-promotion products for the home impact section. */
+export async function findPromotedProducts(limit: number): Promise<ProductRow[]> {
+  return query<ProductRow>(
+    `SELECT ${PRODUCT_COLUMNS}
+     FROM products p
+     LEFT JOIN categories c ON c.id = p.category_id
+     WHERE p.is_active = true AND (p.is_featured = true OR p.promo_price_cents IS NOT NULL)
+     ORDER BY p.is_featured DESC, (p.promo_price_cents IS NOT NULL) DESC, p.created_at DESC, p.name ASC
+     LIMIT $1`,
+    [limit],
+  );
+}
+
 export async function findActiveProductBySlug(slug: string): Promise<ProductRow | null> {
   const rows = await query<ProductRow>(
-    `SELECT p.id, p.slug, p.sku, p.name, p.description, p.price_cents, p.currency, p.brand, p.image_url, p.stock_quantity,
+    `SELECT p.id, p.slug, p.sku, p.name, p.description, p.price_cents, p.promo_price_cents, p.is_featured, p.currency, p.brand, p.image_url, p.stock_quantity,
             p.created_at, p.updated_at, c.name AS category_name, c.slug AS category_slug
      FROM products p
      LEFT JOIN categories c ON c.id = p.category_id
@@ -196,6 +212,8 @@ export interface ProductAdminRow extends QueryResultRow {
   name: string;
   brand: string | null;
   price_cents: string;
+  promo_price_cents: string | null;
+  is_featured: boolean;
   currency: string;
   stock_quantity: number;
   is_active: boolean;
@@ -211,6 +229,8 @@ export interface ProductAdminDetailRow extends QueryResultRow {
   name: string;
   description: string;
   price_cents: string;
+  promo_price_cents: string | null;
+  is_featured: boolean;
   currency: string;
   image_url: string | null;
   brand: string | null;
@@ -275,7 +295,7 @@ export async function findAllProductsForAdmin(filters: ProductAdminListFilters =
   const listValues = [...values, PRODUCT_ADMIN_PAGE_SIZE, (page - 1) * PRODUCT_ADMIN_PAGE_SIZE];
 
   const rows = await query<ProductAdminRow>(
-    `SELECT p.id, p.sku, p.slug, p.name, p.brand, p.price_cents, p.currency, p.stock_quantity, p.is_active, p.image_url, c.name AS category_name
+    `SELECT p.id, p.sku, p.slug, p.name, p.brand, p.price_cents, p.promo_price_cents, p.is_featured, p.currency, p.stock_quantity, p.is_active, p.image_url, c.name AS category_name
      FROM products p
      LEFT JOIN categories c ON c.id = p.category_id
      ${whereSql}
@@ -289,7 +309,7 @@ export async function findAllProductsForAdmin(filters: ProductAdminListFilters =
 
 export async function findProductByIdForAdmin(id: string): Promise<ProductAdminDetailRow | null> {
   const rows = await query<ProductAdminDetailRow>(
-    `SELECT id, category_id, sku, slug, name, description, price_cents, currency, image_url, brand, stock_quantity, is_active
+    `SELECT id, category_id, sku, slug, name, description, price_cents, promo_price_cents, is_featured, currency, image_url, brand, stock_quantity, is_active
      FROM products
      WHERE id = $1
      LIMIT 1`,
@@ -330,9 +350,9 @@ export async function findCategoryByIdForAdmin(id: string): Promise<CategoryAdmi
 
 export async function insertProduct(input: ProductAdminInput): Promise<void> {
   await query(
-    `INSERT INTO products (category_id, sku, slug, name, description, price_cents, currency, image_url, brand, stock_quantity, is_active)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [input.categoryId, input.sku, input.slug, input.name, input.description, input.priceCents, input.currency, input.imageUrl, input.brand, input.stockQuantity, input.isActive],
+    `INSERT INTO products (category_id, sku, slug, name, description, price_cents, promo_price_cents, is_featured, currency, image_url, brand, stock_quantity, is_active)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+    [input.categoryId, input.sku, input.slug, input.name, input.description, input.priceCents, input.promoPriceCents, input.isFeatured, input.currency, input.imageUrl, input.brand, input.stockQuantity, input.isActive],
   );
 }
 
@@ -343,7 +363,8 @@ export async function upsertProductBySku(input: ProductAdminInput): Promise<"ins
     await query(
       `UPDATE products
        SET category_id = $2, slug = $3, name = $4, description = $5, price_cents = $6,
-           currency = $7, brand = $8, stock_quantity = $9, is_active = $10, updated_at = now()
+           currency = $7, brand = $8, stock_quantity = $9, is_active = $10, updated_at = now(),
+           promo_price_cents = CASE WHEN promo_price_cents IS NOT NULL AND promo_price_cents < $6 THEN promo_price_cents ELSE NULL END
        WHERE id = $1`,
       [
         existing[0].id,
@@ -384,9 +405,10 @@ export async function updateProductById(input: ProductAdminUpdateInput): Promise
   await query(
     `UPDATE products
      SET category_id = $2, sku = $3, slug = $4, name = $5, description = $6, price_cents = $7,
-        currency = $8, image_url = CASE WHEN $9 THEN $10 ELSE image_url END, brand = $11, stock_quantity = $12, is_active = $13
+        promo_price_cents = $8, is_featured = $9,
+        currency = $10, image_url = CASE WHEN $11 THEN $12 ELSE image_url END, brand = $13, stock_quantity = $14, is_active = $15
      WHERE id = $1`,
-    [input.id, input.categoryId, input.sku, input.slug, input.name, input.description, input.priceCents, input.currency, shouldUpdateImage, input.imageUrl, input.brand, input.stockQuantity, input.isActive],
+    [input.id, input.categoryId, input.sku, input.slug, input.name, input.description, input.priceCents, input.promoPriceCents, input.isFeatured, input.currency, shouldUpdateImage, input.imageUrl, input.brand, input.stockQuantity, input.isActive],
   );
 }
 

@@ -82,6 +82,8 @@ describe("catalog product actions", () => {
       "Fiber tool",
       "Professional tool",
       120000,
+      null,
+      false,
       "COP",
       "/uploads/2026-03-08-3f2504e0-4f89-41d3-9a0c-0305e82c3301.webp",
       "SOPROTELCO",
@@ -119,7 +121,7 @@ describe("catalog product actions", () => {
     }))).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mockRedirect).toHaveBeenCalledWith("/admin/products?success=product-updated");
-    expect(mockQuery.mock.calls[1]).toEqual([expect.stringContaining("image_url = CASE WHEN $9 THEN $10 ELSE image_url END"), expect.arrayContaining([false, undefined])]);
+    expect(mockQuery.mock.calls[1]).toEqual([expect.stringContaining("image_url = CASE WHEN $11 THEN $12 ELSE image_url END"), expect.arrayContaining([false, undefined])]);
   });
 
   test("removes a product image when the legacy value is explicitly blanked", async () => {
@@ -140,7 +142,7 @@ describe("catalog product actions", () => {
     }))).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mockRedirect).toHaveBeenCalledWith("/admin/products?success=product-updated");
-    expect(mockQuery.mock.calls[1]).toEqual([expect.stringContaining("image_url = CASE WHEN $9 THEN $10 ELSE image_url END"), expect.arrayContaining([true, null])]);
+    expect(mockQuery.mock.calls[1]).toEqual([expect.stringContaining("image_url = CASE WHEN $11 THEN $12 ELSE image_url END"), expect.arrayContaining([true, null])]);
   });
 
   test("rejects a forged matching unsafe product image value when the database value differs", async () => {

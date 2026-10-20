@@ -165,8 +165,8 @@ fi
 echo "==> Verifying .env..."
 # First-run scaffolding happens before any Git/container mutation above. From this point onward,
 # fail fast on missing OR still-placeholder critical variables. ADMIN_* are required because
-# this script creates the administrator from them: the dev seed's credentials are committed to
-# a public repo and must never provision a real server.
+# this script creates the production administrator directly from this server's private .env.
+# Development seeds require separate explicit SEED_* values and are never invoked here.
 required_vars=(POSTGRES_PASSWORD DATABASE_URL ADMIN_EMAIL ADMIN_PASSWORD STORAGE_PROVIDER)
 for var in "${required_vars[@]}"; do
   value="$(grep -E "^${var}=" "$APP_DIR/.env" | head -1 | cut -d= -f2-)"
@@ -654,11 +654,11 @@ docker compose run --rm --no-deps "$MIGRATE_SERVICE"
 # --------------------------------------------------------------------------
 # 7. Create the administrator
 # --------------------------------------------------------------------------
-# NOT the dev seed. db/seeds/001-users.ts hardcodes credentials that are committed to a
-# public repository, so running it here would publish a working admin login for this server.
-# The account is created from ADMIN_EMAIL/ADMIN_PASSWORD, which exist only in this server's
-# .env. The command is idempotent: it upserts, so re-deploying resets the password to the
-# value in .env rather than failing.
+# NOT the development seed. That seed requires separate explicit SEED_ADMIN_PASSWORD and
+# SEED_STAFF_PASSWORD values and creates development accounts; production creates only the
+# administrator from ADMIN_EMAIL/ADMIN_PASSWORD in this server's private .env. The command is
+# idempotent: it upserts, so re-deploying resets the password to the value in .env rather than
+# failing.
 echo "==> Creating administrator from .env..."
 docker compose run --rm --no-deps "$SEED_SERVICE" pnpm db:create-admin
 

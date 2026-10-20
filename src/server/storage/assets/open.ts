@@ -9,21 +9,21 @@ import { contentTypeFor, hasSafeSegments, type RuntimeAssetRoot } from "./policy
 /**
  * Trusted-root containment.
  *
- * The trust anchor is the canonical `public` directory. Everything below it is treated as
- * attacker-influenced, INCLUDING the roots themselves: `public/uploads` is a mount point, and a
+ * The trust anchor is the canonical `data` directory. Everything below it is treated as
+ * attacker-influenced, INCLUDING the roots themselves: `data/uploads` is a mount point, and a
  * mount point that turns out to be a symlink is a compromise, not a configuration detail. An
- * earlier version anchored on `realpath(public/uploads)`, which happily followed such a symlink
- * and served bytes from outside the volume.
+ * earlier implementation anchored on the runtime-asset root itself, which could follow such a
+ * symlink and serve bytes from outside the volume.
  *
  * Containment is therefore established through DESCRIPTORS rather than through re-resolving a
  * pathname after the fact:
  *
- *   1. canonicalise `public` — the one path taken on trust;
+ *   1. canonicalise `data` — the one path taken on trust;
  *   2. reject a root that is a symlink (`lstat`) before opening it;
  *   3. open the root with `O_DIRECTORY | O_NOFOLLOW`, so a symlink swapped in at that instant
  *      fails the open instead of being followed;
  *   4. ask the kernel what that descriptor actually refers to (`/proc/self/fd/<fd>` on Linux) and
- *      require it to be exactly `<canonical public>/<root>`;
+ *      require it to be exactly `<canonical data>/<root>`;
  *   5. open the target once with `O_NOFOLLOW`;
  *   6. ask the kernel where THAT descriptor lives and require it to be inside the verified root;
  *   7. compare device/inode between the descriptor and the path on disk, so a swap performed

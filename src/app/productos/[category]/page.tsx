@@ -59,7 +59,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const brands = catalog.brands;
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-brand-ice">
       <Header />
       <Container className="py-10 sm:py-12">
         <nav aria-label="Ruta de navegación" className="mb-5 text-sm font-bold text-brand-muted">

@@ -56,7 +56,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-brand-ice">
       <Header />
       <Container className="py-10 sm:py-12">
         <nav aria-label="Ruta de navegación" className="mb-5 text-sm font-bold text-brand-muted">
@@ -104,6 +104,9 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
                 <p className="mx-auto mt-3 max-w-md font-medium leading-7 text-brand-muted">
                   Prueba con otras palabras, otra categoría o un precio más amplio.
                 </p>
+                <Link href="/productos" className="mt-6 inline-block rounded-full bg-brand-blue px-6 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-brand-primary">
+                  Limpiar filtros
+                </Link>
               </div>
             )}
 

@@ -4,6 +4,11 @@ import { Header } from "@/components/layout/header";
 import { Container } from "@/components/ui/container";
 import { getSiteSettings } from "@/domains/settings";
 
+// The page reads site settings from the database, so it can never be prerendered:
+// without this, the Docker build (which has no DATABASE_URL) tries to export it
+// statically and fails. Every other data-backed page declares the same.
+export const dynamic = "force-dynamic";
+
 export default async function CartPage() {
   const settings = await getSiteSettings();
 

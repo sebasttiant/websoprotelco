@@ -32,7 +32,7 @@ export async function Header() {
       <header className="sticky top-0 z-50 bg-brand-navy text-white shadow-sm shadow-blue-950/20">
         <Container className="relative flex min-w-0 items-center justify-between gap-4 py-3">
           <Link href="/" className="min-w-0 shrink-0" aria-label={`${settings.siteName} inicio`}>
-            <BrandLogo alt={settings.siteName} tone="dark" size="lg" priority />
+            <BrandLogo alt={settings.siteName} tone="dark" variant="symbol" size="lg" priority />
           </Link>
 
           <nav

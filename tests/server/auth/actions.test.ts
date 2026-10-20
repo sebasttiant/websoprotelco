@@ -119,11 +119,30 @@ describe("signUp", () => {
     expect(setCookie).not.toHaveBeenCalled();
   });
 
-  test("rejects a short password before touching the database", async () => {
-    const result = await signUp({ error: null }, signUpForm("nueva@empresa.com", "corta"));
+  test.each([1, 5, 8, 11])("rejects a %i-character password with no hash, write, or session", async (length) => {
+    const setCookie = vi.fn();
+    mockCookies.mockResolvedValue({ set: setCookie });
 
-    expect(result.error).toContain("al menos 8");
+    const result = await signUp({ error: null }, signUpForm("nueva@empresa.com", "x".repeat(length)));
+
+    expect(result.error).toContain("al menos 12");
+    expect(mockHashPassword).not.toHaveBeenCalled();
     expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockCreateSession).not.toHaveBeenCalled();
+    expect(setCookie).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+
+  test("accepts a password of exactly 12 characters", async () => {
+    mockCookies.mockResolvedValue({ set: vi.fn() });
+    mockHashPassword.mockResolvedValue("hashed");
+    mockQuery.mockResolvedValue([{ id: "user-1" }]);
+    mockCreateSession.mockResolvedValue({ token: "token", expiresAt: new Date("2030-01-01") });
+
+    await signUp({ error: null }, signUpForm("nueva@empresa.com", "x".repeat(12)));
+
+    expect(mockHashPassword).toHaveBeenCalledWith("x".repeat(12));
+    expect(mockRedirect).toHaveBeenCalledWith("/cuenta");
   });
 
   test("rejects a malformed email before touching the database", async () => {

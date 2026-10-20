@@ -85,7 +85,9 @@ export interface SignUpState {
   error: string | null;
 }
 
-const MIN_PASSWORD_LENGTH = 8;
+// Mirrors hashPassword's bounds so signup rejects what hashing would refuse, before any write.
+const MIN_PASSWORD_LENGTH = 12;
+const MAX_PASSWORD_LENGTH = 200;
 
 const signUpSchema = z.object({
   email: z
@@ -93,7 +95,10 @@ const signUpSchema = z.object({
     .trim()
     .toLowerCase()
     .refine((value) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value), "Ingresá un correo electrónico válido."),
-  password: z.string().min(MIN_PASSWORD_LENGTH, `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`),
+  password: z
+    .string()
+    .min(MIN_PASSWORD_LENGTH, `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
+    .max(MAX_PASSWORD_LENGTH, `La contraseña no puede superar ${MAX_PASSWORD_LENGTH} caracteres.`),
 });
 
 // Public customer self-registration: always creates a `customer`, never a privileged role,

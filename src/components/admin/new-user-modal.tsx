@@ -24,7 +24,8 @@ interface UserForm {
   role: AssignableRole;
 }
 
-const MIN_PASSWORD_LENGTH = 8;
+// Kept in step with adminCreateUserInputSchema; the client cannot import the server-side policy.
+const MIN_PASSWORD_LENGTH = 12;
 
 export function NewUserModal({ roles }: NewUserModalProps) {
   const router = useRouter();

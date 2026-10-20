@@ -110,6 +110,28 @@ describe("createUser (admin action)", () => {
     expect(mockQuery).not.toHaveBeenCalled();
   });
 
+  test.each([8, 11])("rejects a %i-character password without hashing or querying", async (length) => {
+    mockRequirePermission.mockResolvedValueOnce(undefined);
+
+    const state = await createUser({ ...validInput, password: "x".repeat(length) });
+
+    expect(state).toEqual({ success: false, message: expect.stringContaining("al menos 12") });
+    expect(mockHashPassword).not.toHaveBeenCalled();
+    expect(mockQuery).not.toHaveBeenCalled();
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+
+  test("accepts a password of exactly 12 characters", async () => {
+    mockRequirePermission.mockResolvedValueOnce(undefined);
+    mockHashPassword.mockResolvedValueOnce("hashed");
+    mockQuery.mockResolvedValueOnce([{ id: "u1" }]);
+
+    const state = await createUser({ ...validInput, password: "x".repeat(12) });
+
+    expect(state.success).toBe(true);
+    expect(mockHashPassword).toHaveBeenCalledWith("x".repeat(12));
+  });
+
   test("rejects an unknown role — an invalid role can never reach the insert", async () => {
     mockRequirePermission.mockResolvedValueOnce(undefined);
 

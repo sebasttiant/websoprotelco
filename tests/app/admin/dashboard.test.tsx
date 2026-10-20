@@ -1,15 +1,15 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 const {
-  mockGetCurrentUser,
+  mockRequirePermission,
   mockCountAllProducts,
   mockGetQuotes,
   mockGetQuoteDashboardCounts,
   mockCountLeads,
   mockGetLowStockProducts,
 } = vi.hoisted(() => ({
-  mockGetCurrentUser: vi.fn(),
+  mockRequirePermission: vi.fn(),
   mockCountAllProducts: vi.fn(),
   mockGetQuotes: vi.fn(),
   mockGetQuoteDashboardCounts: vi.fn(),
@@ -17,7 +17,12 @@ const {
   mockGetLowStockProducts: vi.fn(),
 }));
 
-vi.mock("@/server/auth/guards", () => ({ getCurrentUser: mockGetCurrentUser }));
+vi.mock("@/server/auth/guards", () => ({ requirePermission: mockRequirePermission }));
+vi.mock("next/navigation", () => ({
+  notFound: () => {
+    throw new Error("NEXT_NOT_FOUND");
+  },
+}));
 vi.mock("@/domains/catalog", () => ({ countAllProducts: mockCountAllProducts }));
 vi.mock("@/domains/quote-order", () => ({
   getQuotes: mockGetQuotes,
@@ -41,7 +46,7 @@ async function renderDashboard({
   recentOrders = [] as unknown[],
   lowStock = [] as unknown[],
 } = {}) {
-  mockGetCurrentUser.mockResolvedValue({ id: "u1", email: "ana@empresa.com", role: "admin" });
+  mockRequirePermission.mockResolvedValue({ id: "u1", email: "ana@empresa.com", role: "admin" });
   mockCountAllProducts.mockResolvedValue(productCount);
   mockGetQuoteDashboardCounts.mockResolvedValue(commercial);
   mockGetQuotes.mockResolvedValue(recentOrders);
@@ -59,6 +64,40 @@ afterEach(() => {
 });
 
 describe("AdminDashboardPage", () => {
+  test("authorizes the session before any dashboard data query runs", async () => {
+    mockRequirePermission.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
+
+    await expect(AdminDashboardPage()).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(mockRequirePermission).toHaveBeenCalledWith("quote:read");
+    expect(mockCountAllProducts).not.toHaveBeenCalled();
+    expect(mockGetQuoteDashboardCounts).not.toHaveBeenCalled();
+    expect(mockGetQuotes).not.toHaveBeenCalled();
+    expect(mockCountLeads).not.toHaveBeenCalled();
+    expect(mockGetLowStockProducts).not.toHaveBeenCalled();
+  });
+
+  test("refuses a session that lacks the permission for any section the dashboard reads", async () => {
+    // quote:read alone is not enough: the dashboard also reads catalog, leads and inventory.
+    mockRequirePermission.mockResolvedValue({ id: "u2", email: "ops@empresa.com", role: "customer" });
+
+    await expect(AdminDashboardPage()).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(mockCountAllProducts).not.toHaveBeenCalled();
+    expect(mockGetQuoteDashboardCounts).not.toHaveBeenCalled();
+    expect(mockCountLeads).not.toHaveBeenCalled();
+  });
+
+  test("lets staff in, since their role holds every permission the dashboard reads", async () => {
+    await renderDashboard({ productCount: 7 });
+    cleanup();
+    mockRequirePermission.mockResolvedValue({ id: "u3", email: "staff@empresa.com", role: "staff" });
+
+    render(await AdminDashboardPage());
+
+    expect(screen.getByText(/staff@empresa\.com/)).toBeInTheDocument();
+  });
+
   test("counts the products in the catalog", async () => {
     await renderDashboard({ productCount: 42 });
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -19,18 +20,32 @@ import { countAllProducts } from "@/domains/catalog";
 import { getLowStockProducts } from "@/domains/inventory";
 import { countLeads } from "@/domains/leads";
 import { getQuoteDashboardCounts, getQuotes } from "@/domains/quote-order";
-import { getCurrentUser } from "@/server/auth/guards";
+import { requirePermission } from "@/server/auth/guards";
+import { hasPermission, type Permission } from "@/server/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
 const RECENT_ORDERS_LIMIT = 5;
 const STOCK_ALERTS_LIMIT = 5;
 
+// The dashboard aggregates commerce, catalog, leads and inventory, so the session must hold the
+// read permission of every domain it queries. quote:read goes through requirePermission (it
+// also covers the signed-out redirect); the rest fail closed the same way, 404 rather than a
+// partial dashboard.
+const DASHBOARD_PRIMARY_PERMISSION: Permission = "quote:read";
+const DASHBOARD_SECTION_PERMISSIONS: readonly Permission[] = ["catalog:read", "leads:read", "inventory:read"];
+
 export default async function AdminDashboardPage() {
+  // Authorize before any query is issued: a customer session is valid but holds no permission.
+  const user = await requirePermission(DASHBOARD_PRIMARY_PERMISSION);
+
+  if (!DASHBOARD_SECTION_PERMISSIONS.every((permission) => hasPermission(user.role, permission))) {
+    notFound();
+  }
+
   // Counts come from SQL aggregates so the dashboard stays light with thousands of products
   // and commercial rows. Recent orders and stock alerts stay bounded by LIMIT.
-  const [user, productCount, commercial, leadCount, recentOrders, lowStock] = await Promise.all([
-    getCurrentUser(),
+  const [productCount, commercial, leadCount, recentOrders, lowStock] = await Promise.all([
     countAllProducts(),
     getQuoteDashboardCounts(),
     countLeads(),
@@ -45,11 +60,9 @@ export default async function AdminDashboardPage() {
       <div className="rounded-2xl bg-gradient-to-br from-brand-navy via-brand-primary to-brand-blue px-5 py-5 text-white shadow-md shadow-blue-950/15 sm:px-6 sm:py-6">
         <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-accent">Administración</p>
         <h1 className="mt-1.5 text-2xl font-black tracking-tight sm:text-3xl">Panel de control</h1>
-        {user ? (
-          <p className="mt-1.5 text-sm font-medium text-blue-100/85">
-            Sesión: <span className="font-black text-white">{user.email}</span> ({roleLabel(user.role)})
-          </p>
-        ) : null}
+        <p className="mt-1.5 text-sm font-medium text-blue-100/85">
+          Sesión: <span className="font-black text-white">{user.email}</span> ({roleLabel(user.role)})
+        </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

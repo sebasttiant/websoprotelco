@@ -24,6 +24,13 @@ describe("hashPassword", () => {
     await expect(hashPassword("x".repeat(11))).rejects.toThrow();
   });
 
+  test.each([1, 8, 9, 10, 11])("rejects a %i-character password without echoing it", async (length) => {
+    const short = "p".repeat(length);
+
+    await expect(hashPassword(short)).rejects.toThrow(/between 12 and 200/);
+    await expect(hashPassword(short)).rejects.not.toThrow(short);
+  });
+
   test("throws for a password longer than 200 characters", async () => {
     await expect(hashPassword("a".repeat(201))).rejects.toThrow();
   });

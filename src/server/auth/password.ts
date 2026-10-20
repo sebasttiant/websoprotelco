@@ -6,8 +6,8 @@ const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const SALT_BYTES = 16;
 const KEY_BYTES = 64;
-const MIN_PASSWORD_LENGTH = 12;
-const MAX_PASSWORD_LENGTH = 200;
+export const MIN_PASSWORD_LENGTH = 12;
+export const MAX_PASSWORD_LENGTH = 200;
 
 // scrypt$N$r$p$<saltBase64>$<hashBase64>
 const STORED_HASH_PATTERN = /^scrypt\$(\d+)\$(\d+)\$(\d+)\$([A-Za-z0-9+/]+=*)\$([A-Za-z0-9+/]+=*)$/;

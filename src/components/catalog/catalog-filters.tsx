@@ -55,7 +55,7 @@ export function CatalogFilters({
   }
 
   return (
-    <aside className="lg:col-span-1">
+    <aside className="min-w-0 lg:col-span-1">
       <div className="space-y-8 rounded-3xl border border-brand-line bg-white p-6 shadow-sm shadow-blue-950/5 sm:p-8 lg:sticky lg:top-24">
         <h2 className="text-xl font-black text-brand-navy">Filtros</h2>
 

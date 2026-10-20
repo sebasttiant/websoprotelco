@@ -16,6 +16,7 @@ import {
   getProductCatalog,
   getProducts,
   getProductsForAdmin,
+  importProductsFromCsv,
 } from "@/domains/catalog/service";
 
 afterEach(() => {
@@ -172,6 +173,88 @@ describe("getCategories", () => {
     const categories = await getCategories();
 
     expect(categories.map((category) => category.position)).toEqual([2, 1]);
+  });
+});
+
+describe("importProductsFromCsv", () => {
+  const categoryId = "11111111-1111-4111-8111-111111111111";
+
+  test.each(["-5", "1.5", "1,000", "many"])(
+    "rejects invalid stock %s without writing a product",
+    async (stock) => {
+      const result = await importProductsFromCsv(
+        `sku,name,category,price_pesos,stock\nSKU-1,Cable,Fiber,25000,${stock}`,
+      );
+
+      expect(result).toMatchObject({ inserted: 0, updated: 0, skipped: 1 });
+      expect(result.errors[0]).toContain("stock");
+      expect(mockQuery).not.toHaveBeenCalled();
+      expect(mockQuery.mock.calls.some(([sql]) => /INSERT|UPDATE/i.test(String(sql)))).toBe(false);
+    },
+  );
+
+  test("preserves the existing simple unquoted CSV import", async () => {
+    mockQuery
+      .mockResolvedValueOnce([{ id: categoryId }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await importProductsFromCsv(
+      "sku,name,category,price_pesos,stock\nSKU-1,Cable,Fiber,25000,2",
+    );
+
+    expect(result).toEqual({ inserted: 1, updated: 0, skipped: 0, errors: [] });
+    const insertCall = mockQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT INTO products"));
+    expect(insertCall?.[1]).toEqual([
+      categoryId,
+      "SKU-1",
+      "cable",
+      "Cable",
+      "",
+      2_500_000,
+      "COP",
+      null,
+      null,
+      2,
+      true,
+    ]);
+  });
+
+  test("imports quoted commas, escaped quotes, and multiline descriptions without changing field boundaries", async () => {
+    mockQuery
+      .mockResolvedValueOnce([{ id: categoryId }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const result = await importProductsFromCsv(
+      'sku,name,category,price_pesos,stock,description\nSKU-1,"Cable, drop",Fiber,25000,2,"Line one\nLine ""two"""',
+    );
+
+    expect(result).toEqual({ inserted: 1, updated: 0, skipped: 0, errors: [] });
+    const insertCall = mockQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT INTO products"));
+    expect(insertCall?.[1]).toEqual([
+      categoryId,
+      "SKU-1",
+      "cable-drop",
+      "Cable, drop",
+      'Line one\nLine "two"',
+      2_500_000,
+      "COP",
+      null,
+      null,
+      2,
+      true,
+    ]);
+  });
+
+  test("rejects an unclosed quoted row before any catalog lookup or write", async () => {
+    const result = await importProductsFromCsv(
+      'sku,name,category,price_pesos,stock\nSKU-1,"Cable,Fiber,25000,2',
+    );
+
+    expect(result).toMatchObject({ inserted: 0, updated: 0, skipped: 1 });
+    expect(result.errors[0]).toContain("comillas");
+    expect(mockQuery).not.toHaveBeenCalled();
   });
 });
 

@@ -248,17 +248,23 @@ export interface ProductCsvImportResult {
  * sku,name,category,price_pesos,stock,brand,description,active,slug
  */
 export async function importProductsFromCsv(csvText: string): Promise<ProductCsvImportResult> {
-  const lines = csvText
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const parsedCsv = parseCsvRows(csvText.replace(/^\uFEFF/, ""));
 
-  if (lines.length < 2) {
+  if (!parsedCsv.ok) {
+    return {
+      inserted: 0,
+      updated: 0,
+      skipped: 1,
+      errors: [`Fila ${parsedCsv.rowNumber}: hay comillas sin cerrar.`],
+    };
+  }
+
+  const rows = parsedCsv.rows;
+  if (rows.length < 2) {
     return { inserted: 0, updated: 0, skipped: 0, errors: ["El CSV está vacío o solo tiene encabezados."] };
   }
 
-  const header = splitCsvLine(lines[0]!).map((cell) => cell.trim().toLowerCase());
+  const header = rows[0]!.map((cell) => cell.trim().toLowerCase());
   const indexOf = (aliases: string[]) => header.findIndex((cell) => aliases.includes(cell));
 
   const skuIdx = indexOf(["sku", "codigo", "código"]);
@@ -285,9 +291,16 @@ export async function importProductsFromCsv(csvText: string): Promise<ProductCsv
   let skipped = 0;
   const errors: string[] = [];
 
-  for (let i = 1; i < lines.length; i += 1) {
+  for (let i = 1; i < rows.length; i += 1) {
     const rowNumber = i + 1;
-    const cells = splitCsvLine(lines[i]!);
+    const cells = rows[i]!;
+
+    if (cells.length !== header.length) {
+      skipped += 1;
+      errors.push(`Fila ${rowNumber}: cantidad de columnas inválida; revisá campos con comas y stock.`);
+      continue;
+    }
+
     const sku = (cells[skuIdx] ?? "").trim();
     const name = (cells[nameIdx] ?? "").trim();
     const categoryName = (cells[categoryIdx] ?? "").trim();
@@ -299,6 +312,15 @@ export async function importProductsFromCsv(csvText: string): Promise<ProductCsv
       continue;
     }
 
+    const slugCell = slugIdx >= 0 ? (cells[slugIdx] ?? "").trim() : "";
+    const stockRaw = stockIdx >= 0 ? (cells[stockIdx] ?? "0").trim() : "0";
+    const stockQuantity = parseCsvStock(stockRaw);
+    if (stockQuantity === null) {
+      skipped += 1;
+      errors.push(`Fila ${rowNumber}: stock debe ser un número entero no negativo.`);
+      continue;
+    }
+
     const categoryId = await repository.findCategoryIdByName(categoryName);
     if (!categoryId) {
       skipped += 1;
@@ -306,8 +328,6 @@ export async function importProductsFromCsv(csvText: string): Promise<ProductCsv
       continue;
     }
 
-    const slugCell = slugIdx >= 0 ? (cells[slugIdx] ?? "").trim() : "";
-    const stockRaw = stockIdx >= 0 ? (cells[stockIdx] ?? "0").trim() : "0";
     const brand = brandIdx >= 0 ? (cells[brandIdx] ?? "").trim() || null : null;
     const description = descriptionIdx >= 0 ? (cells[descriptionIdx] ?? "").trim() : "";
     const activeRaw = activeIdx >= 0 ? (cells[activeIdx] ?? "1").trim().toLowerCase() : "1";
@@ -324,7 +344,7 @@ export async function importProductsFromCsv(csvText: string): Promise<ProductCsv
         currency: "COP",
         imageUrl: null as string | null,
         brand,
-        stockQuantity: Number.parseInt(stockRaw.replace(/[^\d]/g, "") || "0", 10) || 0,
+        stockQuantity,
         isActive,
       };
       const outcome = await repository.upsertProductBySku(input);
@@ -339,31 +359,75 @@ export async function importProductsFromCsv(csvText: string): Promise<ProductCsv
   return { inserted, updated, skipped, errors: errors.slice(0, 20) };
 }
 
-function splitCsvLine(line: string): string[] {
-  const cells: string[] = [];
-  let current = "";
+interface ParsedCsvRows {
+  ok: true;
+  rows: string[][];
+}
+
+interface InvalidCsvRows {
+  ok: false;
+  rowNumber: number;
+}
+
+function parseCsvRows(csvText: string): ParsedCsvRows | InvalidCsvRows {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
   let inQuotes = false;
 
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i]!;
+  const pushRow = () => {
+    row.push(cell);
+    if (row.some((value) => value.trim() !== "")) rows.push(row);
+    row = [];
+    cell = "";
+  };
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const char = csvText[index]!;
+
     if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i += 1;
+      if (inQuotes && csvText[index + 1] === '"') {
+        cell += '"';
+        index += 1;
       } else {
         inQuotes = !inQuotes;
       }
       continue;
     }
+
     if (char === "," && !inQuotes) {
-      cells.push(current);
-      current = "";
+      row.push(cell);
+      cell = "";
       continue;
     }
-    current += char;
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      pushRow();
+      if (char === "\r" && csvText[index + 1] === "\n") index += 1;
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && inQuotes) {
+      cell += "\n";
+      if (char === "\r" && csvText[index + 1] === "\n") index += 1;
+      continue;
+    }
+
+    cell += char;
   }
-  cells.push(current);
-  return cells;
+
+  if (inQuotes) return { ok: false, rowNumber: rows.length + 1 };
+  if (cell !== "" || row.length > 0) pushRow();
+
+  return { ok: true, rows };
+}
+
+function parseCsvStock(raw: string): number | null {
+  if (raw === "") return 0;
+  if (!/^\d+$/.test(raw)) return null;
+
+  const value = Number(raw);
+  return Number.isSafeInteger(value) ? value : null;
 }
 
 export async function updateProduct(input: ProductAdminUpdateInput): Promise<void> {

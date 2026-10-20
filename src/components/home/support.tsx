@@ -24,7 +24,7 @@ const SUPPORT_ITEMS = [
 
 export function Support() {
   return (
-    <section className="bg-white pb-16 pt-14 sm:pb-20 sm:pt-16">
+    <section className="bg-brand-ice pb-16 pt-14 sm:pb-20 sm:pt-16">
       <Container>
         <div className="mb-10 text-center">
           <p className="mx-auto mb-3 inline-flex rounded-full border border-brand-blue/25 bg-white px-4 py-1.5 text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">

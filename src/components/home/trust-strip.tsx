@@ -3,10 +3,10 @@ import { Headphones, MapPinned, MessageCircle, PackageCheck } from "lucide-react
 import { Container } from "@/components/ui/container";
 
 const TRUST_ITEMS = [
-  { label: "Envíos nacionales", icon: MapPinned },
-  { label: "Stock disponible", icon: PackageCheck },
-  { label: "Asesoría técnica", icon: Headphones },
-  { label: "Cotización WhatsApp", icon: MessageCircle },
+  { label: "Envíos nacionales", icon: MapPinned, live: false },
+  { label: "Stock disponible", icon: PackageCheck, live: true },
+  { label: "Asesoría técnica", icon: Headphones, live: false },
+  { label: "Cotización WhatsApp", icon: MessageCircle, live: false },
 ] as const;
 
 /**
@@ -28,6 +28,12 @@ export function TrustStrip() {
                 <span className="text-[0.65rem] font-black uppercase tracking-widest text-brand-navy">
                   {item.label}
                 </span>
+                {item.live ? (
+                  <span data-live-pulse aria-hidden="true" className="relative flex h-2 w-2 shrink-0">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 motion-safe:animate-ping" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  </span>
+                ) : null}
               </li>
             );
           })}

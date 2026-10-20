@@ -131,3 +131,13 @@ describe("Hero with banners", () => {
     expect(screen.queryByRole("link", { name: "Ver más" })).not.toBeInTheDocument();
   });
 });
+
+describe("Hero liveliness", () => {
+  test("renders a decorative animated signal line under the hero", async () => {
+    await renderHero([]);
+
+    const line = document.querySelector("[data-signal-line]");
+    expect(line).not.toBeNull();
+    expect(line).toHaveAttribute("aria-hidden", "true");
+  });
+});

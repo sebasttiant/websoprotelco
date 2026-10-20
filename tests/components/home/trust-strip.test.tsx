@@ -14,3 +14,13 @@ describe("TrustStrip", () => {
     expect(within(region).getByText("Cotización WhatsApp")).toBeInTheDocument();
   });
 });
+
+describe("TrustStrip live stock signal", () => {
+  test("marks stock availability with a live pulse indicator", () => {
+    render(<TrustStrip />);
+
+    const region = screen.getByRole("region", { name: /respaldo comercial/i });
+    const stockItem = within(region).getByText("Stock disponible").closest("li");
+    expect(stockItem?.querySelector("[data-live-pulse]")).not.toBeNull();
+  });
+});

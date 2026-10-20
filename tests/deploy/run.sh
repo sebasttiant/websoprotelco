@@ -226,6 +226,10 @@ withvol="$(cd "$repo" && git rev-parse HEAD)"
   fi
 ) && pass=$((pass + 2)) || fail=$((fail + 1))
 
+echo
+echo "== first bare deploy reaches the .env scaffold =="
+if bash "$HERE/deploy-first-bare.sh"; then pass=$((pass + 1)); else fail=$((fail + 1)); fi
+
 rm -f "$HERE/docker"
 echo
 echo "=================================="

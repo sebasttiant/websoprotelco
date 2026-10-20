@@ -67,7 +67,13 @@ load_deploy_evidence_from_env_file "$APP_DIR/.env"
 
 # Validate supplied evidence before Git or container mutation. Optional only means a fresh
 # deployment may omit both URLs; any supplied prefixless URL still fails closed here.
-require_runtime_asset_evidence optional
+# A first bare deploy has neither a .env nor evidence: it only scaffolds the .env below and
+# stops, mutating no containers. Requiring the maintenance window there would make the
+# scaffold unreachable. Once a .env exists, or anything is exported, the gate applies in full,
+# and the existing-deployment gate further down is unchanged.
+if [ -f "$APP_DIR/.env" ] || [ -n "${MAINTENANCE_WINDOW_CONFIRMED:-}${KNOWN_UPLOAD_URL:-}${KNOWN_DOCUMENT_URL:-}" ]; then
+  require_runtime_asset_evidence optional
+fi
 
 # Re-exec after updating so an already-running old script cannot bypass target-revision gates.
 # The marker and SHA only prevent a re-exec loop. FD 9 was proved above, before this branch.

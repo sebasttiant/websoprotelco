@@ -109,3 +109,15 @@ describe("POST /api/design/upload", () => {
     expect(mockSaveDesignImage.mock.calls[0]?.[1]).toBe("banners");
   });
 });
+
+describe("POST /api/design/upload as a customer", () => {
+  test("returns 403 and stores nothing for the customer role", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "customer-1", email: "customer@soprotelco.test", role: "customer" });
+
+    const response = await POST(uploadRequest(new File([pngBytes], "banner.png", { type: "image/png" })));
+
+    await expect(response.json()).resolves.toEqual({ error: "Necesitás permiso para editar el diseño." });
+    expect(response.status).toBe(403);
+    expect(mockSaveDesignImage).not.toHaveBeenCalled();
+  });
+});

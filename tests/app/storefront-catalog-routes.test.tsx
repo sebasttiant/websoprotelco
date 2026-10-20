@@ -117,3 +117,15 @@ describe("storefront catalog routes", () => {
     expect(screen.getByRole("link", { name: "Volver al catálogo" })).toHaveAttribute("href", "/productos");
   });
 });
+
+describe("catalog empty state recovery", () => {
+  test("offers a clear-filters action when a search finds nothing", async () => {
+    mockGetCategories.mockResolvedValue([{ id: "c1", slug: "fusionadoras", name: "Fusionadoras", imageUrl: null }]);
+    mockGetProductCatalog.mockResolvedValue({ products: [], total: 0, page: 1, pageSize: 24, brands: [] });
+
+    render(await CatalogPage({ searchParams: Promise.resolve({ q: "inexistente" }) }));
+
+    expect(screen.getByRole("heading", { name: "No encontramos productos" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Limpiar filtros" })).toHaveAttribute("href", "/productos");
+  });
+});

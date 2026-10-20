@@ -73,6 +73,16 @@ export async function Hero() {
           />
         </div>
       </div>
+
+      {/* Animated fiber signal: a pulse travels the line, echoing a live link.
+          Purely decorative; frozen for reduced-motion users. */}
+      <div
+        data-signal-line
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-brand-accent/60 to-transparent"
+      >
+        <span className="absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-brand-accent shadow-glow motion-safe:animate-[fiber-pulse_3.2s_ease-in-out_infinite] motion-reduce:animate-none" />
+      </div>
     </section>
   );
 }

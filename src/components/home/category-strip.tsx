@@ -8,7 +8,7 @@ export function CategoryStrip({ categories }: { categories: readonly CategorySum
   if (categories.length === 0) return null;
 
   return (
-    <section className="border-b border-brand-line bg-white py-14 sm:py-16" aria-labelledby="category-strip-title">
+    <section className="border-b border-brand-line bg-brand-ice py-14 sm:py-16" aria-labelledby="category-strip-title">
       <Container>
         <div className="mb-8 flex items-end justify-between gap-6">
           <div>

@@ -8,7 +8,7 @@ import { GET as getDocument, HEAD as headDocument } from "@/app/documents/[...pa
 import { GET as getUpload, HEAD as headUpload } from "@/app/uploads/[...path]/route";
 
 // Wiring only. Policy, containment, ranges, validators and descriptor lifecycle are covered once
-// in runtime-assets.test.ts; duplicating them here would test the same module twice. What is
+// in the focused assets/* suites; duplicating them here would test the same modules twice. What is
 // asserted here is what only the route layer can get wrong: which root each handler is bound to,
 // that awaited params reach it, and that HEAD is exported.
 let workspace: string;

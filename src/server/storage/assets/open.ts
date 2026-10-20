@@ -155,7 +155,10 @@ export async function openRuntimeAsset(
   }
 
   const { handle: rootHandle, realPath: verifiedRoot } = rootResult;
-  const filePath = path.join(verifiedRoot, ...segments);
+  // `verifiedRoot` is the descriptor-confirmed real path of `<cwd>/data/<root>`, which Turbopack
+  // cannot prove statically. Without the marker it traces the whole project into the standalone
+  // output; the marker only affects bundling, not the O_NOFOLLOW/containment checks below.
+  const filePath = path.join(/*turbopackIgnore: true*/ verifiedRoot, ...segments);
   let handle: FileHandle;
 
   try {

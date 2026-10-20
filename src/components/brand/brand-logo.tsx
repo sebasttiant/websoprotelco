@@ -37,6 +37,15 @@ const SIZE_CLASS = {
   xl: "h-[4.75rem] w-auto sm:h-20 md:h-24",
 } as const;
 
+// The symbol is much wider than tall (344×122), so the same heights would make
+// bars and sidebars enormous. Symbol sizes keep the mark readable but slim.
+const SYMBOL_SIZE_CLASS = {
+  sm: "h-8 w-auto",
+  md: "h-9 w-auto sm:h-10",
+  lg: "h-11 w-auto sm:h-12",
+  xl: "h-12 w-auto sm:h-14",
+} as const;
+
 export type BrandLogoSize = keyof typeof SIZE_CLASS;
 
 interface BrandLogoProps {
@@ -63,6 +72,7 @@ export function BrandLogo({
   priority = false,
 }: BrandLogoProps) {
   const asset = LOGO[variant][tone];
+  const sizeClass = variant === "symbol" ? SYMBOL_SIZE_CLASS[size] : SIZE_CLASS[size];
 
   return (
     <Image
@@ -71,7 +81,7 @@ export function BrandLogo({
       width={asset.width}
       height={asset.height}
       priority={priority}
-      className={`${SIZE_CLASS[size]} max-w-[min(100%,22rem)] object-contain object-left ${className}`.trim()}
+      className={`${sizeClass} max-w-[min(100%,22rem)] object-contain object-left ${className}`.trim()}
     />
   );
 }

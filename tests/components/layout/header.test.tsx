@@ -61,11 +61,11 @@ afterEach(() => {
 });
 
 describe("Header", () => {
-  test("renders the logo image rather than a text badge", async () => {
+  test("renders the SP symbol rather than a text badge or the full logo", async () => {
     await renderHeader({ siteName: "SOPROTELCO" });
 
     const logo = screen.getByRole("img", { name: /soprotelco/i });
-    expect(logo).toHaveAttribute("src", expect.stringContaining("soprotelco-logo"));
+    expect(logo).toHaveAttribute("src", expect.stringContaining("soprotelco-symbol"));
   });
 
   test("links the logo back to the home page", async () => {

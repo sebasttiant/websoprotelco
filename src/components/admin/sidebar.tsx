@@ -300,7 +300,7 @@ export function AdminSidebar({ role }: { role: Role }) {
     <div className="flex flex-col md:min-h-0 md:flex-1">
       <div className="flex items-center justify-between gap-3 px-3 py-3 md:block md:px-4 md:pb-2 md:pt-5">
         <Link href="/admin" className="flex min-w-0 items-center gap-2.5" aria-label="SOPROTELCO panel">
-          <BrandLogo alt="SOPROTELCO" tone="dark" size="sm" className="md:h-11" />
+          <BrandLogo alt="SOPROTELCO" tone="dark" variant="symbol" size="md" />
           <span className="shrink-0 text-[0.65rem] font-black uppercase tracking-widest text-brand-accent">Panel</span>
         </Link>
         <AdminMobileNavigation groups={visibleGroups} current={current} />

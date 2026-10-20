@@ -65,7 +65,7 @@ describe("Header", () => {
     await renderHeader({ siteName: "SOPROTELCO" });
 
     const logo = screen.getByRole("img", { name: /soprotelco/i });
-    expect(logo).toHaveAttribute("src", expect.stringContaining("sp-logo"));
+    expect(logo).toHaveAttribute("src", expect.stringContaining("soprotelco-logo"));
   });
 
   test("links the logo back to the home page", async () => {

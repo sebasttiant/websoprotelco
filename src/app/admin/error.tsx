@@ -30,7 +30,7 @@ export default function AdminError({ error, reset }: AdminErrorProps) {
       <button
         type="button"
         onClick={reset}
-        className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white"
+        className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white transition hover:bg-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
       >
         Reintentar
       </button>

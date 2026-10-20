@@ -131,7 +131,7 @@ export default async function AdminDashboardPage() {
                 </thead>
                 <tbody className="divide-y divide-brand-line/60">
                   {recentOrders.map((order) => (
-                    <tr key={order.id}>
+                    <tr key={order.id} className="transition-colors hover:bg-brand-ice/60">
                       <td className="max-w-[9rem] py-3 pr-4">
                         <Link href="/admin/orders" className="truncate font-black text-brand-blue hover:underline">
                           {order.reference}

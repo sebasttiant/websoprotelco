@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -26,6 +27,19 @@ function decodeCategorySlug(category: string): string | null {
   } catch {
     return null;
   }
+}
+
+export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+  const { category } = await params;
+  const categorySlug = decodeCategorySlug(category) ?? category;
+  const categories = await getCategories().catch(() => []);
+  const categoryName = categories.find((item) => item.slug === categorySlug)?.name ?? categorySlug;
+
+  return {
+    title: categoryName,
+    description: `Explora nuestra selección especializada de ${categoryName.toLocaleLowerCase("es-CO")}: precios en pesos colombianos, stock disponible y asesoría técnica de SOPROTELCO.`,
+    alternates: { canonical: `/productos/${categorySlug}` },
+  };
 }
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {

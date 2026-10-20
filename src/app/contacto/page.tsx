@@ -1,9 +1,18 @@
+import type { Metadata } from "next";
+
 import { ContactComposer } from "@/components/contact/contact-composer";
 import { toMailtoHref, toTelHref, toWhatsAppHref } from "@/components/layout/contact-href";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { Container } from "@/components/ui/container";
 import { getSiteSettings } from "@/domains/settings";
+
+export const metadata: Metadata = {
+  title: "Contacto",
+  description:
+    "Contáctanos para cotizaciones, soporte técnico y proyectos de conectividad. SOPROTELCO: equipos de fibra óptica con asesoría técnica y despachos a toda Colombia.",
+  alternates: { canonical: "/contacto" },
+};
 
 interface ContactPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

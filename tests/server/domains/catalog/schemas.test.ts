@@ -81,3 +81,9 @@ describe("product promotions and featured flag", () => {
     expect(getDiscountPercent({ priceCents: 1_000_000, promoPriceCents: null })).toBeNull();
   });
 });
+
+describe("discount percent display guard", () => {
+  test("hides a discount that rounds to zero percent", () => {
+    expect(getDiscountPercent({ priceCents: 100_000_000, promoPriceCents: 99_900_000 })).toBeNull();
+  });
+});

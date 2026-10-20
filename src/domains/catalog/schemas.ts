@@ -54,11 +54,13 @@ export function getEffectivePriceCents(product: { priceCents: number; promoPrice
   return product.promoPriceCents ?? product.priceCents;
 }
 
-/** Whole-percent discount of the promotion, or null when there is none. */
+/** Whole-percent discount of the promotion, or null when there is none worth showing. */
 export function getDiscountPercent(product: { priceCents: number; promoPriceCents?: number | null }): number | null {
   const promoPriceCents = product.promoPriceCents ?? null;
   if (promoPriceCents === null || product.priceCents <= 0) return null;
-  return Math.round((1 - promoPriceCents / product.priceCents) * 100);
+  const percent = Math.round((1 - promoPriceCents / product.priceCents) * 100);
+  // A sub-0.5% "discount" is still charged correctly, but a "-0%" badge would be noise.
+  return percent > 0 ? percent : null;
 }
 
 export const productDetailSchema = productSummarySchema.extend({

@@ -10,7 +10,7 @@ import { parsePesosInput, pesosToCents } from "@/lib/money";
 import { slugifyName } from "@/lib/slugify";
 import { requirePermission } from "@/server/auth/guards";
 
-import { catalogDeleteInputSchema, categoryAdminInputSchema, isSafeCatalogImagePath, productAdminInputSchema, productAdminUpdateSchema } from "./schemas";
+import { catalogDeleteInputSchema, categoryAdminInputSchema, getEffectivePriceCents, isSafeCatalogImagePath, productAdminInputSchema, productAdminUpdateSchema } from "./schemas";
 import * as catalogService from "./service";
 
 export interface AdminActionState {
@@ -262,7 +262,8 @@ export async function searchOrderProducts(term: string): Promise<OrderProductMat
     id: product.id,
     name: product.name,
     sku: product.sku,
-    priceCents: product.priceCents,
+    // The preview must agree with what the server will charge: promo price when set.
+    priceCents: getEffectivePriceCents(product),
     categoryName: product.categoryName,
   }));
 }

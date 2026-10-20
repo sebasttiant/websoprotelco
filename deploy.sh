@@ -43,6 +43,58 @@ ENDPOINT_RETRY_DELAY="${ENDPOINT_RETRY_DELAY:-5}"
 
 cd "$APP_DIR"
 
+# Prefer shell exports; otherwise read once-confirmed evidence from the server .env. Validate any
+# supplied evidence before scaffolding, locking, Git, or container mutation so malformed input
+# fails closed while a truly bare first deploy can still create its template safely.
+load_deploy_evidence_from_env_file "$APP_DIR/.env"
+if [ -f "$APP_DIR/.env" ] || [ -n "${MAINTENANCE_WINDOW_CONFIRMED:-}${KNOWN_UPLOAD_URL:-}${KNOWN_DOCUMENT_URL:-}" ]; then
+  require_runtime_asset_evidence optional
+fi
+
+# A first deploy has no environment yet. Scaffold it before the deploy lock, Git update, backup,
+# or container work so the operator can configure secrets without mutating deployment state.
+if [ ! -f "$APP_DIR/.env" ]; then
+  echo "==> Verifying .env..."
+  cat > "$APP_DIR/.env" <<'ENV_SCAFFOLD'
+# SOPROTELCO production environment.
+# Replace every CHANGE_ME value, then re-run ./deploy.sh. This file is gitignored:
+# never commit it. Keep POSTGRES_PASSWORD identical in DATABASE_URL.
+
+WEB_PORT=8686
+WEB_HOST=0.0.0.0
+
+# Storage: local disk (fails closed if unset). Do not leave blank.
+STORAGE_PROVIDER=local
+
+# Session cookie security. Leave commented for HTTPS (Cloudflare/reverse proxy) — the safe
+# default. Uncomment ONLY to log in over plain HTTP (http://<ip>:8686) before TLS is set up;
+# re-comment it once HTTPS is in front.
+# NOTE: uncommented by default so the first deploy over HTTP works without bucle infinito.
+SESSION_COOKIE_SECURE=false
+
+# Database.
+POSTGRES_DB=websoprotelco
+POSTGRES_USER=local_dev_user
+POSTGRES_PASSWORD=CHANGE_ME
+DATABASE_URL=postgresql://local_dev_user:CHANGE_ME@db:5432/websoprotelco
+DATABASE_SSL=disable
+
+# First super-admin, created automatically by this script on deploy.
+ADMIN_EMAIL=CHANGE_ME
+ADMIN_PASSWORD=CHANGE_ME
+
+# Deploy gate (existing servers). After the first successful cutover, keep these set so
+# future releases are just: ./deploy.sh
+# MAINTENANCE_WINDOW_CONFIRMED=true
+# KNOWN_UPLOAD_URL=/uploads/deploy-probe.png
+# KNOWN_DOCUMENT_URL=/documents/manual/deploy-probe.pdf
+ENV_SCAFFOLD
+  echo "    Created $APP_DIR/.env from a template."
+  echo "    Fill in every CHANGE_ME value (POSTGRES_PASSWORD, DATABASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD),"
+  echo "    then run ./deploy.sh again."
+  exit 1
+fi
+
 # Serialize deploys and rollbacks before any Git mutation. FD 9 is the capability: re-exec
 # metadata is only loop prevention and can never prove that this process owns the lock.
 mkdir -p "$BACKUP_DIR"
@@ -60,19 +112,6 @@ fi
 if ! flock -n 9; then
   echo "ERROR: another deploy or rollback is running (lock: $DEPLOY_LOCK_FILE)."
   exit 1
-fi
-
-# Prefer shell exports; otherwise read once-confirmed evidence from the server .env.
-load_deploy_evidence_from_env_file "$APP_DIR/.env"
-
-# Validate supplied evidence before Git or container mutation. Optional only means a fresh
-# deployment may omit both URLs; any supplied prefixless URL still fails closed here.
-# A first bare deploy has neither a .env nor evidence: it only scaffolds the .env below and
-# stops, mutating no containers. Requiring the maintenance window there would make the
-# scaffold unreachable. Once a .env exists, or anything is exported, the gate applies in full,
-# and the existing-deployment gate further down is unchanged.
-if [ -f "$APP_DIR/.env" ] || [ -n "${MAINTENANCE_WINDOW_CONFIRMED:-}${KNOWN_UPLOAD_URL:-}${KNOWN_DOCUMENT_URL:-}" ]; then
-  require_runtime_asset_evidence optional
 fi
 
 # Re-exec after updating so an already-running old script cannot bypass target-revision gates.
@@ -124,52 +163,8 @@ fi
 # 3. Verify .env
 # --------------------------------------------------------------------------
 echo "==> Verifying .env..."
-# On a first deploy there is no .env yet. Rather than only erroring, scaffold one with the
-# correct keys and safe non-secret defaults, then stop so the operator fills in the secrets.
-# The scaffold carries CHANGE_ME placeholders and NO real credentials: .env is gitignored and
-# must never be committed. Port 8686 is both the host and the container port.
-if [ ! -f "$APP_DIR/.env" ]; then
-  cat > "$APP_DIR/.env" <<'ENV_SCAFFOLD'
-# SOPROTELCO production environment.
-# Replace every CHANGE_ME value, then re-run ./deploy.sh. This file is gitignored:
-# never commit it. Keep POSTGRES_PASSWORD identical in DATABASE_URL.
-
-WEB_PORT=8686
-WEB_HOST=0.0.0.0
-
-# Storage: local disk (fails closed if unset). Do not leave blank.
-STORAGE_PROVIDER=local
-
-# Session cookie security. Leave commented for HTTPS (Cloudflare/reverse proxy) — the safe
-# default. Uncomment ONLY to log in over plain HTTP (http://<ip>:8686) before TLS is set up;
-# re-comment it once HTTPS is in front.
-# NOTE: uncommented by default so the first deploy over HTTP works without bucle infinito.
-SESSION_COOKIE_SECURE=false
-
-# Database.
-POSTGRES_DB=websoprotelco
-POSTGRES_USER=local_dev_user
-POSTGRES_PASSWORD=CHANGE_ME
-DATABASE_URL=postgresql://local_dev_user:CHANGE_ME@db:5432/websoprotelco
-DATABASE_SSL=disable
-
-# First super-admin, created automatically by this script on deploy.
-ADMIN_EMAIL=CHANGE_ME
-ADMIN_PASSWORD=CHANGE_ME
-
-# Deploy gate (existing servers). After the first successful cutover, keep these set so
-# future releases are just: ./deploy.sh
-# MAINTENANCE_WINDOW_CONFIRMED=true
-# KNOWN_UPLOAD_URL=/uploads/deploy-probe.png
-# KNOWN_DOCUMENT_URL=/documents/manual/deploy-probe.pdf
-ENV_SCAFFOLD
-  echo "    Created $APP_DIR/.env from a template."
-  echo "    Fill in every CHANGE_ME value (POSTGRES_PASSWORD, DATABASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD),"
-  echo "    then run ./deploy.sh again."
-  exit 1
-fi
-
-# Fail fast on missing OR still-placeholder critical variables. ADMIN_* are required because
+# First-run scaffolding happens before any Git/container mutation above. From this point onward,
+# fail fast on missing OR still-placeholder critical variables. ADMIN_* are required because
 # this script creates the administrator from them: the dev seed's credentials are committed to
 # a public repo and must never provision a real server.
 required_vars=(POSTGRES_PASSWORD DATABASE_URL ADMIN_EMAIL ADMIN_PASSWORD STORAGE_PROVIDER)
@@ -351,7 +346,6 @@ echo "    '$DB_SERVICE' is $db_status"
 # with a bare non-zero exit and no diagnosis.
 echo "==> Backing up database..."
 db_backup_recorded=""
-database_exists=0
 
 if ! backup_db_name="$(docker compose exec -T "$DB_SERVICE" printenv POSTGRES_DB 2>/dev/null)"; then
   echo "ERROR: could not read POSTGRES_DB from '$DB_SERVICE'. Refusing to migrate without a backup."
@@ -377,7 +371,6 @@ if ! printf '%s\n' "$db_list" | cut -d'|' -f1 | grep -Fxq "$backup_db_name"; the
   echo "    Database '$backup_db_name' does not exist yet — first deploy, nothing to back up."
   echo "    Continuing; migrations will create it."
 else
-  database_exists=1
   db_backup_stamp="$(date +%Y%m%d-%H%M%S)"
   db_backup_file="$BACKUP_DIR/db-${backup_db_name}-${db_backup_stamp}.dump"
   db_backup_partial="${db_backup_file}.partial"

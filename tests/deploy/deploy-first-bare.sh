@@ -51,6 +51,11 @@ if grep -q 'MAINTENANCE_WINDOW_CONFIRMED=true is required' "$WORK/first-out" "$W
 else
   ok "first bare deploy is not refused for missing existing-deploy evidence"
 fi
+if [ ! -s "$FAKE_GIT_CALLS" ]; then
+  ok "no git command ran before the operator filled in the scaffold"
+else
+  bad "git ran during a scaffold-only deploy"; sed 's/^/    /' "$FAKE_GIT_CALLS"
+fi
 if [ ! -s "$FAKE_DOCKER_CALLS" ]; then
   ok "no docker command ran before the operator filled in the scaffold"
 else

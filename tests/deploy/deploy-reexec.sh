@@ -8,6 +8,9 @@ trap 'rm -rf "$WORK"' EXIT
 APP="$WORK/app"; BIN="$WORK/bin"
 mkdir -p "$APP" "$BIN"
 cp "$ROOT/deploy.sh" "$ROOT/deploy-lib.sh" "$APP/"
+# An existing deployment already has its .env; without one deploy.sh stops at the first-deploy scaffold
+# (see deploy-first-bare.sh) before it ever reaches the lock/Git/re-exec path this file exercises.
+: > "$APP/.env"
 cat > "$APP/target-deploy.sh" <<'TARGET'
 #!/usr/bin/env bash
 test "$(readlink -f /proc/$$/fd/9)" = "$(cd "$APP_DIR/backups" && pwd -P)/.deploy.lock"
@@ -79,8 +82,12 @@ cp "$ROOT/rollback.sh" "$APP/"
 printf 'incomplete\n' > "$APP/backups/rollback-manifest"
 cat > "$BIN/tail" <<'TAIL'
 #!/usr/bin/env bash
-touch "$TAIL_READY_FILE"
-sleep 2
+# Only the rollback under test announces itself and holds the lock; the deploy under test also reads
+# files with `tail` (its .env parsing) before it takes the lock and must not be delayed by this stub.
+if [ -n "${TAIL_READY_FILE:-}" ]; then
+  touch "$TAIL_READY_FILE"
+  sleep 2
+fi
 exec /usr/bin/tail "$@"
 TAIL
 chmod +x "$BIN/tail"

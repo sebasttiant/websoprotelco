@@ -58,9 +58,10 @@ services:
   #   docker compose run --rm seed                       -> the DEV accounts (default CMD)
   #   docker compose run --rm seed pnpm db:create-admin  -> a real admin from ADMIN_* in .env
   #
-  # db/seeds/001-users.ts carries committed credentials, and this repository is public. It
-  # refuses to run when NODE_ENV=production, so NODE_ENV is passed through here rather than
-  # left unset: setting NODE_ENV=production in a server's .env makes that guard actually fire.
+  # db/seeds/001-users.ts requires explicit SEED_ADMIN_PASSWORD and SEED_STAFF_PASSWORD
+  # values (pass them with `docker compose run -e ... seed`). It refuses to run when
+  # NODE_ENV=production, so NODE_ENV is passed through here rather than left unset: setting
+  # NODE_ENV=production in a server's .env makes that guard actually fire.
   # deploy.sh never invokes the seed — it creates the admin from ADMIN_EMAIL/ADMIN_PASSWORD,
   # which live only in the server's .env and are never committed.
   #

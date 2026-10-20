@@ -9,7 +9,14 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 // could run: a layout gate can silently defeat every page gate, and only layout + page
 // together can prove it does not.
 
-const { mockCookies, mockFindSessionUser, mockNotFound, mockRedirect } = vi.hoisted(() => ({
+const { mockCookies, mockFindSessionUser, mockNotFound, mockRedirect, dashboardQueries } = vi.hoisted(() => ({
+  dashboardQueries: {
+    countAllProducts: vi.fn(),
+    getQuoteDashboardCounts: vi.fn(),
+    getQuotes: vi.fn(),
+    countLeads: vi.fn(),
+    getLowStockProducts: vi.fn(),
+  },
   mockCookies: vi.fn(),
   mockFindSessionUser: vi.fn(),
   mockNotFound: vi.fn(() => {
@@ -26,6 +33,7 @@ vi.mock("@/server/auth/session", () => ({ findSessionUser: mockFindSessionUser }
 
 // The pages' data reads are irrelevant here; only the authorization outcome is under test.
 vi.mock("@/domains/leads", () => ({
+  countLeads: dashboardQueries.countLeads,
   getLeads: vi.fn().mockResolvedValue([]),
   LEAD_STATUSES: ["new", "contacted", "qualified", "converted", "lost"],
 }));
@@ -41,17 +49,24 @@ vi.mock("@/domains/settings", () => ({
   getAllSettings: vi.fn().mockResolvedValue([]),
   updateSetting: vi.fn(),
 }));
+vi.mock("@/domains/quote-order", () => ({
+  getQuoteDashboardCounts: dashboardQueries.getQuoteDashboardCounts,
+  getQuotes: dashboardQueries.getQuotes,
+}));
+vi.mock("@/domains/inventory", () => ({ getLowStockProducts: dashboardQueries.getLowStockProducts }));
 vi.mock("@/domains/catalog", () => ({
+  countAllProducts: dashboardQueries.countAllProducts,
   getProductsForAdmin: vi.fn().mockResolvedValue({ rows: [], total: 0, totalPages: 1, page: 1 }),
   getCategoryOptions: vi.fn().mockResolvedValue([]),
 }));
 
 const { default: AdminLayout } = await import("@/app/admin/layout");
+const { default: AdminDashboardPage } = await import("@/app/admin/page");
 const { default: AdminLeadsPage } = await import("@/app/admin/leads/page");
 const { default: AdminDesignPage } = await import("@/app/admin/design/page");
 const { default: AdminSettingsPage } = await import("@/app/admin/settings/page");
 
-function signInAs(role: "admin" | "staff") {
+function signInAs(role: "admin" | "staff" | "customer") {
   mockCookies.mockResolvedValue({ get: () => ({ value: "session-token" }) });
   mockFindSessionUser.mockResolvedValue({ id: "u1", email: `${role}@ilasesorias.com`, role });
 }
@@ -60,6 +75,20 @@ function signInAs(role: "admin" | "staff") {
 async function enter(page: () => Promise<unknown>) {
   await AdminLayout({ children: null });
   await page();
+}
+
+function resolveDashboardData() {
+  dashboardQueries.countAllProducts.mockResolvedValue(0);
+  dashboardQueries.getQuoteDashboardCounts.mockResolvedValue({
+    totalOrders: 0,
+    pendingOrders: 0,
+    openQuotes: 0,
+    revenueCents: 0,
+    wonWithoutTotal: 0,
+  });
+  dashboardQueries.getQuotes.mockResolvedValue([]);
+  dashboardQueries.countLeads.mockResolvedValue(0);
+  dashboardQueries.getLowStockProducts.mockResolvedValue([]);
 }
 
 afterEach(() => {
@@ -100,5 +129,30 @@ describe("admin authorization, layout and page together", () => {
     mockFindSessionUser.mockResolvedValue(null);
 
     await expect(AdminLayout({ children: null })).rejects.toThrow("NEXT_REDIRECT");
+  });
+});
+
+describe("admin dashboard authorization", () => {
+  test("a customer is refused before any dashboard data query runs", async () => {
+    signInAs("customer");
+    resolveDashboardData();
+
+    await expect(enter(() => AdminDashboardPage())).rejects.toThrow("NEXT_NOT_FOUND");
+
+    for (const query of Object.values(dashboardQueries)) {
+      expect(query).not.toHaveBeenCalled();
+    }
+  });
+
+  test("staff and admin keep the dashboard", async () => {
+    resolveDashboardData();
+
+    for (const role of ["staff", "admin"] as const) {
+      signInAs(role);
+      await expect(enter(() => AdminDashboardPage())).resolves.not.toThrow();
+    }
+
+    expect(mockNotFound).not.toHaveBeenCalled();
+    expect(dashboardQueries.getQuoteDashboardCounts).toHaveBeenCalledTimes(2);
   });
 });

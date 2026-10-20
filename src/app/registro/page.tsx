@@ -37,6 +37,7 @@ export default async function RegisterPage() {
           <p className="text-sm font-medium text-brand-muted">
             Registrate para guardar tus datos y consultar tus cotizaciones.
           </p>
+          <p className="text-xs font-medium text-brand-muted">La contraseña debe tener al menos 12 caracteres.</p>
         </div>
 
         <SignUpForm />

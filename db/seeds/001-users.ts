@@ -1,7 +1,7 @@
 // Relative, not the "@/" alias, matching scripts/create-admin.ts and scripts/db-migrate.ts:
 // these run under tsx outside Next, where the alias resolves only when the cwd sits next to
 // tsconfig.json.
-import { hashPassword } from "../../src/server/auth/password";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, hashPassword } from "../../src/server/auth/password";
 import { closePool, query } from "../../src/server/db/pool";
 
 interface SeedUser {
@@ -10,12 +10,58 @@ interface SeedUser {
   role: "admin" | "staff";
 }
 
-// Development credentials. They are committed on purpose so the team shares one login, which
-// is also why this script refuses to touch a production database below.
-const SEED_USERS: readonly SeedUser[] = [
-  { email: "admin@ilasesorias.com", password: "Infoseg.002026", role: "admin" },
-  { email: "staff@ilasesorias.com", password: "Infoseg.002026", role: "staff" },
+interface SeedUserSpec {
+  role: SeedUser["role"];
+  emailVariable: string;
+  defaultEmail: string;
+  passwordVariable: string;
+}
+
+// No password is tracked in this repository, which is public. Each account takes its password
+// from an explicit environment variable, so a seeded database never has a login anyone can read
+// off GitHub. Emails are not secrets and keep their defaults.
+const SEED_USER_SPECS: readonly SeedUserSpec[] = [
+  {
+    role: "admin",
+    emailVariable: "SEED_ADMIN_EMAIL",
+    defaultEmail: "admin@ilasesorias.com",
+    passwordVariable: "SEED_ADMIN_PASSWORD",
+  },
+  {
+    role: "staff",
+    emailVariable: "SEED_STAFF_EMAIL",
+    defaultEmail: "staff@ilasesorias.com",
+    passwordVariable: "SEED_STAFF_PASSWORD",
+  },
 ];
+
+// Fails before any database work, and names only the variables, never their values.
+function readSeedUsers(env: NodeJS.ProcessEnv): readonly SeedUser[] {
+  const problems: string[] = [];
+  const users: SeedUser[] = [];
+
+  for (const spec of SEED_USER_SPECS) {
+    const password = env[spec.passwordVariable];
+
+    if (!password) {
+      problems.push(`${spec.passwordVariable} is required`);
+      continue;
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+      problems.push(`${spec.passwordVariable} must be ${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} characters`);
+      continue;
+    }
+
+    users.push({ email: env[spec.emailVariable]?.trim() || spec.defaultEmail, password, role: spec.role });
+  }
+
+  if (problems.length > 0) {
+    throw new Error(`Refusing to seed users: ${problems.join("; ")}.`);
+  }
+
+  return users;
+}
 
 interface InsertedUserRow {
   email: string;
@@ -41,16 +87,18 @@ async function seedUser(user: SeedUser): Promise<"created" | "skipped"> {
   return rows.length > 0 ? "created" : "skipped";
 }
 
-async function seedUsers(): Promise<void> {
-  // A committed password must never reach a real database. Seeding is a development affordance.
+async function runSeed(): Promise<void> {
+  // Seeding is a development affordance and must never reach a production database.
   if (process.env.NODE_ENV === "production") {
-    throw new Error("Refusing to seed users: this script ships committed credentials and must not run in production.");
+    throw new Error("Refusing to seed users: this script is a development affordance and must not run in production.");
   }
+
+  const seedUsers = readSeedUsers(process.env);
 
   let failed = false;
 
   try {
-    for (const user of SEED_USERS) {
+    for (const user of seedUsers) {
       try {
         const outcome = await seedUser(user);
 
@@ -73,7 +121,7 @@ async function seedUsers(): Promise<void> {
   }
 }
 
-seedUsers().catch((error: unknown) => {
+runSeed().catch((error: unknown) => {
   console.error(error);
   process.exitCode = 1;
 });

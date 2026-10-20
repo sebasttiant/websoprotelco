@@ -84,8 +84,20 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Unit tests
-        run: pnpm test
+      # The one unit-test run of the pipeline. Coverage is a report, not a gate: there is no global
+      # percentage, because the critical paths (authorization, uploads, deploy) are pinned by named
+      # tests and the isolated authenticated E2E job below.
+      - name: Unit tests with coverage report
+        run: pnpm test:coverage
+
+      - name: Upload coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
@@ -120,11 +132,50 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # Offline deploy/rollback contracts: `docker` and `git` are stubs, so nothing touches a real host.
+      - name: Deploy and rollback shell contracts
+        run: bash tests/deploy/run-all.sh
+
       - name: Validate Compose configuration contract
         run: bash tests/deploy/compose-contract.sh
+
+      - name: Runtime image shell contract
+        run: bash tests/deploy/runtime-manifest.sh
 
       - name: Build runtime image
         run: docker build --network host --target runner -t websoprotelco:ci .
 
       - name: Build migrator image
         run: docker build --network host --target migrator -t websoprotelco-migrator:ci .
+
+  # Authenticated Playwright suite against a throwaway PostgreSQL. `pnpm test:e2e:auth` owns the
+  # whole lifecycle: it generates the credentials, starts compose.e2e.yaml on 127.0.0.1:55432
+  # (tmpfs, no volume), runs the app from a temporary workspace, and destroys everything afterwards.
+  # No repository secret is needed or passed, and it never touches real infrastructure.
+  e2e-authenticated:
+    name: Authenticated E2E (isolated database)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.14.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24.22.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Authenticated E2E tests
+        run: pnpm test:e2e:auth

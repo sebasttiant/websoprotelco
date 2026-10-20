@@ -21,9 +21,15 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     passWithNoTests: false,
+    // Reporting only, on purpose: there is no global threshold. A repository-wide percentage rewards
+    // easy lines and says nothing about the critical paths (authorization, uploads, deploy), which
+    // are pinned by named tests instead. `include` makes untested files show up as 0% rather than
+    // vanish from the report.
     coverage: {
       provider: "v8",
-      reporter: ["text", "lcov"],
+      reporter: ["text-summary", "lcov"],
+      include: ["src/**/*.{ts,tsx}"],
+      reportsDirectory: "coverage",
     },
   },
 });

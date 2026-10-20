@@ -85,3 +85,15 @@ describe("POST /api/upload", () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/upload as a customer", () => {
+  test("returns 403 and stores nothing for the customer role", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "customer-1", email: "customer@soprotelco.test", role: "customer" });
+
+    const response = await POST(uploadRequest(new File([pngBytes], "product.png", { type: "image/png" })));
+
+    await expect(response.json()).resolves.toEqual({ error: "Necesitás permiso para editar el catálogo." });
+    expect(response.status).toBe(403);
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+});

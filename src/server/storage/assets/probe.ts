@@ -1,5 +1,5 @@
 import { constants as fsConstants } from "node:fs";
-import { open, stat, unlink, writeFile } from "node:fs/promises";
+import { lstat, open, stat, unlink, writeFile } from "node:fs/promises";
 import { randomBytes, randomUUID } from "node:crypto";
 import path from "node:path";
 
@@ -43,7 +43,31 @@ async function readBack(probePath: string): Promise<Buffer> {
   }
 }
 
+/**
+ * A root that is a symlink would send the sentinel write outside the managed volume, and would
+ * report healthy while the serving path (which refuses symlinked roots) answers 503.
+ */
+async function rootFault(rootPath: string): Promise<string | null> {
+  const link = await lstat(rootPath).catch((error: unknown) => errorCode(error));
+
+  if (typeof link === "string") {
+    return link;
+  }
+
+  if (link.isSymbolicLink()) {
+    return "EROOTSYMLINK";
+  }
+
+  return link.isDirectory() ? null : "ENOTDIR";
+}
+
 async function probeRoot(baseDirectory: string, root: RuntimeAssetRoot): Promise<RuntimeAssetProbeResult> {
+  const fault = await rootFault(path.join(baseDirectory, root));
+
+  if (fault) {
+    return { ok: false, failedRoot: root, operation: "probe", code: fault };
+  }
+
   const probePath = path.join(baseDirectory, root, `.storage-probe-${randomUUID()}`);
   const payload = randomBytes(PROBE_BYTE_LENGTH);
   let written = false;

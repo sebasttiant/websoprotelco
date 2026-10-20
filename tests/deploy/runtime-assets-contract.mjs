@@ -197,8 +197,11 @@ async function main() {
     await cp(path.join(repositoryRoot, "public"), path.join(deploymentDirectory, "public"), { recursive: true });
     await cp(path.join(repositoryRoot, ".next", "static"), path.join(deploymentDirectory, ".next", "static"), { recursive: true });
 
-    const uploads = path.join(deploymentDirectory, "public", "uploads");
-    const documents = path.join(deploymentDirectory, "public", "documents", "manual");
+    // Production roots: the runner mounts its volumes at `<cwd>/data/uploads|documents`, and the
+    // server reads exactly there (src/server/storage/roots.ts). `public/` holds build-time assets
+    // only, so a fixture that wrote runtime files into it would test a layout nothing ships.
+    const uploads = path.join(deploymentDirectory, "data", "uploads");
+    const documents = path.join(deploymentDirectory, "data", "documents", "manual");
     await mkdir(uploads, { recursive: true });
     await mkdir(documents, { recursive: true });
 
@@ -206,7 +209,8 @@ async function main() {
     const imageBytes = await sharp({ create: { width: 64, height: 48, channels: 3, background: { r: 20, g: 90, b: 200 } } }).webp().toBuffer();
     const largeBytes = await sharp({ create: { width: 2400, height: 1800, channels: 3, background: { r: 200, g: 80, b: 40 } } }).webp().toBuffer();
 
-    // PRE-BOOT: present before startup, so Next's public-file index knows about it.
+    // PRE-BOOT: present before startup. It lives under data/, outside Next's public-file index,
+    // so it must be served by the dynamic route exactly like a file written after boot.
     await writeFile(path.join(uploads, PRE_BOOT_IMAGE), imageBytes);
 
     const port = await freePort();
@@ -217,12 +221,12 @@ async function main() {
     // --- pre-boot asset ---------------------------------------------------------------------
     const preBoot = await fetch(`${base}/uploads/${PRE_BOOT_IMAGE}`);
     const preBootDecoded = await decodeImage(preBoot);
-    check("pre-boot static asset is retrievable", preBoot.status === 200, `HTTP ${preBoot.status}`);
+    check("pre-boot asset is retrievable", preBoot.status === 200, `HTTP ${preBoot.status}`);
     check("pre-boot asset decodes as a real image", preBootDecoded.metadata?.format === "webp", `format=${preBootDecoded.metadata?.format}`);
     check("pre-boot asset carries the global nosniff header", preBoot.headers.get("x-content-type-options") === "nosniff");
     check(
-      "pre-boot asset is served by the STATIC handler (precedence unchanged)",
-      !(preBoot.headers.get("cache-control") ?? "").includes("must-revalidate"),
+      "pre-boot asset is served by the DYNAMIC route (data/ is not in the public-file index)",
+      (preBoot.headers.get("cache-control") ?? "").includes("must-revalidate"),
       `cache-control=${preBoot.headers.get("cache-control")}`,
     );
 
@@ -350,8 +354,8 @@ async function main() {
     check("a file uploaded before the restart survives it", afterRestart.status === 200, `HTTP ${afterRestart.status}`);
     check("its bytes are unchanged", afterRestartBytes.equals(imageBytes));
     check(
-      "after the restart it is served by the static handler (it is now pre-boot)",
-      !(afterRestart.headers.get("cache-control") ?? "").includes("must-revalidate"),
+      "after the restart it is still served by the dynamic route",
+      (afterRestart.headers.get("cache-control") ?? "").includes("must-revalidate"),
       `cache-control=${afterRestart.headers.get("cache-control")}`,
     );
   } finally {

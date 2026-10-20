@@ -108,3 +108,15 @@ describe("POST /api/documents/upload", () => {
     expect(mockSaveDocument).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/documents/upload as a customer", () => {
+  test("returns 403 and stores nothing for the customer role", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "customer-1", email: "customer@soprotelco.test", role: "customer" });
+
+    const response = await POST(uploadRequest(new File([pdfBytes], "manual.pdf", { type: "application/pdf" })));
+
+    await expect(response.json()).resolves.toEqual({ error: "Necesitás permiso para editar documentos." });
+    expect(response.status).toBe(403);
+    expect(mockSaveDocument).not.toHaveBeenCalled();
+  });
+});

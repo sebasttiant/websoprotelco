@@ -22,7 +22,7 @@ export function SignUpForm() {
         name="password"
         type="password"
         required
-        minLength={8}
+        minLength={12}
         autoComplete="new-password"
       />
       {state.error ? (

@@ -72,8 +72,8 @@ export type AssignableRole = z.infer<typeof assignableRoleSchema>;
 
 // Distinct from the public signUp schema, which hard-codes the customer role and can never
 // mint a privileged account. This one CAN set any role — which is exactly why the action that
-// uses it guards on admin:access before parsing. The password minimum matches signUp's 8.
-const ADMIN_MIN_PASSWORD_LENGTH = 8;
+// uses it guards on admin:access before parsing. The password bounds match signUp and hashPassword (12-200).
+const ADMIN_MIN_PASSWORD_LENGTH = 12;
 
 export const adminCreateUserInputSchema = z.object({
   fullName: z.string().trim().min(2, { error: "El nombre es obligatorio." }).max(160),

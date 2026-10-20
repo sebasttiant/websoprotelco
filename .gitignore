@@ -35,6 +35,9 @@ public/uploads/*
 public/documents/*
 !public/documents/.gitkeep
 
+# Current runtime assets are written below data/ by the storage adapter.
+data/
+
 # Local ODD task scratch (feature docs stay optional; never ship agent scratch by default)
 odd/
 

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { chmod, mkdtemp, mkdir, readdir, rm } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -82,6 +82,20 @@ describe("probeRuntimeAssetRoots", () => {
     // uploads was probed successfully before documents failed; neither may keep a sentinel.
     expect(await readdir(uploads)).toEqual([]);
     expect(await readdir(documents)).toEqual([]);
+  });
+
+  // The health check used to reject a symlinked root in a separate pass; the probe now owns that,
+  // because a write through a symlinked root would land outside the managed volume.
+  test("fails closed when a root is a symlink, and writes nothing through it", async () => {
+    const outside = path.join(workspace, "outside");
+    await mkdir(outside);
+    await rm(uploads, { recursive: true, force: true });
+    await symlink(outside, uploads);
+
+    const result = await probeRuntimeAssetRoots(baseDirectory);
+
+    expect(result).toMatchObject({ ok: false, failedRoot: "uploads", code: "EROOTSYMLINK" });
+    expect(await readdir(outside)).toEqual([]);
   });
 
   test("stops at the first failing root and names it", async () => {

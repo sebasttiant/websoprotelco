@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, test } from "vitest";
 
-import { hasPermission, isRole, type Permission, type Role } from "../../../src/server/auth/rbac";
+import { PERMISSIONS, hasPermission, isRole, permissionsForRole, type Permission, type Role } from "../../../src/server/auth/rbac";
 
 describe("isRole", () => {
   test.each(["admin", "staff"])("accepts %s", (value) => {
@@ -75,6 +75,27 @@ describe("hasPermission", () => {
   test("admin has documents:read and documents:write", () => {
     expect(hasPermission("admin", "documents:read")).toBe(true);
     expect(hasPermission("admin", "documents:write")).toBe(true);
+  });
+
+  test("customer holds no permission at all", () => {
+    expect(permissionsForRole("customer")).toEqual([]);
+    expect(PERMISSIONS.some((permission) => hasPermission("customer", permission))).toBe(false);
+  });
+
+  test("staff keeps exactly its operator permissions and gains nothing privileged", () => {
+    expect([...permissionsForRole("staff")].sort()).toEqual(
+      [
+        "catalog:read",
+        "documents:read",
+        "documents:write",
+        "inventory:read",
+        "inventory:write",
+        "leads:read",
+        "leads:write",
+        "quote:read",
+        "quote:write",
+      ].sort(),
+    );
   });
 
   test("fails closed for an unknown role", () => {

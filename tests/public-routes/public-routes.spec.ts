@@ -10,7 +10,7 @@ test.describe("Public route smoke", () => {
       await expect(page.getByRole("heading", { name: "Contáctanos" })).toBeVisible();
       await expect(page.getByLabel("Nombre Completo")).toHaveAttribute("required", "");
       await expect(page.getByLabel("Correo Electrónico")).toHaveAttribute("type", "email");
-      await expect(page.getByRole("status")).toContainText("El envío en línea todavía no está disponible");
+      await expect(page.getByRole("status")).toContainText("Tu mensaje se abre en WhatsApp con los datos que completes.");
       await expect(page.getByText("Producto consultado: fusionadora-segura")).toBeVisible();
       await expect(page.getByRole("link", { name: "Contactar por WhatsApp" })).toHaveAttribute(
         "href",
@@ -23,16 +23,20 @@ test.describe("Public route smoke", () => {
       await page.getByLabel("Tu mensaje").fill("Mensaje privado de prueba");
 
       const contactUrl = page.url();
-      const requestsAfterPreparation: string[] = [];
-      page.on("request", (request) => requestsAfterPreparation.push(request.url()));
 
-      await page.getByRole("button", { name: "Preparar mensaje" }).click();
+      // Sending opens WhatsApp in a new tab; the contact page itself must stay
+      // put and must never carry the visitor's data in its own URL.
+      const popupPromise = page.waitForEvent("popup");
+      await page.getByRole("button", { name: "Enviar por WhatsApp" }).click();
+      const popup = await popupPromise;
+      await popup.waitForURL(/wa\.me|whatsapp\.com/, { timeout: 10_000 }).catch(() => undefined);
+      expect(popup.url()).toContain("573001234567");
+      await popup.close();
 
       await expect(page).toHaveURL(contactUrl);
       expect(page.url()).not.toContain("ada.privada@example.test");
       expect(page.url()).not.toContain("Mensaje privado de prueba");
-      expect(requestsAfterPreparation).toEqual([]);
-      await expect(page.getByRole("status")).toContainText("El envío en línea todavía no está disponible");
+      await expect(page.getByRole("status")).toContainText("Tu mensaje se abre en WhatsApp con los datos que completes.");
 
       await page.getByRole("link", { name: "Política de privacidad" }).click();
       await expect(page.getByRole("heading", { name: "Política de privacidad" })).toBeVisible();

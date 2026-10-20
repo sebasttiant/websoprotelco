@@ -100,7 +100,10 @@ export async function insertOrder(input: NewOrder): Promise<{ id: string; totalC
     const productIds = input.items.map((item) => item.productId);
 
     const products = await client.query<PricedProductRow>(
-      "SELECT id, name, price_cents FROM products WHERE id = ANY($1::uuid[]) AND is_active = true",
+      // The order charges what the customer saw: the promotional price while one is
+      // set. price_cents keeps its name in the row shape so the pricing code below
+      // stays the single place that turns a product row into a line total.
+      "SELECT id, name, COALESCE(promo_price_cents, price_cents) AS price_cents FROM products WHERE id = ANY($1::uuid[]) AND is_active = true",
       [productIds],
     );
 

@@ -46,17 +46,17 @@ describe("cart total safe-integer bounds", () => {
 
 describe("CartContent", () => {
   test("does not offer unavailable catalog products for cart selection", () => {
-    render(<CartProductCard product={{ id: "00000000-0000-4000-8000-000000000001", slug: "sin-stock", sku: "SIN-001", name: "Sin stock", description: "", priceCents: 100, currency: "COP", categoryName: "Prueba", categorySlug: "prueba", brand: "SP", imageUrl: null, inStock: false }} />);
+    render(<CartProductCard product={{ id: "00000000-0000-4000-8000-000000000001", slug: "sin-stock", sku: "SIN-001", name: "Sin stock", description: "", priceCents: 100, promoPriceCents: null, isFeatured: false, currency: "COP", categoryName: "Prueba", categorySlug: "prueba", brand: "SP", imageUrl: null, inStock: false }} />);
 
-    expect(screen.queryByRole("button", { name: "Agregar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /agregar/i })).not.toBeInTheDocument();
     expect(screen.getByText("No disponible")).toBeInTheDocument();
   });
 
   test("shows a visible confirmation when a product is added", async () => {
     const user = userEvent.setup();
-    render(<CartProductCard product={{ id: "00000000-0000-4000-8000-000000000001", slug: "fusionadora-x", sku: "FUS-001", name: "Fusionadora X", description: "", priceCents: 1500000, currency: "COP", categoryName: "Prueba", categorySlug: "prueba", brand: "SP", imageUrl: null, inStock: true }} />);
+    render(<CartProductCard product={{ id: "00000000-0000-4000-8000-000000000001", slug: "fusionadora-x", sku: "FUS-001", name: "Fusionadora X", description: "", priceCents: 1500000, promoPriceCents: null, isFeatured: false, currency: "COP", categoryName: "Prueba", categorySlug: "prueba", brand: "SP", imageUrl: null, inStock: true }} />);
 
-    await user.click(screen.getByRole("button", { name: "Agregar" }));
+    await user.click(screen.getByRole("button", { name: "Agregar Fusionadora X al carrito" }));
 
     expect(await screen.findByText("Fusionadora X se agregó al carrito.")).toBeVisible();
     expect(JSON.parse(window.localStorage.getItem("soprotelco_quote_cart") ?? "[]")).toHaveLength(1);

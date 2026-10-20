@@ -28,6 +28,8 @@ const product: ProductSummary = {
   name: "Fusionadora X",
   description: "Empalmes de fibra en campo.",
   priceCents: 1500000,
+  promoPriceCents: null,
+  isFeatured: false,
   currency: "COP",
   categoryName: "Fusionadoras",
   categorySlug: "fusionadoras",
@@ -40,6 +42,6 @@ describe("FeaturedProducts", () => {
   test("lets shoppers add featured products to the cart without opening the detail", () => {
     render(<FeaturedProducts products={[product]} />);
 
-    expect(screen.getByRole("button", { name: "Agregar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agregar Fusionadora X al carrito" })).toBeInTheDocument();
   });
 });

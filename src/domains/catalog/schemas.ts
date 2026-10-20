@@ -35,6 +35,8 @@ export const productSummarySchema = z.object({
   name: z.string(),
   description: z.string(),
   priceCents: z.number().int(),
+  promoPriceCents: z.number().int().positive().nullable(),
+  isFeatured: z.boolean(),
   currency: z.string(),
   categoryName: z.string(),
   categorySlug: z.string(),
@@ -46,6 +48,18 @@ export const productSummarySchema = z.object({
 });
 
 export type ProductSummary = z.infer<typeof productSummarySchema>;
+
+/** The price the customer actually pays: the promotional price while one is set. */
+export function getEffectivePriceCents(product: { priceCents: number; promoPriceCents?: number | null }): number {
+  return product.promoPriceCents ?? product.priceCents;
+}
+
+/** Whole-percent discount of the promotion, or null when there is none. */
+export function getDiscountPercent(product: { priceCents: number; promoPriceCents?: number | null }): number | null {
+  const promoPriceCents = product.promoPriceCents ?? null;
+  if (promoPriceCents === null || product.priceCents <= 0) return null;
+  return Math.round((1 - promoPriceCents / product.priceCents) * 100);
+}
 
 export const productDetailSchema = productSummarySchema.extend({
   createdAt: z.string(),
@@ -112,7 +126,14 @@ const catalogImageUrlSchema = z
     error: "La URL de la imagen no es válida. Subí una imagen o dejá el campo en blanco para quitarla.",
   });
 
-export const productAdminInputSchema = z.object({
+// Blank or zero means "no promotion": the admin clears a promotion by emptying the
+// field, never by entering a magic value.
+const promoPriceCentsSchema = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined || value === 0 || value === "0" ? null : value),
+  z.coerce.number().int().positive().nullable(),
+);
+
+const productAdminObjectSchema = z.object({
   id: z.uuid().optional(),
   categoryId: z.uuid({ error: "Category is required." }),
   sku: z.string().trim().min(1, { error: "SKU is required." }).max(80),
@@ -120,12 +141,34 @@ export const productAdminInputSchema = z.object({
   name: z.string().trim().min(1, { error: "Name is required." }).max(180),
   description: z.string().trim().default(""),
   priceCents: z.coerce.number().int().min(0),
+  promoPriceCents: promoPriceCentsSchema.default(null),
+  isFeatured: z.coerce.boolean().default(false),
   currency: z.string().trim().length(3).transform((value) => value.toUpperCase()),
   imageUrl: catalogImageUrlSchema,
   brand: optionalTextSchema,
   stockQuantity: z.coerce.number().int().min(0),
   isActive: z.coerce.boolean().default(false),
 });
+
+// A promotion that is not cheaper than the list price is a data error, not a
+// promotion: reject it here (and again in the DB CHECK) so the admin gets a
+// field-level message instead of a silent no-op.
+const promoPriceIsBelowListPrice = (input: { priceCents: number; promoPriceCents?: number | null }): boolean =>
+  input.promoPriceCents === null || input.promoPriceCents === undefined || input.promoPriceCents < input.priceCents;
+
+const PROMO_PRICE_ERROR = {
+  error: "El precio promocional debe ser menor que el precio normal.",
+  path: ["promoPriceCents"] as string[],
+};
+
+export const productAdminInputSchema = productAdminObjectSchema.refine(promoPriceIsBelowListPrice, PROMO_PRICE_ERROR);
+
+// Zod cannot .partial() a refined schema, so the update path refines AFTER
+// partialing: same object, same cross-field check, applied in the other order.
+export const productAdminUpdateSchema = productAdminObjectSchema
+  .required({ id: true })
+  .partial({ imageUrl: true })
+  .refine(promoPriceIsBelowListPrice, PROMO_PRICE_ERROR);
 
 export type ProductAdminInput = z.infer<typeof productAdminInputSchema>;
 
@@ -191,6 +234,8 @@ export const productAdminSummarySchema = z.object({
   name: z.string(),
   brand: z.string().nullable(),
   priceCents: z.number().int(),
+  promoPriceCents: z.number().int().positive().nullable(),
+  isFeatured: z.boolean(),
   currency: z.string(),
   stockQuantity: z.number().int(),
   isActive: z.boolean(),
@@ -217,6 +262,8 @@ export const productAdminDetailSchema = z.object({
   name: z.string(),
   description: z.string(),
   priceCents: z.number().int(),
+  promoPriceCents: z.number().int().positive().nullable(),
+  isFeatured: z.boolean(),
   currency: z.string(),
   imageUrl: z.string().nullable(),
   brand: z.string().nullable(),

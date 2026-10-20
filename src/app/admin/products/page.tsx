@@ -129,7 +129,21 @@ export default async function AdminProductsPage({ searchParams }: ProductsPagePr
     {
       key: "price",
       header: "Precio",
-      render: (row) => <span className="font-black text-brand-blue">{formatCurrency(row.priceCents, row.currency)}</span>,
+      render: (row) => (
+        <span className="grid gap-1">
+          <span className="font-black text-brand-blue">{formatCurrency(row.promoPriceCents ?? row.priceCents, row.currency)}</span>
+          {row.promoPriceCents !== null ? (
+            <span className="inline-flex w-fit rounded-full bg-red-50 px-2 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-red-700">
+              Promo · antes {formatCurrency(row.priceCents, row.currency)}
+            </span>
+          ) : null}
+          {row.isFeatured ? (
+            <span className="inline-flex w-fit rounded-full bg-brand-navy px-2 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-white">
+              Top
+            </span>
+          ) : null}
+        </span>
+      ),
     },
     {
       key: "stock",

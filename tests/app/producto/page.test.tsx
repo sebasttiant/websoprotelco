@@ -29,6 +29,8 @@ function product(overrides: Record<string, unknown> = {}) {
     name: "Fusionadora X",
     description: "Empalmes de fibra en campo.",
     priceCents: 1500000,
+    promoPriceCents: null,
+    isFeatured: false,
     currency: "COP",
     categoryName: "Fusionadoras",
     categorySlug: "fusionadoras",
@@ -61,7 +63,7 @@ describe("ProductPage", () => {
   test("lets shoppers add the viewed product to the cart", async () => {
     await renderPage();
 
-    expect(screen.getByRole("button", { name: "Agregar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agregar Fusionadora X al carrito" })).toBeInTheDocument();
   });
 
   test("offers the visible quote request link with the encoded product slug", async () => {

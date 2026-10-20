@@ -40,6 +40,8 @@ function mapProductSummary(row: ProductRow): ProductSummary {
     name: row.name,
     description: row.description,
     priceCents: toNumber(row.price_cents),
+    promoPriceCents: row.promo_price_cents === null || row.promo_price_cents === undefined ? null : toNumber(row.promo_price_cents),
+    isFeatured: row.is_featured ?? false,
     currency: row.currency,
     categoryName: row.category_name ?? "Connectivity",
     categorySlug: row.category_slug ?? "connectivity",
@@ -67,6 +69,8 @@ function mapProductAdminSummary(row: repository.ProductAdminRow): ProductAdminSu
     name: row.name,
     brand: row.brand,
     priceCents: toNumber(row.price_cents),
+    promoPriceCents: row.promo_price_cents == null ? null : toNumber(row.promo_price_cents),
+    isFeatured: row.is_featured ?? false,
     currency: row.currency,
     stockQuantity: row.stock_quantity,
     isActive: row.is_active,
@@ -84,6 +88,8 @@ function mapProductAdminDetail(row: repository.ProductAdminDetailRow): ProductAd
     name: row.name,
     description: row.description,
     priceCents: toNumber(row.price_cents),
+    promoPriceCents: row.promo_price_cents == null ? null : toNumber(row.promo_price_cents),
+    isFeatured: row.is_featured ?? false,
     currency: row.currency,
     imageUrl: row.image_url,
     brand: row.brand,
@@ -157,6 +163,12 @@ export async function listPublicProductPaths(): Promise<{ slug: string; updatedA
 
 export async function getFeaturedProducts(limit = 6): Promise<ProductSummary[]> {
   const rows = await repository.findFeaturedProducts(limit);
+  return rows.map(mapProductSummary);
+}
+
+/** Products the admin marked as Top or put on promotion, for the home impact section. */
+export async function getPromotedProducts(limit = 4): Promise<ProductSummary[]> {
+  const rows = await repository.findPromotedProducts(limit);
   return rows.map(mapProductSummary);
 }
 
@@ -341,6 +353,8 @@ export async function importProductsFromCsv(csvText: string): Promise<ProductCsv
         name,
         description,
         priceCents: pesosToCents(parsePesosInput(priceRaw)),
+        promoPriceCents: null,
+        isFeatured: false,
         currency: "COP",
         imageUrl: null as string | null,
         brand,

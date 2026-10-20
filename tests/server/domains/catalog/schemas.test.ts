@@ -31,3 +31,53 @@ describe("productAdminPageSchema", () => {
     expect(productAdminPageSchema.parse(undefined)).toBe(1);
   });
 });
+
+import { getDiscountPercent, getEffectivePriceCents, productAdminInputSchema } from "@/domains/catalog/schemas";
+
+const baseAdminInput = {
+  categoryId: "11111111-1111-4111-8111-111111111111",
+  sku: "FUS-01",
+  slug: "fusionadora",
+  name: "Fusionadora",
+  description: "",
+  priceCents: 1_000_000,
+  currency: "COP",
+  imageUrl: null,
+  brand: null,
+  stockQuantity: 3,
+  isActive: true,
+};
+
+describe("product promotions and featured flag", () => {
+  test("defaults to no promotion and not featured", () => {
+    const parsed = productAdminInputSchema.parse(baseAdminInput);
+    expect(parsed.promoPriceCents).toBeNull();
+    expect(parsed.isFeatured).toBe(false);
+  });
+
+  test("accepts a promotional price lower than the list price", () => {
+    const parsed = productAdminInputSchema.parse({ ...baseAdminInput, promoPriceCents: 800_000, isFeatured: true });
+    expect(parsed.promoPriceCents).toBe(800_000);
+    expect(parsed.isFeatured).toBe(true);
+  });
+
+  test("treats a zero promotional price as no promotion", () => {
+    expect(productAdminInputSchema.parse({ ...baseAdminInput, promoPriceCents: 0 }).promoPriceCents).toBeNull();
+  });
+
+  test("rejects a promotional price that is not lower than the list price", () => {
+    expect(() => productAdminInputSchema.parse({ ...baseAdminInput, promoPriceCents: 1_000_000 })).toThrow();
+    expect(() => productAdminInputSchema.parse({ ...baseAdminInput, promoPriceCents: 1_200_000 })).toThrow();
+  });
+
+  test("effective price is the promo price when present, otherwise the list price", () => {
+    expect(getEffectivePriceCents({ priceCents: 1_000_000, promoPriceCents: 750_000 })).toBe(750_000);
+    expect(getEffectivePriceCents({ priceCents: 1_000_000, promoPriceCents: null })).toBe(1_000_000);
+  });
+
+  test("discount percent is rounded and null without promotion", () => {
+    expect(getDiscountPercent({ priceCents: 1_000_000, promoPriceCents: 750_000 })).toBe(25);
+    expect(getDiscountPercent({ priceCents: 890_000, promoPriceCents: 712_000 })).toBe(20);
+    expect(getDiscountPercent({ priceCents: 1_000_000, promoPriceCents: null })).toBeNull();
+  });
+});

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { RevealImage } from "@/components/ui/reveal-image";
 import { getProductBySlug, getProducts } from "@/domains/catalog";
-import { getSafeCatalogImageUrl } from "@/domains/catalog/schemas";
+import { getDiscountPercent, getEffectivePriceCents, getSafeCatalogImageUrl } from "@/domains/catalog/schemas";
 import { getSiteSettings } from "@/domains/settings";
 
 export const dynamic = "force-dynamic";
@@ -72,6 +72,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   ]);
   const related = categoryProducts.filter((item) => item.slug !== product.slug).slice(0, RELATED_LIMIT);
   const imageUrl = getSafeCatalogImageUrl(product.imageUrl);
+  const discountPercent = getDiscountPercent(product);
+  const effectivePriceCents = getEffectivePriceCents(product);
 
   return (
     <main className="min-h-screen bg-white">
@@ -104,6 +106,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <div className="flex flex-wrap gap-3">
               <Badge>{product.categoryName}</Badge>
               <Badge variant="success">{product.inStock ? "En stock" : "Consultar disponibilidad"}</Badge>
+              {discountPercent !== null ? (
+                <span className="inline-flex items-center rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
+                  -{discountPercent}%
+                </span>
+              ) : null}
+              {product.isFeatured ? (
+                <span className="inline-flex items-center rounded-full bg-brand-navy px-3 py-1 text-xs font-black uppercase tracking-widest text-brand-accent-soft">
+                  Top
+                </span>
+              ) : null}
             </div>
             <div>
               <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-400">SKU {product.sku}</p>
@@ -112,12 +124,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
               </h1>
             </div>
             <p className="text-lg font-medium leading-8 text-brand-muted">{product.description || "Producto profesional para redes, fibra óptica y proyectos de conectividad empresarial."}</p>
-            <p className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">
-              {formatCurrency(product.priceCents, product.currency)}
-            </p>
+            <div className="flex flex-wrap items-baseline gap-x-3">
+              <p className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">
+                {formatCurrency(effectivePriceCents, product.currency)}
+              </p>
+              {discountPercent !== null ? (
+                <s className="text-lg font-bold text-brand-muted">{formatCurrency(product.priceCents, product.currency)}</s>
+              ) : null}
+            </div>
             {product.inStock ? (
               <div>
-                <AddToCartButton id={product.id} slug={product.slug} name={product.name} priceCents={product.priceCents} currency="COP" />
+                <AddToCartButton id={product.id} slug={product.slug} name={product.name} priceCents={effectivePriceCents} currency="COP" />
               </div>
             ) : null}
             <div className="flex flex-col gap-4 sm:flex-row">

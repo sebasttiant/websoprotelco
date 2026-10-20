@@ -5,7 +5,7 @@ import { ProductImagePlaceholder } from "@/components/catalog/product-image-plac
 import { Badge } from "@/components/ui/badge";
 import { RevealImage } from "@/components/ui/reveal-image";
 import type { ProductSummary } from "@/domains/catalog";
-import { getSafeCatalogImageUrl } from "@/domains/catalog/schemas";
+import { getDiscountPercent, getEffectivePriceCents, getSafeCatalogImageUrl } from "@/domains/catalog/schemas";
 
 interface ProductCardProps {
   product: ProductSummary;
@@ -21,6 +21,8 @@ function formatCurrency(cents: number, currency: string): string {
 
 export function ProductCard({ product }: ProductCardProps) {
   const imageUrl = getSafeCatalogImageUrl(product.imageUrl);
+  const discountPercent = getDiscountPercent(product);
+  const effectivePriceCents = getEffectivePriceCents(product);
 
   return (
     <article className="group min-w-0 overflow-hidden rounded-2xl border border-brand-blue/25 bg-white p-3 shadow-sm shadow-blue-950/5 transition hover:-translate-y-0.5 hover:border-brand-blue hover:shadow-md hover:shadow-blue-950/10 sm:p-4">
@@ -29,6 +31,18 @@ export function ProductCard({ product }: ProductCardProps) {
         className="relative grid aspect-square place-items-center overflow-hidden rounded-2xl bg-brand-ice"
       >
         <Badge className="absolute left-3 top-3 z-10">{product.categoryName}</Badge>
+        <div className="absolute right-3 top-3 z-10 flex flex-col items-end gap-1.5">
+          {discountPercent !== null ? (
+            <span className="inline-flex items-center rounded-full bg-red-600 px-3 py-1 text-xs font-black uppercase tracking-widest text-white shadow-sm">
+              -{discountPercent}%
+            </span>
+          ) : null}
+          {product.isFeatured ? (
+            <span className="inline-flex items-center rounded-full bg-brand-navy px-3 py-1 text-xs font-black uppercase tracking-widest text-brand-accent-soft shadow-sm">
+              Top
+            </span>
+          ) : null}
+        </div>
         {imageUrl ? (
           <RevealImage
             src={imageUrl}
@@ -59,9 +73,14 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-line pt-3">
-          <p className="text-lg font-black text-brand-navy sm:text-xl">
-            {formatCurrency(product.priceCents, product.currency)}
-          </p>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <p className="text-lg font-black text-brand-navy sm:text-xl">
+              {formatCurrency(effectivePriceCents, product.currency)}
+            </p>
+            {discountPercent !== null ? (
+              <s className="text-sm font-bold text-brand-muted">{formatCurrency(product.priceCents, product.currency)}</s>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-2">
             <Link href={`/contacto?producto=${encodeURIComponent(product.slug)}`} className="inline-flex items-center gap-2 rounded-full border border-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-brand-blue transition hover:bg-brand-ice">
               <FileText aria-hidden="true" className="h-4 w-4" />

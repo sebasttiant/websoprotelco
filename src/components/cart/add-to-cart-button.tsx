@@ -19,7 +19,7 @@ export function AddToCartButton({ id, slug, name, priceCents, currency }: AddToC
 
   return (
     <span className="inline-flex flex-col items-start gap-1.5">
-      <button type="button" onClick={add} className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-blue-700">
+      <button type="button" onClick={add} aria-label={`Agregar ${name} al carrito`} className="inline-flex items-center gap-2 rounded-full bg-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:bg-blue-700">
         <ShoppingCart aria-hidden="true" className="h-4 w-4" />
         Agregar
       </button>

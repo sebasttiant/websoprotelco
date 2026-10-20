@@ -21,7 +21,13 @@ export type {
   ProductSummary,
 } from "./schemas";
 
-export { CATALOG_PAGE_SIZE, getSafeCatalogImageUrl, isSafeCatalogImagePath } from "./schemas";
+export {
+  CATALOG_PAGE_SIZE,
+  getDiscountPercent,
+  getEffectivePriceCents,
+  getSafeCatalogImageUrl,
+  isSafeCatalogImagePath,
+} from "./schemas";
 
 export {
   createCategory,
@@ -43,6 +49,7 @@ export {
   getCategoryOptionsExcluding,
   getFeaturedProducts,
   getProductByIdForAdmin,
+  getPromotedProducts,
   getProductBySlug,
   getProductCatalog,
   getProducts,

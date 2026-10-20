@@ -212,6 +212,8 @@ describe("importProductsFromCsv", () => {
       "Cable",
       "",
       2_500_000,
+      null,
+      false,
       "COP",
       null,
       null,
@@ -239,6 +241,8 @@ describe("importProductsFromCsv", () => {
       "Cable, drop",
       'Line one\nLine "two"',
       2_500_000,
+      null,
+      false,
       "COP",
       null,
       null,
@@ -322,5 +326,35 @@ describe("getProductsForAdmin", () => {
 
     const [, listValues] = mockQuery.mock.calls[1] as [string, unknown[]];
     expect(listValues.at(-1)).toBe(0);
+  });
+});
+
+describe("getPromotedProducts", () => {
+  test("queries active products that are featured or on promotion and maps both flags", async () => {
+    mockQuery.mockResolvedValue([{
+      id: "11111111-1111-4111-8111-111111111111",
+      slug: "fusion-splicer",
+      sku: "SP-200",
+      name: "Fusion Splicer Pro",
+      description: "Precision fiber splicing tool",
+      price_cents: "450000",
+      promo_price_cents: "360000",
+      is_featured: true,
+      currency: "COP",
+      category_name: "Fusionadoras",
+      category_slug: "fusionadoras",
+      brand: "SP",
+      image_url: null,
+      stock_quantity: 3,
+    }]);
+
+    const { getPromotedProducts } = await import("@/domains/catalog/service");
+    const [product] = await getPromotedProducts(4);
+
+    const [sql] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toContain("p.is_active = true");
+    expect(sql).toContain("is_featured");
+    expect(sql).toContain("promo_price_cents");
+    expect(product).toMatchObject({ priceCents: 450000, promoPriceCents: 360000, isFeatured: true });
   });
 });

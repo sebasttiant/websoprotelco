@@ -45,6 +45,8 @@ function product(overrides: Record<string, unknown> = {}) {
     name: "Fusionadora X",
     description: "Empalmes de fibra en campo.",
     priceCents: 1500000,
+  promoPriceCents: null,
+  isFeatured: false,
     currency: "COP",
     categoryName: "Fusionadoras",
     categorySlug: "fusionadoras",

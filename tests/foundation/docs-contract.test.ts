@@ -14,6 +14,8 @@ import { ROLES, permissionsForRole } from "../../src/server/auth/rbac";
 const ROOT = process.cwd();
 const readme = readFileSync(resolve(ROOT, "README.md"), "utf8");
 const gitignore = readFileSync(resolve(ROOT, ".gitignore"), "utf8");
+const deployScript = readFileSync(resolve(ROOT, "deploy.sh"), "utf8");
+const composeConfig = readFileSync(resolve(ROOT, "compose.yaml"), "utf8");
 
 describe("README facts", () => {
   test("names the runtime and framework versions pinned by package.json", () => {
@@ -73,11 +75,19 @@ describe("README authorization and credentials", () => {
     }
   });
 
-  test("states the 12-character password policy and no committed credentials", () => {
+  test("states the 12-character policy without denying tracked local database placeholders", () => {
     expect(readme).toMatch(/12.{0,3}200 characters/);
     expect(readme).toContain("SEED_ADMIN_PASSWORD");
     expect(readme).toContain("SEED_STAFF_PASSWORD");
+    expect(readme).toContain("No reusable application-account password is tracked");
+    expect(readme).not.toContain("No password is tracked in this repository");
     expect(readme).not.toContain("change-me-please");
+  });
+
+  test("does not present local agent instructions or retired seed credentials as repository facts", () => {
+    expect(readme).not.toContain("AGENTS.md");
+    expect(deployScript).not.toMatch(/seed.{0,120}credentials comm(?:it|itt)ed/is);
+    expect(composeConfig).not.toMatch(/seed.{0,120}credentials comm(?:it|itt)ed/is);
   });
 
   test("documents the data/ runtime asset roots and the first-deploy .env scaffold", () => {

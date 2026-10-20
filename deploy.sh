@@ -7,9 +7,9 @@ set -Eeuo pipefail
 # Flujo: backup → pull → build → db up → migrate → crear admin → web up → verify
 #
 # IMPORTANTE: este script NUNCA corre el seed de desarrollo. db/seeds/001-users.ts
-# tiene credenciales commiteadas en un repositorio público; sembrarlas en un
-# servidor equivale a publicar el login de administrador. El admin se crea desde
-# ADMIN_EMAIL y ADMIN_PASSWORD, que viven solo en el .env del servidor.
+# exige SEED_ADMIN_PASSWORD y SEED_STAFF_PASSWORD explícitas, y se niega a correr
+# con NODE_ENV=production. El admin real se crea desde ADMIN_EMAIL y ADMIN_PASSWORD,
+# que viven solo en el .env del servidor.
 #
 # Poné NODE_ENV=production en el .env del servidor: el seed de desarrollo se
 # niega a correr con esa variable, así que ni siquiera a mano se puede sembrar.

@@ -17,8 +17,6 @@ Versions are pinned in `package.json`, `.nvmrc`, `Dockerfile` and `.github/workf
 | TypeScript `6.0.3` | kept on 6.x: TypeScript 7 breaks `eslint-config-next`'s peers |
 | PostgreSQL 18 | `postgres:18` in `compose.yaml` and CI |
 
-`AGENTS.md` warns that this Next.js has breaking changes. Read the matching guide in `node_modules/next/dist/docs/` before changing framework-level code.
-
 ## Quick start
 
 ```bash
@@ -153,7 +151,7 @@ Every path enforces **12–200 characters**: public sign-up, admin user creation
 
 ### Accounts and seed credentials
 
-**No password is tracked in this repository, and none is a default.** Each command takes its password from explicit environment variables and fails closed without them.
+**No reusable application-account password is tracked, and none is a default.** Local PostgreSQL placeholders still exist in `.env.example` and `compose.yaml`; replace them outside throwaway local environments. Account-creation commands take passwords from explicit environment variables and fail closed without them.
 
 First administrator (also what `deploy.sh` runs from the server `.env`):
 

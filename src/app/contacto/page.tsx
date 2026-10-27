@@ -79,7 +79,9 @@ export default async function ContactPage({ searchParams }: ContactPageProps) {
           <section className="rounded-3xl border border-brand-blue/25 bg-white p-8 shadow-sm shadow-blue-950/5 lg:col-span-2 lg:p-10">
             <div className="mb-8">
               <h2 className="text-xl font-black tracking-tight text-brand-navy sm:text-2xl">Envíanos un mensaje</h2>
-              <p className="mt-3 font-medium leading-7 text-brand-muted">Completa el formulario y te llevamos a WhatsApp con el mensaje listo.</p>
+              <p className="mt-3 font-medium leading-7 text-brand-muted">
+                Completá el formulario: lo registramos en el buzón de SOPROTELCO y, si hay WhatsApp, también lo abrimos con el mensaje listo.
+              </p>
             </div>
             <ContactComposer whatsappNumber={settings.whatsappNumber} quotedProduct={quotedProduct} />
           </section>

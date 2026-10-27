@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 
 import { toWhatsAppHref } from "@/components/layout/contact-href";
+import { submitContactMessage } from "@/domains/quote-order/actions";
 
 interface ContactComposerProps {
   whatsappNumber: string;
@@ -10,17 +11,42 @@ interface ContactComposerProps {
 }
 
 export function ContactComposer({ whatsappNumber, quotedProduct }: ContactComposerProps) {
-  const [missingNumber, setMissingNumber] = useState(false);
-  const canSend = toWhatsAppHref(whatsappNumber) !== null;
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+  const whatsappAvailable = toWhatsAppHref(whatsappNumber) !== null;
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setPending(true);
+    setError("");
+    setSent(false);
+
     const data = new FormData(event.currentTarget);
     const name = String(data.get("name") ?? "").trim();
     const email = String(data.get("email") ?? "").trim();
     const phone = String(data.get("phone") ?? "").trim();
     const subject = String(data.get("subject") ?? "").trim();
     const message = String(data.get("message") ?? "").trim();
+
+    const result = await submitContactMessage({
+      name,
+      email,
+      phone,
+      subject,
+      message,
+      productSlug: quotedProduct,
+    });
+
+    if (!result.success) {
+      setPending(false);
+      setError(result.message);
+      return;
+    }
+
+    setSent(true);
+    setPending(false);
+
     const lines = [
       "Hola, quiero contactar a SOPROTELCO.",
       `Nombre: ${name}`,
@@ -33,22 +59,29 @@ export function ContactComposer({ whatsappNumber, quotedProduct }: ContactCompos
     ].filter((line) => line !== "");
 
     const href = toWhatsAppHref(whatsappNumber, lines.join("\n"));
-    if (!href) {
-      setMissingNumber(true);
-      return;
+    if (href) {
+      window.open(href, "_blank", "noopener,noreferrer");
     }
-
-    window.open(href, "_blank", "noopener,noreferrer");
   }
 
   return (
     <form onSubmit={onSubmit} className="grid gap-6 md:grid-cols-2">
       <div id="contact-availability" role="status" className="rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-900 md:col-span-2">
-        {canSend && !missingNumber
-          ? "Tu mensaje se abre en WhatsApp con los datos que completes. No hace falta crear una cuenta."
-          : "El envío en línea todavía no está disponible. Para atención inmediata, usa el teléfono o el correo de ventas."}
+        Tu mensaje se registra en el buzón de SOPROTELCO con un formato claro y estructurado
+        {whatsappAvailable ? " y también podés abrirlo en WhatsApp." : "."}
         {quotedProduct ? <span className="block pt-2">Producto consultado: {quotedProduct}</span> : null}
       </div>
+
+      {error ? (
+        <p role="alert" className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700 md:col-span-2">
+          {error}
+        </p>
+      ) : null}
+      {sent ? (
+        <p role="status" className="rounded-2xl bg-brand-ice p-4 text-sm font-bold text-brand-navy md:col-span-2">
+          Mensaje registrado. Te contactamos pronto.
+        </p>
+      ) : null}
 
       <label className="space-y-2 text-sm font-black uppercase tracking-wider text-brand-navy">
         Nombre Completo
@@ -77,10 +110,10 @@ export function ContactComposer({ whatsappNumber, quotedProduct }: ContactCompos
       </label>
       <button
         type="submit"
-        className="rounded-full bg-emerald-500 px-8 py-4 text-sm font-black uppercase tracking-widest text-white shadow-xl shadow-emerald-500/20 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300 md:col-span-2"
-        disabled={!canSend}
+        disabled={pending}
+        className="rounded-full bg-brand-blue px-8 py-4 text-sm font-black uppercase tracking-widest text-white shadow-xl shadow-blue-500/20 transition hover:bg-brand-primary disabled:cursor-not-allowed disabled:bg-slate-300 md:col-span-2"
       >
-        Enviar por WhatsApp
+        {pending ? "Enviando…" : whatsappAvailable ? "Enviar y abrir WhatsApp" : "Enviar mensaje"}
       </button>
     </form>
   );

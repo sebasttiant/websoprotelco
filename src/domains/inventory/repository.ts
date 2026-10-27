@@ -2,9 +2,16 @@ import "server-only";
 
 import type { QueryResultRow } from "pg";
 
-import { query } from "@/server/db/pool";
+import { query, withTransaction } from "@/server/db/pool";
 
 import type { StockMovementInput } from "./schemas";
+
+export class InsufficientStockError extends Error {
+  constructor() {
+    super("Stock cannot go below zero.");
+    this.name = "InsufficientStockError";
+  }
+}
 
 export interface StockMovementRow extends QueryResultRow {
   id: string;
@@ -27,20 +34,34 @@ export interface ProductStockRow extends QueryResultRow {
 }
 
 export async function createMovement(input: StockMovementInput, userId: string | null): Promise<void> {
-  await query(
-    `INSERT INTO stock_movements (product_id, movement_type, quantity, notes, user_id)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [input.productId, input.movementType, input.quantity, input.notes ?? null, userId],
-  );
+  // Ledger row + scalar stock must move together. Catalog admin reads products.stock_quantity;
+  // inventory screens used to SUM(stock_movements) alone, so a quick ± that only inserted a
+  // movement left the two screens disagreeing. Keep both writes in one transaction.
+  await withTransaction(async (client) => {
+    await client.query(
+      `INSERT INTO stock_movements (product_id, movement_type, quantity, notes, user_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [input.productId, input.movementType, input.quantity, input.notes ?? null, userId],
+    );
+
+    const rows = await client.query<{ stock_quantity: number }>(
+      `UPDATE products
+       SET stock_quantity = stock_quantity + $2, updated_at = now()
+       WHERE id = $1 AND stock_quantity + $2 >= 0
+       RETURNING stock_quantity`,
+      [input.productId, input.quantity],
+    );
+
+    if (!rows[0]) {
+      throw new InsufficientStockError();
+    }
+  });
 }
 
 export async function findCurrentStock(productId: string): Promise<number> {
-  // `quantity` is INTEGER (int4), but Postgres always computes SUM(integer) as bigint.
-  // Casting that bigint back down to `::int` throws "integer out of range" the moment a
-  // product's cumulative sum crosses the int4 boundary, so we keep it as `::bigint` and
-  // coerce it in JS instead. node-pg returns bigint columns as strings, hence Number(...).
+  // Canonical quantity lives on products.stock_quantity; the ledger is the audit trail.
   const rows = await query<{ current_stock: string | number }>(
-    "SELECT COALESCE(SUM(quantity), 0)::bigint AS current_stock FROM stock_movements WHERE product_id = $1",
+    "SELECT stock_quantity::bigint AS current_stock FROM products WHERE id = $1",
     [productId],
   );
   return Number(rows[0]?.current_stock ?? 0);
@@ -140,28 +161,20 @@ export async function findAllStockLevels(search: string): Promise<ProductStockRo
   const { where, values } = stockSearchClause(search);
 
   return query<ProductStockRow>(
-    `SELECT p.id AS product_id, p.sku, p.name, COALESCE(SUM(m.quantity), 0)::bigint AS current_stock
+    `SELECT p.id AS product_id, p.sku, p.name, p.stock_quantity::bigint AS current_stock
      FROM products p
-     LEFT JOIN stock_movements m ON m.product_id = p.id
      WHERE p.is_active = true ${where}
-     GROUP BY p.id, p.sku, p.name
      ORDER BY p.name ASC`,
     values,
   );
 }
 
 export async function findLowStockProducts(threshold: number): Promise<ProductStockRow[]> {
-  // Same overflow hazard as findCurrentStock: this is a single GROUP BY over ALL active
-  // products, so an `::int` downcast on one overflowing product's sum would throw and take
-  // down the low-stock query — and the whole /admin/inventory page — for every user.
   return query<ProductStockRow>(
-    `SELECT p.id AS product_id, p.sku, p.name, COALESCE(SUM(m.quantity), 0)::bigint AS current_stock
+    `SELECT p.id AS product_id, p.sku, p.name, p.stock_quantity::bigint AS current_stock
      FROM products p
-     LEFT JOIN stock_movements m ON m.product_id = p.id
-     WHERE p.is_active = true
-     GROUP BY p.id, p.sku, p.name
-     HAVING COALESCE(SUM(m.quantity), 0) < $1
-     ORDER BY current_stock ASC, p.name ASC`,
+     WHERE p.is_active = true AND p.stock_quantity < $1
+     ORDER BY p.stock_quantity ASC, p.name ASC`,
     [threshold],
   );
 }

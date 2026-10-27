@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/cart/add-to-cart-button";
 import { CartProductCard } from "@/components/cart/cart-product-card";
 import { ProductImagePlaceholder } from "@/components/catalog/product-image-placeholder";
+import { TaxIncludedNote } from "@/components/catalog/tax-included-note";
 import { WhatsAppCta } from "@/components/catalog/whatsapp-cta";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
@@ -13,6 +14,7 @@ import { Container } from "@/components/ui/container";
 import { RevealImage } from "@/components/ui/reveal-image";
 import { getProductBySlug, getProducts } from "@/domains/catalog";
 import { getDiscountPercent, getEffectivePriceCents, getSafeCatalogImageUrl } from "@/domains/catalog/schemas";
+import { getDocuments, isSafeDocumentHref } from "@/domains/documents";
 import { getSiteSettings } from "@/domains/settings";
 import { buildProductJsonLd } from "@/lib/product-json-ld";
 import { publicSiteUrl } from "@/lib/site-url";
@@ -70,16 +72,19 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   // The catalog has no "related" query, so the same-category listing is reused and the product
   // being viewed is filtered out of its own recommendations.
-  const [settings, categoryProducts, siteUrl] = await Promise.all([
+  const [settings, categoryProducts, siteUrl, productDocuments] = await Promise.all([
     getSiteSettings(),
     getProducts({ categorySlug: product.categorySlug, limit: RELATED_LIMIT + 1 }),
     publicSiteUrl(),
+    getDocuments({ productId: product.id }).catch(() => ({ documents: [], total: 0, page: 1, pageSize: 0 })),
   ]);
   const jsonLd = buildProductJsonLd(product, siteUrl);
   const related = categoryProducts.filter((item) => item.slug !== product.slug).slice(0, RELATED_LIMIT);
   const imageUrl = getSafeCatalogImageUrl(product.imageUrl);
   const discountPercent = getDiscountPercent(product);
   const effectivePriceCents = getEffectivePriceCents(product);
+  const linkedDocuments = productDocuments.documents.filter((doc) => isSafeDocumentHref(doc.filePath));
+  const datasheet = linkedDocuments.find((doc) => doc.category === "datasheet") ?? linkedDocuments[0] ?? null;
 
   return (
     <main className="min-h-screen bg-brand-ice">
@@ -131,18 +136,50 @@ export default async function ProductPage({ params }: ProductPageProps) {
               </h1>
             </div>
             <p className="text-lg font-medium leading-8 text-brand-muted">{product.description || "Producto profesional para redes, fibra óptica y proyectos de conectividad empresarial."}</p>
-            <div className="flex flex-wrap items-baseline gap-x-3">
-              <p className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">
-                {formatCurrency(effectivePriceCents, product.currency)}
-              </p>
-              {discountPercent !== null ? (
-                <s className="text-lg font-bold text-brand-muted">{formatCurrency(product.priceCents, product.currency)}</s>
-              ) : null}
+            <div>
+              <div className="flex flex-wrap items-baseline gap-x-3">
+                <p className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">
+                  {formatCurrency(effectivePriceCents, product.currency)}
+                </p>
+                {discountPercent !== null ? (
+                  <s className="text-lg font-bold text-brand-muted">{formatCurrency(product.priceCents, product.currency)}</s>
+                ) : null}
+              </div>
+              <TaxIncludedNote className="mt-2" />
             </div>
             {product.inStock ? (
-              <div>
+              <div className="flex flex-wrap items-center gap-3">
                 <AddToCartButton id={product.id} slug={product.slug} name={product.name} priceCents={effectivePriceCents} currency="COP" />
+                {datasheet ? (
+                  <a
+                    href={datasheet.filePath}
+                    download={datasheet.fileName}
+                    className="inline-flex items-center justify-center rounded-full border border-brand-blue px-6 py-3 text-xs font-black uppercase tracking-widest text-brand-blue transition hover:bg-brand-ice"
+                  >
+                    Descargar ficha técnica
+                  </a>
+                ) : null}
               </div>
+            ) : datasheet ? (
+              <a
+                href={datasheet.filePath}
+                download={datasheet.fileName}
+                className="inline-flex w-fit items-center justify-center rounded-full border border-brand-blue px-6 py-3 text-xs font-black uppercase tracking-widest text-brand-blue transition hover:bg-brand-ice"
+              >
+                Descargar ficha técnica
+              </a>
+            ) : null}
+            {linkedDocuments.length > 1 ? (
+              <ul className="space-y-2 rounded-2xl border border-brand-line bg-brand-ice/60 p-4">
+                <li className="text-[0.65rem] font-black uppercase tracking-widest text-brand-muted">Documentos del producto</li>
+                {linkedDocuments.map((doc) => (
+                  <li key={doc.id}>
+                    <a href={doc.filePath} download={doc.fileName} className="text-sm font-bold text-brand-blue hover:underline">
+                      {doc.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             ) : null}
             <div className="flex flex-col gap-4 sm:flex-row">
               <Link href={`/contacto?producto=${encodeURIComponent(product.slug)}`} className="rounded-full bg-brand-blue px-8 py-4 text-center text-sm font-black uppercase tracking-widest text-white shadow-glow transition hover:bg-brand-primary">

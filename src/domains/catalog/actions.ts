@@ -85,9 +85,10 @@ function categoryInput(formData: FormData): Record<string, unknown> {
     parentId: stringValue(formData, "parentId") ?? null,
     slug: explicitSlug || slugifyName(name ?? ""),
     name,
+    // Category images are not used on the storefront; omit the upload field and keep null.
+    imageUrl: formData.has("imageUrl") ? stringValue(formData, "imageUrl") : null,
     displayOrder: stringValue(formData, "displayOrder") ?? "0",
   };
-  if (formData.has("imageUrl")) input.imageUrl = stringValue(formData, "imageUrl");
   return input;
 }
 

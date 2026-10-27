@@ -1,3 +1,5 @@
+import { notifyOpsContactMessage, notifyOpsOrderCreated } from "@/server/notifications/ops-mail";
+
 import * as repository from "./repository";
 import type { CustomerQuoteRow, QuoteRow } from "./repository";
 import type {
@@ -76,6 +78,14 @@ export async function submitQuoteRequest(input: ContactRequestInput, userId: str
     message: `[${input.subject}] ${input.message}`,
     userId,
   });
+
+  await notifyOpsContactMessage({
+    name: input.name,
+    email: input.email,
+    phone: input.phone,
+    subject: input.subject,
+    message: input.message,
+  });
 }
 
 /**
@@ -98,6 +108,19 @@ export async function submitCartOrder(input: CartOrderInput, userId: string | nu
     items: input.items,
     expectedUnitPrices: input.expectedUnitPrices,
     acceptPriceRevision: input.acceptPriceRevision,
+  });
+
+  // Always notify the ops mailbox, including WhatsApp-confirmed checkouts: the order is
+  // already persisted server-side before the visitor opens WhatsApp.
+  await notifyOpsOrderCreated({
+    reference,
+    contactName: input.name,
+    contactEmail: input.email,
+    contactPhone: input.phone,
+    notes: input.notes,
+    totalCents,
+    lines,
+    channelHint: "form",
   });
 
   return { reference, totalCents, lines };

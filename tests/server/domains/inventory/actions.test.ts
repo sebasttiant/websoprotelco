@@ -18,6 +18,8 @@ vi.mock("@/server/auth/guards", () => ({
 
 vi.mock("@/server/db/pool", () => ({
   query: mockQuery,
+  withTransaction: async (handler: (client: { query: typeof mockQuery }) => Promise<unknown>) =>
+    handler({ query: mockQuery }),
 }));
 
 vi.mock("next/cache", () => ({
@@ -50,7 +52,7 @@ afterEach(() => {
 describe("recordStockMovement", () => {
   test("requires the inventory:write permission before writing", async () => {
     mockRequirePermission.mockResolvedValue({ id: adminId, email: "admin@soprotelco.test", role: "admin" });
-    mockQuery.mockResolvedValue([]);
+    mockQuery.mockResolvedValueOnce([]).mockResolvedValueOnce([{ stock_quantity: 7 }]);
 
     await expect(
       recordStockMovement(
@@ -59,9 +61,11 @@ describe("recordStockMovement", () => {
     ).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mockRequirePermission).toHaveBeenCalledWith("inventory:write");
-    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain("INSERT INTO stock_movements");
-    expect(values).toEqual([productId, "sale", -3, "Sold at the counter", adminId]);
+    const [insertSql, insertValues] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(insertSql).toContain("INSERT INTO stock_movements");
+    expect(insertValues).toEqual([productId, "sale", -3, "Sold at the counter", adminId]);
+    const [updateSql] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(updateSql).toContain("UPDATE products");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/inventory");
     expect(mockRedirect).toHaveBeenCalledWith("/admin/inventory?success=movement-recorded");
   });

@@ -1,10 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-const { mockGetProductBySlug, mockGetProducts, mockGetSiteSettings } = vi.hoisted(() => ({
+const { mockGetProductBySlug, mockGetProducts, mockGetSiteSettings, mockGetDocuments } = vi.hoisted(() => ({
   mockGetProductBySlug: vi.fn(),
   mockGetProducts: vi.fn(),
   mockGetSiteSettings: vi.fn(),
+  mockGetDocuments: vi.fn(),
 }));
 
 vi.mock("@/domains/catalog", () => ({
@@ -14,6 +15,11 @@ vi.mock("@/domains/catalog", () => ({
 
 vi.mock("@/domains/settings", () => ({
   getSiteSettings: mockGetSiteSettings,
+}));
+
+vi.mock("@/domains/documents", () => ({
+  getDocuments: mockGetDocuments,
+  isSafeDocumentHref: (path: string) => path.startsWith("/documents/"),
 }));
 
 vi.mock("@/components/layout/header", () => ({ Header: () => null }));
@@ -45,6 +51,7 @@ async function renderPage(related: unknown[] = [], productOverrides: Record<stri
   mockGetProductBySlug.mockResolvedValue(product(productOverrides));
   mockGetProducts.mockResolvedValue(related);
   mockGetSiteSettings.mockResolvedValue({ whatsappNumber: "+573001234567" });
+  mockGetDocuments.mockResolvedValue({ documents: [], total: 0, page: 1, pageSize: 20 });
   render(await ProductPage({ params: Promise.resolve({ slug: "fusionadora-x" }) }));
 }
 
@@ -64,6 +71,45 @@ describe("ProductPage", () => {
     await renderPage();
 
     expect(screen.getByRole("button", { name: "Agregar Fusionadora X al carrito" })).toBeInTheDocument();
+  });
+
+  test("shows IVA incluido under the product price", async () => {
+    await renderPage();
+
+    expect(screen.getByText("IVA incluido")).toBeInTheDocument();
+  });
+
+  test("offers a datasheet download when the product has a linked document", async () => {
+    mockGetProductBySlug.mockResolvedValue(product());
+    mockGetProducts.mockResolvedValue([]);
+    mockGetSiteSettings.mockResolvedValue({ whatsappNumber: "+573001234567" });
+    mockGetDocuments.mockResolvedValue({
+      documents: [
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          title: "Ficha VFL",
+          description: null,
+          filePath: "/documents/datasheet/11111111-1111-4111-8111-111111111111_ficha.pdf",
+          fileName: "ficha.pdf",
+          fileSize: 1000,
+          category: "datasheet",
+          productId: "p1",
+          productName: "Fusionadora X",
+          uploadedBy: null,
+          downloadCount: 0,
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    });
+    render(await ProductPage({ params: Promise.resolve({ slug: "fusionadora-x" }) }));
+
+    expect(screen.getByRole("link", { name: "Descargar ficha técnica" })).toHaveAttribute(
+      "href",
+      "/documents/datasheet/11111111-1111-4111-8111-111111111111_ficha.pdf",
+    );
   });
 
   test("offers the visible quote request link with the encoded product slug", async () => {

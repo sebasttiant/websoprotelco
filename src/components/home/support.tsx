@@ -43,7 +43,7 @@ export function Support() {
             const Icon = item.icon;
             return (
               <Reveal key={item.title} delayMs={index * 80}>
-                <article className="rounded-2xl border border-brand-blue/25 bg-white p-6 transition hover:border-brand-blue">
+                <article className="overflow-hidden rounded-2xl border border-brand-blue/25 border-t-4 border-t-brand-fiber bg-white p-6 transition hover:border-brand-blue hover:border-t-brand-fiber">
                   <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-brand-ice text-brand-blue">
                     <Icon aria-hidden="true" className="h-5 w-5" />
                   </div>

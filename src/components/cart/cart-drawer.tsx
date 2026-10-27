@@ -49,7 +49,10 @@ export function CartDrawer({ open, onClose, whatsappNumber }: CartDrawerProps) {
 
     try {
       const state: CartOrderActionState = await submitCartOrder(
-        buildOrderInput(form, items, { acceptPriceRevision }),
+        buildOrderInput(form, items, {
+          acceptPriceRevision,
+          channelHint: channel === "whatsapp" ? "whatsapp" : "form",
+        }),
       );
 
       if (!state.success) {

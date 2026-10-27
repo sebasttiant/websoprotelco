@@ -35,17 +35,25 @@ test.describe("Public route smoke", () => {
         }) as typeof window.open;
       });
       await page.getByRole("button", { name: "Enviar y abrir WhatsApp" }).click();
+      // Server action queues the mailbox notice first; WhatsApp opens only after success.
+      await expect(page.getByText("Mensaje registrado. Te contactamos pronto.")).toBeVisible();
+      await expect
+        .poll(async () =>
+          page.evaluate(
+            () => (window as unknown as { __soprotelcoOpenedUrl?: string }).__soprotelcoOpenedUrl ?? "",
+          ),
+        )
+        .toContain("https://wa.me/573001234567");
       const openedUrl = await page.evaluate(
         () => (window as unknown as { __soprotelcoOpenedUrl?: string }).__soprotelcoOpenedUrl ?? "",
       );
-      expect(openedUrl).toContain("https://wa.me/573001234567");
       expect(openedUrl).toContain(encodeURIComponent("Ada Privada"));
       expect(openedUrl).toContain(encodeURIComponent("Mensaje privado de prueba"));
 
       await expect(page).toHaveURL(contactUrl);
       expect(page.url()).not.toContain("ada.privada@example.test");
       expect(page.url()).not.toContain("Mensaje privado de prueba");
-      await expect(page.getByRole("status")).toContainText(
+      await expect(page.locator("#contact-availability")).toContainText(
         "Tu mensaje se registra en el buzón de SOPROTELCO con un formato claro y estructurado",
       );
 

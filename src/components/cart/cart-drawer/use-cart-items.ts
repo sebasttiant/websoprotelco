@@ -12,6 +12,19 @@ interface CartItems {
   applyServerPrices: (lines: readonly { productId: string; unitPriceCents: number }[]) => void;
 }
 
+/**
+ * Persist now, broadcast after React finishes the current setState work.
+ * A synchronous cart-changed event from inside a setState updater makes every other
+ * useCartItems instance (CartDrawer vs CartContent) call setState mid-render — React 19
+ * rejects that.
+ */
+function persistCart(next: CartItem[]): void {
+  writeCart(next, { notify: false });
+  queueMicrotask(() => {
+    window.dispatchEvent(new Event(cartChangedEventName()));
+  });
+}
+
 /** The persisted cart, kept in step with changes made elsewhere on the page or in other tabs. */
 export function useCartItems(): CartItems {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -33,7 +46,7 @@ export function useCartItems(): CartItems {
 
     setItems((current) => {
       const next = current.map((item) => (item.id === id ? { ...item, quantity: result.quantity } : item));
-      writeCart(next);
+      persistCart(next);
       return next;
     });
     return "";
@@ -42,7 +55,7 @@ export function useCartItems(): CartItems {
   function removeItem(id: string): void {
     setItems((current) => {
       const next = current.filter((item) => item.id !== id);
-      writeCart(next);
+      persistCart(next);
       return next;
     });
   }
@@ -59,7 +72,7 @@ export function useCartItems(): CartItems {
         const unitPriceCents = byId.get(item.id);
         return unitPriceCents === undefined ? item : { ...item, priceCents: unitPriceCents };
       });
-      writeCart(next);
+      persistCart(next);
       return next;
     });
   }

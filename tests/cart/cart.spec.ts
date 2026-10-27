@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("Cart quote preparation", () => {
   test("collects, updates, and removes catalog products without a payment flow", { tag: ["@critical", "@e2e", "@cart", "@CART-E2E-001"] }, async ({ page }) => {
     await page.goto("/productos");
-    await page.getByRole("button", { name: "Agregar" }).first().click();
+    await page.getByRole("button", { name: "Agregar Fusionadora segura al carrito" }).click();
     await expect(page.getByText("Fusionadora segura se agregó al carrito.")).toBeAttached();
 
     // Navigated to directly rather than by clicking the cart icon: that icon now opens the
@@ -47,7 +47,7 @@ test.describe("Cart quote preparation", () => {
     });
 
     await page.goto("/productos");
-    await page.getByRole("button", { name: "Agregar" }).first().click();
+    await page.getByRole("button", { name: "Agregar Fusionadora segura al carrito" }).click();
     await expect(page.getByText("Fusionadora segura se agregó al carrito.")).toBeAttached();
 
     await page.goto("/carrito");
@@ -67,7 +67,7 @@ test.describe("Cart quote preparation", () => {
   // leave rows behind in the database it shares with every other test.
   test("opens the order drawer from the cart icon and reaches the contact step", { tag: ["@critical", "@e2e", "@cart", "@CART-E2E-004"] }, async ({ page }) => {
     await page.goto("/productos");
-    await page.getByRole("button", { name: "Agregar" }).first().click();
+    await page.getByRole("button", { name: "Agregar Fusionadora segura al carrito" }).click();
     await expect(page.getByText("Fusionadora segura se agregó al carrito.")).toBeAttached();
 
     await page.getByRole("link", { name: "Carrito" }).first().click();

@@ -80,8 +80,10 @@ export function readCart(): CartItem[] {
   }
 }
 
-export function writeCart(items: CartItem[]): void {
+export function writeCart(items: CartItem[], options: { notify?: boolean } = {}): void {
   window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  // `notify: false` lets a React state updater persist without waking sibling listeners mid-render.
+  if (options.notify === false) return;
   window.dispatchEvent(new Event(CART_CHANGED_EVENT));
 }
 

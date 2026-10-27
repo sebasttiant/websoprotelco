@@ -10,9 +10,9 @@ Versions are pinned in `package.json`, `.nvmrc`, `Dockerfile` and `.github/workf
 
 | Piece | Version |
 | --- | --- |
-| Node.js `24.22.0` | `.nvmrc`, `engines.node`, Docker base image, CI |
-| pnpm `12.14.0` | `packageManager`, `engines.pnpm`, CI |
-| Next.js `16.4.2` | App Router, `output: "standalone"` |
+| Node.js `24.22.1` | `.nvmrc`, `engines.node`, Docker base image, CI |
+| pnpm `12.16.0` | `packageManager`, `engines.pnpm`, CI |
+| Next.js `16.4.3` | App Router, `output: "standalone"` |
 | React `19.3.1` | with `react-dom` |
 | TypeScript `6.0.3` | kept on 6.x: TypeScript 7 breaks `eslint-config-next`'s peers |
 | PostgreSQL 18 | `postgres:18` in `compose.yaml` and CI |
@@ -29,7 +29,7 @@ pnpm db:migrate
 pnpm dev                      # http://127.0.0.1:8686
 ```
 
-Requirements: Node.js `24.22.0`, pnpm `12.14.0`, Docker with Compose.
+Requirements: Node.js `24.22.1`, pnpm `12.16.0`, Docker with Compose.
 
 The full stack instead: `docker compose up --build` (the `migrate` service runs migrations first). `compose.yaml` gives `STORAGE_PROVIDER` no default on purpose: every `docker compose` command fails, naming the variable, until `STORAGE_PROVIDER=local` is set in `.env` or exported.
 

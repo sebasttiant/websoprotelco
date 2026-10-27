@@ -9,6 +9,7 @@ import { ROLES } from "@/server/auth/rbac";
 export const adminUserSummarySchema = z.object({
   id: z.uuid(),
   email: z.email(),
+  fullName: z.string().nullable(),
   role: z.string(),
   isActive: z.boolean(),
   createdAt: z.string(),
@@ -90,3 +91,34 @@ export const adminCreateUserInputSchema = z.object({
 });
 
 export type AdminCreateUserInput = z.infer<typeof adminCreateUserInputSchema>;
+
+// Admin update: same identity fields as create, plus active flag. Password is optional —
+// blank keeps the existing hash so an admin can change role/status without resetting credentials.
+export const adminUpdateUserInputSchema = z.object({
+  id: z.uuid(),
+  fullName: z.string().trim().min(2, { error: "El nombre es obligatorio." }).max(160),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((value) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value), {
+      error: "Ingresá un correo electrónico válido.",
+    }),
+  role: assignableRoleSchema,
+  isActive: z.boolean(),
+  password: z
+    .string()
+    .max(200)
+    .refine((value) => value === "" || value.length >= ADMIN_MIN_PASSWORD_LENGTH, {
+      error: `La contraseña debe tener al menos ${ADMIN_MIN_PASSWORD_LENGTH} caracteres.`,
+    })
+    .optional(),
+});
+
+export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserInputSchema>;
+
+export const adminDeleteUserInputSchema = z.object({
+  id: z.uuid(),
+});
+
+export type AdminDeleteUserInput = z.infer<typeof adminDeleteUserInputSchema>;

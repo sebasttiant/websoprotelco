@@ -8,7 +8,13 @@ import { z } from "zod";
 
 import { requirePermission, requireSession } from "@/server/auth/guards";
 
-import { adminCreateUserInputSchema, passwordChangeInputSchema, profileUpdateInputSchema } from "./schemas";
+import {
+  adminCreateUserInputSchema,
+  adminDeleteUserInputSchema,
+  adminUpdateUserInputSchema,
+  passwordChangeInputSchema,
+  profileUpdateInputSchema,
+} from "./schemas";
 import * as usersService from "./service";
 
 export interface AccountActionState {
@@ -17,6 +23,10 @@ export interface AccountActionState {
 }
 
 export type CreateUserActionState =
+  | { success: true; message: string }
+  | { success: false; message: string };
+
+export type ManageUserActionState =
   | { success: true; message: string }
   | { success: false; message: string };
 
@@ -66,6 +76,81 @@ export async function createUser(input: unknown): Promise<CreateUserActionState>
   } catch (error) {
     console.error("Admin user creation failed:", error);
     return { success: false, message: "No se pudo crear el usuario." };
+  }
+}
+
+// Admin-only user update. Actor id comes from the session so self-lockout and last-admin
+// guards cannot be bypassed by forging a different actor in the payload.
+export async function updateUser(input: unknown): Promise<ManageUserActionState> {
+  const actor = await requirePermission("admin:access");
+
+  const parsed = adminUpdateUserInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { success: false, message: parsed.error.issues[0]?.message ?? "Revisá los datos ingresados." };
+  }
+
+  try {
+    const outcome = await usersService.updateUser(actor.id, parsed.data);
+
+    if (outcome.status === "email-taken") {
+      return { success: false, message: "Ese correo ya está registrado." };
+    }
+    if (outcome.status === "not-found") {
+      return { success: false, message: "No encontramos ese usuario." };
+    }
+    if (outcome.status === "forbidden-self") {
+      return {
+        success: false,
+        message: "No podés desactivar ni quitarte el rol de administrador a vos mismo.",
+      };
+    }
+    if (outcome.status === "forbidden-last-admin") {
+      return {
+        success: false,
+        message: "Tiene que quedar al menos un administrador activo.",
+      };
+    }
+
+    revalidatePath("/admin/users");
+    return { success: true, message: "Usuario actualizado." };
+  } catch (error) {
+    console.error("Admin user update failed:", error);
+    return { success: false, message: "No se pudo actualizar el usuario." };
+  }
+}
+
+// Admin-only hard delete. Same session-bound actor and last-admin guards as updateUser.
+export async function deleteUser(input: unknown): Promise<ManageUserActionState> {
+  const actor = await requirePermission("admin:access");
+
+  const parsed = adminDeleteUserInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { success: false, message: "Usuario inválido." };
+  }
+
+  try {
+    const outcome = await usersService.deleteUser(actor.id, parsed.data);
+
+    if (outcome.status === "not-found") {
+      return { success: false, message: "No encontramos ese usuario." };
+    }
+    if (outcome.status === "forbidden-self") {
+      return { success: false, message: "No podés eliminarte a vos mismo." };
+    }
+    if (outcome.status === "forbidden-last-admin") {
+      return {
+        success: false,
+        message: "Tiene que quedar al menos un administrador activo.",
+      };
+    }
+
+    revalidatePath("/admin/users");
+    return { success: true, message: "Usuario eliminado." };
+  } catch (error) {
+    console.error("Admin user deletion failed:", error);
+    return { success: false, message: "No se pudo eliminar el usuario." };
   }
 }
 

@@ -2,10 +2,10 @@
   "name": "websoprotelco",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@12.14.0",
+  "packageManager": "pnpm@12.16.0",
   "engines": {
-    "node": "24.22.0",
-    "pnpm": "12.14.0"
+    "node": "24.22.1",
+    "pnpm": "12.16.0"
   },
   "pnpm": {
     "verifyDepsBeforeRun": false
@@ -31,8 +31,8 @@
   },
   "dependencies": {
     "exceljs": "4.4.0",
-    "lucide-react": "1.59.0",
-    "next": "16.4.2",
+    "lucide-react": "1.61.0",
+    "next": "16.4.3",
     "pg": "8.23.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -53,7 +53,7 @@
     "@vitejs/plugin-react": "6.1.2",
     "@vitest/coverage-v8": "5.0.5",
     "eslint": "10.13.0",
-    "eslint-config-next": "16.4.2",
+    "eslint-config-next": "16.4.3",
     "jsdom": "30.1.3",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",

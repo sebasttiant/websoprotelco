@@ -13,7 +13,7 @@ printf 'alpha' > "$WORK/src/nested dir/space name á.pdf"
 printf 'beta' > "$WORK/src/normal.txt"
 ln -s "nested dir/space name á.pdf" "$WORK/src/link to á.pdf"
 
-docker run --rm -v "$WORK/src:/docs:ro" -v "$WORK:/out" node:24.22.0-trixie-slim sh -eu -c '
+docker run --rm -v "$WORK/src:/docs:ro" -v "$WORK:/out" node:24.22.1-trixie-slim sh -eu -c '
   dir=/docs
   tmp=/out/manifest.unsorted
   out=/out/manifest.tsv

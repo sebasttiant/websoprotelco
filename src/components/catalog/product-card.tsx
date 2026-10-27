@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Eye, FileText } from "lucide-react";
 
 import { ProductImagePlaceholder } from "@/components/catalog/product-image-placeholder";
+import { TaxIncludedNote } from "@/components/catalog/tax-included-note";
 import { Badge } from "@/components/ui/badge";
 import { RevealImage } from "@/components/ui/reveal-image";
 import type { ProductSummary } from "@/domains/catalog";
@@ -73,13 +74,16 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-line pt-3">
-          <div className="flex flex-wrap items-baseline gap-x-2">
-            <p className="text-lg font-black text-brand-navy sm:text-xl">
-              {formatCurrency(effectivePriceCents, product.currency)}
-            </p>
-            {discountPercent !== null ? (
-              <s className="text-sm font-bold text-brand-muted">{formatCurrency(product.priceCents, product.currency)}</s>
-            ) : null}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <p className="text-lg font-black text-brand-navy sm:text-xl">
+                {formatCurrency(effectivePriceCents, product.currency)}
+              </p>
+              {discountPercent !== null ? (
+                <s className="text-sm font-bold text-brand-muted">{formatCurrency(product.priceCents, product.currency)}</s>
+              ) : null}
+            </div>
+            <TaxIncludedNote className="mt-1" />
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href={`/contacto?producto=${encodeURIComponent(product.slug)}`} className="inline-flex items-center gap-2 rounded-full border border-brand-blue px-4 py-2 text-xs font-black uppercase tracking-widest text-brand-blue transition hover:bg-brand-ice">

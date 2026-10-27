@@ -1,6 +1,8 @@
 import { Trash2 } from "lucide-react";
 
 import { CART_QUANTITY_LIMIT, type CartItem } from "../cart-storage";
+import { TaxIncludedNote } from "@/components/catalog/tax-included-note";
+
 import { formatCurrency } from "./format";
 
 interface CartLinesProps {
@@ -18,6 +20,7 @@ export function CartLines({ items, onQuantityChange, onRemove, idPrefix = "drawe
         <li key={item.id} className="rounded-2xl border border-brand-line p-4">
           <p className="font-black text-brand-navy">{item.name}</p>
           <p className="text-sm font-bold text-brand-muted">{formatCurrency(item.priceCents)} c/u</p>
+          <TaxIncludedNote className="mt-1" />
           <div className="mt-3 flex items-center gap-3">
             <label htmlFor={`${idPrefix}-qty-${item.id}`} className="text-xs font-black uppercase tracking-widest text-brand-muted">
               Cantidad

@@ -63,10 +63,45 @@ function redirectWithError(pathname: string, code = "action-failed"): never {
   redirect(`${pathname}?error=${code}`);
 }
 
-// Public entry point behind the "/contacto" form. Reachable by unauthenticated visitors,
+export type ContactMessageActionState = { success: true } | { success: false; message: string };
+
+// Public entry point behind the "/contacto" composer. Reachable by guests; returns state so
+// the client can still open WhatsApp after the structured mailbox notification is queued.
+export async function submitContactMessage(input: unknown): Promise<ContactMessageActionState> {
+  const body = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+  const productSlug = typeof body.productSlug === "string" ? body.productSlug.trim() : "";
+  const baseMessage = typeof body.message === "string" ? body.message : "";
+  const message =
+    productSlug !== "" ? `${baseMessage}\n\nProducto consultado: ${productSlug}` : baseMessage;
+
+  const parsed = contactRequestInputSchema.safeParse({
+    name: body.name,
+    email: body.email,
+    phone: body.phone,
+    subject: body.subject,
+    message,
+  });
+
+  if (!parsed.success) {
+    return { success: false, message: "Revisá los datos del formulario e intentá de nuevo." };
+  }
+
+  try {
+    const user = await getCurrentUser();
+    await quoteOrderService.submitQuoteRequest(parsed.data, user?.id ?? null);
+    revalidatePath("/admin/quotes");
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Contact message submission failed:", error);
+    return { success: false, message: "No pudimos registrar tu mensaje. Intentá de nuevo en unos minutos." };
+  }
+}
+
+// Public entry point behind the legacy "/contacto" form post. Reachable by unauthenticated visitors,
 // so it must never gain a requirePermission guard.
 export async function submitContactRequest(formData: FormData): Promise<void> {
-  const parsed = contactRequestInputSchema.safeParse({
+  const result = await submitContactMessage({
     name: stringValue(formData, "name"),
     email: stringValue(formData, "email"),
     phone: stringValue(formData, "phone"),
@@ -74,17 +109,9 @@ export async function submitContactRequest(formData: FormData): Promise<void> {
     message: stringValue(formData, "message"),
   });
 
-  if (!parsed.success) {
+  if (!result.success) {
     redirect("/contacto?error=validation");
   }
-
-  // Resolve the session WITHOUT guarding: getCurrentUser returns null for guests, so
-  // unauthenticated visitors are never rejected. This is ownership binding, not an
-  // access check — an authenticated submission is tied to the session user's id, a
-  // guest submission stays NULL.
-  const user = await getCurrentUser();
-
-  await quoteOrderService.submitQuoteRequest(parsed.data, user?.id ?? null);
 
   redirect("/contacto?sent=1");
 }

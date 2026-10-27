@@ -1,5 +1,7 @@
 import { MessageCircle, Send } from "lucide-react";
 
+import { TaxIncludedNote } from "@/components/catalog/tax-included-note";
+
 import type { CartTotalResult } from "../cart-storage";
 import { formatCurrency } from "./format";
 import type { Step } from "./types";
@@ -20,8 +22,11 @@ export function DrawerFooter({ step, total, canSubmit, pending, hasWhatsapp, onC
 
   return (
     <footer className="border-t border-brand-line px-6 py-5">
-      <div className="flex items-center justify-between">
-        <span className="text-lg font-black text-brand-navy">Subtotal</span>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <span className="text-lg font-black text-brand-navy">Subtotal</span>
+          <TaxIncludedNote className="mt-0.5" />
+        </div>
         {total.valid ? (
           <output className="text-lg font-black text-brand-navy">{formatCurrency(total.totalCents)}</output>
         ) : (

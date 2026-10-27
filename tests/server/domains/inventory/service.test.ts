@@ -7,6 +7,8 @@ const { mockQuery } = vi.hoisted(() => ({
 
 vi.mock("@/server/db/pool", () => ({
   query: mockQuery,
+  withTransaction: async (handler: (client: { query: typeof mockQuery }) => Promise<unknown>) =>
+    handler({ query: mockQuery }),
 }));
 
 import {
@@ -26,21 +28,26 @@ afterEach(() => {
 });
 
 describe("recordMovement", () => {
-  test("inserts a stock movement bound to the acting user", async () => {
-    mockQuery.mockResolvedValue([]);
+  test("inserts a stock movement and updates products.stock_quantity together", async () => {
+    mockQuery.mockResolvedValueOnce([]).mockResolvedValueOnce([{ stock_quantity: 7 }]);
 
     await recordMovement(
       { productId, movementType: "sale", quantity: -3, notes: "Sold at the counter" },
       userId,
     );
 
-    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain("INSERT INTO stock_movements");
-    expect(values).toEqual([productId, "sale", -3, "Sold at the counter", userId]);
+    const [insertSql, insertValues] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(insertSql).toContain("INSERT INTO stock_movements");
+    expect(insertValues).toEqual([productId, "sale", -3, "Sold at the counter", userId]);
+
+    const [updateSql, updateValues] = mockQuery.mock.calls[1] as [string, unknown[]];
+    expect(updateSql).toContain("UPDATE products");
+    expect(updateSql).toContain("stock_quantity = stock_quantity + $2");
+    expect(updateValues).toEqual([productId, -3]);
   });
 
   test("defaults missing notes to null", async () => {
-    mockQuery.mockResolvedValue([]);
+    mockQuery.mockResolvedValueOnce([]).mockResolvedValueOnce([{ stock_quantity: 20 }]);
 
     await recordMovement({ productId, movementType: "purchase", quantity: 20 }, null);
 
@@ -50,16 +57,15 @@ describe("recordMovement", () => {
 });
 
 describe("getCurrentStock", () => {
-  test("returns the summed stock for a product", async () => {
+  test("returns products.stock_quantity for a product", async () => {
     mockQuery.mockResolvedValue([{ current_stock: 7 }]);
 
     const stock = await getCurrentStock(productId);
 
     expect(stock).toBe(7);
     const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain("SUM(quantity)");
-    expect(sql).toContain("::bigint");
-    expect(sql).not.toContain("SUM(quantity), 0)::int");
+    expect(sql).toContain("stock_quantity");
+    expect(sql).not.toContain("SUM(quantity)");
     expect(values).toEqual([productId]);
   });
 
@@ -147,9 +153,8 @@ describe("getLowStockProducts", () => {
 
     expect(result).toEqual([{ productId, sku: "SKU-1", name: "Fiber Router", currentStock: 3 }]);
     const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
-    expect(sql).toContain("HAVING COALESCE(SUM(m.quantity), 0) < $1");
-    expect(sql).toContain("::bigint");
-    expect(sql).not.toContain("SUM(m.quantity), 0)::int");
+    expect(sql).toContain("p.stock_quantity < $1");
+    expect(sql).not.toContain("SUM(m.quantity)");
     expect(values).toEqual([10]);
   });
 

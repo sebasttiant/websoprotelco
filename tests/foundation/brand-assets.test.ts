@@ -42,7 +42,8 @@ describe("brand asset safety contract", () => {
 
     for (const svg of [lightSvg, darkSvg]) {
       expect(svg).toContain('viewBox="0 0 394 238"');
-      expect(svg).toContain('fill="#0f4c81"');
+      // Fiber cue: only the logo checkmark is yellow (meeting 27-10-2026).
+      expect(svg).toContain('fill="#F5C400"');
       expect(svg).not.toMatch(/<image|data:image|base64/i);
     }
     expect(darkSvg).toContain('fill="#7cf3ff"');
@@ -55,6 +56,7 @@ describe("brand asset safety contract", () => {
     expect(globalsCss).toContain("--color-brand-primary: #0f4c81");
     expect(globalsCss).toContain("--color-brand-blue: #1b6eac");
     expect(globalsCss).toContain("--color-brand-accent: #06d3f9");
+    expect(globalsCss).toContain("--color-brand-fiber: #f5c400");
     expect(globalsCss).toContain("--font-sans: var(--font-inter)");
   });
 

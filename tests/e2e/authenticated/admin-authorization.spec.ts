@@ -294,9 +294,9 @@ test.describe("admin", () => {
       };
 
       try {
-        // Catalog image: reached through the category form, which embeds the upload field.
-        await page.goto("/admin/categories/new");
-        await expect(page.getByRole("heading", { name: "Nueva categoría" })).toBeVisible();
+        // Catalog image: product form embeds the upload field (category images were removed).
+        await page.goto("/admin/products/new");
+        await expect(page.getByRole("heading", { name: "Nuevo producto" })).toBeVisible();
         const catalogUpload = page.waitForResponse((r) => r.url().endsWith("/api/upload") && r.request().method() === "POST");
         await page.getByLabel("Subir imagen").setInputFiles({ name: "e2e.png", mimeType: "image/png", buffer: PNG_BYTES });
         const catalogResponse = await catalogUpload;

@@ -9,6 +9,11 @@ vi.mock("@/server/db/pool", () => ({
   query: mockQuery,
 }));
 
+vi.mock("@/server/notifications/ops-mail", () => ({
+  notifyOpsContactMessage: vi.fn(async () => undefined),
+  notifyOpsOrderCreated: vi.fn(async () => undefined),
+}));
+
 import { getQuotes, getQuotesForUser, submitQuoteRequest, updateQuoteStatus } from "@/domains/quote-order/service";
 
 const quoteId = "33333333-3333-4333-8333-333333333333";

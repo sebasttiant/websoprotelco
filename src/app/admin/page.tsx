@@ -10,7 +10,6 @@ import {
   Settings,
   ShoppingBag,
   TrendingUp,
-  Upload,
 } from "lucide-react";
 
 import { StatCard } from "@/components/admin/stat-card";
@@ -169,13 +168,6 @@ export default async function AdminDashboardPage() {
               >
                 <Plus aria-hidden="true" className="h-4 w-4" />
                 Nuevo producto
-              </Link>
-              <Link
-                href="/admin/products/import"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-brand-line px-5 py-2.5 text-xs font-black uppercase tracking-widest text-brand-navy transition hover:border-brand-accent"
-              >
-                <Upload aria-hidden="true" className="h-4 w-4" />
-                Importar CSV
               </Link>
               <Link
                 href="/admin/categories"

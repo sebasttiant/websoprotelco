@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Minus, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { ExternalLink, Minus, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { DataTable, type DataTableColumn } from "@/components/admin/data-table";
@@ -17,7 +17,6 @@ import {
   adminLead,
   adminPage,
   adminPrimaryBtn,
-  adminSecondaryBtn,
   adminSelect,
   adminTitle,
 } from "@/components/admin/ui";
@@ -202,13 +201,9 @@ export default async function AdminProductsPage({ searchParams }: ProductsPagePr
         <div className="min-w-0">
           <p className={adminEyebrow}>Catálogo</p>
           <h1 className={adminTitle}>Productos</h1>
-          <p className={adminLead}>Miniaturas, stock rápido e importación CSV para catálogos grandes.</p>
+          <p className={adminLead}>Miniaturas, stock rápido y gestión del catálogo.</p>
         </div>
         <div className={adminActions}>
-          <Link href="/admin/products/import" className={adminSecondaryBtn}>
-            <Upload aria-hidden="true" className="h-4 w-4" />
-            Importar CSV
-          </Link>
           <Link href="/admin/products/new" className={adminPrimaryBtn}>
             Nuevo producto
           </Link>

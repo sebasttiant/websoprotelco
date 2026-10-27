@@ -35,6 +35,11 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
 }));
 
+vi.mock("@/server/notifications/ops-mail", () => ({
+  notifyOpsContactMessage: vi.fn(async () => undefined),
+  notifyOpsOrderCreated: vi.fn(async () => undefined),
+}));
+
 import { createAdminOrder, submitCartOrder } from "@/domains/quote-order/actions";
 
 const productId = "11111111-1111-4111-8111-111111111111";

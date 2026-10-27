@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getCategoryByIdForAdmin, getCategoryOptionsExcluding, updateCategory } from "@/domains/catalog";
-import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { isUuid } from "@/lib/uuid";
 import { requirePermission } from "@/server/auth/guards";
 
@@ -47,7 +46,6 @@ export default async function EditCategoryPage({ params, searchParams }: EditCat
         <label className="grid gap-2 text-sm font-bold text-slate-700">Nombre<input name="name" required defaultValue={category.name} className={inputClass} /></label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">Slug<input name="slug" required defaultValue={category.slug} className={inputClass} /></label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">Categoría padre<select name="parentId" defaultValue={category.parentId ?? ""} className={inputClass}><option value="">Sin categoría padre</option>{categories.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label>
-        <ImageUploadField name="imageUrl" label="Imagen de la categoría" defaultValue={category.imageUrl} />
         <label className="grid gap-2 text-sm font-bold text-slate-700">Orden de visualización<input name="displayOrder" type="number" min="0" defaultValue={category.displayOrder} className={inputClass} /></label>
         <button type="submit" className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white">Actualizar categoría</button>
       </form>

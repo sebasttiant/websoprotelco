@@ -25,10 +25,12 @@ export { isQuoteKind, isQuoteStatus, QUOTE_KINDS, QUOTE_STATUSES } from "./schem
 export {
   createAdminOrder,
   submitCartOrder,
+  submitContactMessage,
   submitContactRequest,
   updateQuoteStatus,
   type AdminActionState,
   type CartOrderActionState,
+  type ContactMessageActionState,
 } from "./actions";
 
 export { getQuoteDashboardCounts, getQuotes, getQuotesForUser } from "./service";

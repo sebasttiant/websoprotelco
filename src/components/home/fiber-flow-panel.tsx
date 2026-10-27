@@ -141,7 +141,7 @@ export function FiberFlowPanel() {
                 type="button"
                 onClick={startRun}
                 disabled={running}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-blue px-3.5 py-2 text-[0.65rem] font-black uppercase tracking-widest text-white transition hover:bg-brand-primary disabled:cursor-not-allowed disabled:opacity-55"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-fiber px-3.5 py-2 text-[0.65rem] font-black uppercase tracking-widest text-brand-navy transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-55"
               >
                 <Play aria-hidden="true" className="size-3.5 fill-current" />
                 Ejecutar
@@ -151,7 +151,7 @@ export function FiberFlowPanel() {
 
           <div className="h-1 bg-brand-ice" aria-hidden="true">
             <div
-              className="h-full bg-brand-blue transition-[width] duration-500 ease-out"
+              className="h-full bg-brand-fiber transition-[width] duration-500 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -205,7 +205,7 @@ export function FiberFlowPanel() {
                       </span>
                       <span
                         className={`ml-auto size-2 shrink-0 rounded-full md:hidden ${
-                          isActive ? "bg-brand-blue" : "bg-brand-line"
+                          isActive ? "bg-brand-fiber" : "bg-brand-line"
                         }`}
                         aria-hidden="true"
                       />
@@ -218,7 +218,7 @@ export function FiberFlowPanel() {
                       >
                         <span
                           className={`absolute inset-x-0 top-0 w-full transition-all duration-500 ${
-                            isDone || (running && isActive) ? "h-full bg-brand-blue" : "h-0"
+                            isDone || (running && isActive) ? "h-full bg-brand-fiber" : "h-0"
                           }`}
                         />
                       </div>
@@ -231,7 +231,7 @@ export function FiberFlowPanel() {
                       >
                         <span
                           className={`absolute inset-y-0 left-0 h-full transition-all duration-500 ease-out ${
-                            isDone || (running && isActive) ? "w-full bg-brand-blue" : "w-0"
+                            isDone || (running && isActive) ? "w-full bg-brand-fiber" : "w-0"
                           }`}
                         />
                       </div>

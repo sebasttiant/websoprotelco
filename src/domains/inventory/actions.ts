@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { requirePermission } from "@/server/auth/guards";
 
+import { InsufficientStockError } from "./repository";
 import { stockMovementInputSchema } from "./schemas";
 import * as inventoryService from "./service";
 
@@ -61,6 +62,9 @@ export async function recordStockMovement(formData: FormData): Promise<Inventory
       returnTo.startsWith("/admin/") && !returnTo.startsWith("//") ? returnTo.split("?")[0] : "/admin/inventory";
     redirect(`${safeReturn}?success=movement-recorded`);
   } catch (error) {
+    if (error instanceof InsufficientStockError) {
+      return { success: false, message: "El stock no puede quedar por debajo de cero." };
+    }
     return errorState(error);
   }
 }

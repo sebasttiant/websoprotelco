@@ -360,11 +360,14 @@ export async function insertProduct(input: ProductAdminInput): Promise<void> {
 export async function upsertProductBySku(input: ProductAdminInput): Promise<"inserted" | "updated"> {
   const existing = await query<{ id: string }>("SELECT id FROM products WHERE lower(sku) = lower($1) LIMIT 1", [input.sku]);
   if (existing[0]) {
+    // CSV (and any caller of upsert) either supplies an explicit promo or null. Never keep a
+    // prior discount just because it still sits under the new list price — that silently sells
+    // at an old promotion after a price-list refresh.
     await query(
       `UPDATE products
        SET category_id = $2, slug = $3, name = $4, description = $5, price_cents = $6,
            currency = $7, brand = $8, stock_quantity = $9, is_active = $10, updated_at = now(),
-           promo_price_cents = CASE WHEN promo_price_cents IS NOT NULL AND promo_price_cents < $6 THEN promo_price_cents ELSE NULL END
+           promo_price_cents = $11
        WHERE id = $1`,
       [
         existing[0].id,
@@ -377,6 +380,7 @@ export async function upsertProductBySku(input: ProductAdminInput): Promise<"ins
         input.brand,
         input.stockQuantity,
         input.isActive,
+        input.promoPriceCents,
       ],
     );
     return "updated";

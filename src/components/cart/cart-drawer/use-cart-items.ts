@@ -8,6 +8,8 @@ interface CartItems {
   changeQuantity: (id: string, rawValue: string) => string;
   removeItem: (id: string) => void;
   clear: () => void;
+  /** Aligns local unit prices with a server-priced snapshot after a disclosure. */
+  applyServerPrices: (lines: readonly { productId: string; unitPriceCents: number }[]) => void;
 }
 
 /** The persisted cart, kept in step with changes made elsewhere on the page or in other tabs. */
@@ -50,5 +52,17 @@ export function useCartItems(): CartItems {
     setItems([]);
   }
 
-  return { items, changeQuantity, removeItem, clear };
+  function applyServerPrices(lines: readonly { productId: string; unitPriceCents: number }[]): void {
+    const byId = new Map(lines.map((line) => [line.productId, line.unitPriceCents]));
+    setItems((current) => {
+      const next = current.map((item) => {
+        const unitPriceCents = byId.get(item.id);
+        return unitPriceCents === undefined ? item : { ...item, priceCents: unitPriceCents };
+      });
+      writeCart(next);
+      return next;
+    });
+  }
+
+  return { items, changeQuantity, removeItem, clear, applyServerPrices };
 }

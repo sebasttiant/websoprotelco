@@ -44,7 +44,11 @@ function resolvePromoPriceCents(formData: FormData): number | null {
   }
   const centsRaw = stringValue(formData, "promoPriceCents");
   if (centsRaw === undefined || centsRaw.trim() === "") return null;
-  return Number.parseInt(centsRaw, 10);
+  // Strict digits only: parseInt("199junk") / parseInt("199.99") would silently become 199
+  // and pass the integer schema. Hand the raw token to Zod when it is not a whole number.
+  const trimmed = centsRaw.trim();
+  if (!/^\d+$/.test(trimmed)) return trimmed;
+  return Number.parseInt(trimmed, 10);
 }
 
 function resolveSlug(formData: FormData): string {

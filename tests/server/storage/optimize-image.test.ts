@@ -3,8 +3,11 @@ import { describe, expect, test } from "vitest";
 import sharp from "sharp";
 
 import {
+  ImageProcessingError,
+  isWithinSourcePixelBudget,
   MAX_DESIGN_IMAGE_DIMENSION,
   MAX_IMAGE_DIMENSION,
+  MAX_SOURCE_PIXELS,
   OPTIMIZED_IMAGE_CONTENT_TYPE,
   optimizeDesignImage,
   optimizeProductImage,
@@ -76,6 +79,19 @@ describe("optimizeProductImage", () => {
 
     // sharp exposes EXIF as a Buffer when present; the re-encode drops it.
     expect(meta.exif).toBeUndefined();
+  });
+
+  test("returns a handled error for a truncated payload with a valid PNG prefix", async () => {
+    const png = await makePng(200, 200);
+    const truncated = Buffer.from(png.subarray(0, 24));
+
+    await expect(optimizeProductImage(truncated)).rejects.toBeInstanceOf(ImageProcessingError);
+  });
+
+  test("pixel budget refuses absurd source dimensions without allocating them", () => {
+    expect(isWithinSourcePixelBudget(4000, 3000)).toBe(true);
+    expect(isWithinSourcePixelBudget(10_000, 10_000)).toBe(false);
+    expect(10_000 * 10_000).toBeGreaterThan(MAX_SOURCE_PIXELS);
   });
 });
 

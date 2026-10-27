@@ -31,11 +31,12 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ open, onClose, whatsappNumber }: CartDrawerProps) {
-  const { items, changeQuantity, removeItem, clear } = useCartItems();
+  const { items, changeQuantity, removeItem, clear, applyServerPrices } = useCartItems();
   const [step, setStep] = useState<Step>("cart");
   const [form, setForm] = useState<ContactForm>(EMPTY_FORM);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [acceptPriceRevision, setAcceptPriceRevision] = useState(false);
   const [confirmed, setConfirmed] = useState<ConfirmedOrder | null>(null);
   const [whatsappHref, setWhatsappHref] = useState("");
   const closeButtonRef = useDrawerBehavior(open, onClose);
@@ -46,25 +47,36 @@ export function CartDrawer({ open, onClose, whatsappNumber }: CartDrawerProps) {
     setPending(true);
     setError("");
 
-    const state: CartOrderActionState = await submitCartOrder(buildOrderInput(form, items));
+    try {
+      const state: CartOrderActionState = await submitCartOrder(
+        buildOrderInput(form, items, { acceptPriceRevision }),
+      );
 
-    setPending(false);
+      if (!state.success) {
+        if ("code" in state && state.code === "price-changed") {
+          applyServerPrices(state.lines);
+          setAcceptPriceRevision(true);
+        }
+        setError(state.message);
+        return;
+      }
 
-    if (!state.success) {
-      setError(state.message);
-      return;
-    }
+      // The order is recorded; the cart has done its job. WhatsApp is an extra channel offered
+      // as a link on the confirmation, never a precondition for the order existing.
+      clear();
+      setAcceptPriceRevision(false);
+      setConfirmed({ reference: state.reference, totalCents: state.totalCents });
+      setStep("done");
 
-    // The order is recorded; the cart has done its job. WhatsApp is an extra channel offered
-    // as a link on the confirmation, never a precondition for the order existing.
-    clear();
-    setConfirmed({ reference: state.reference, totalCents: state.totalCents });
-    setStep("done");
-
-    if (channel === "whatsapp") {
-      setWhatsappHref(buildWhatsappHref(whatsappNumber, state.reference, state.totalCents, items));
-    } else {
-      setWhatsappHref("");
+      if (channel === "whatsapp") {
+        setWhatsappHref(buildWhatsappHref(whatsappNumber, state.reference, state.totalCents, state.lines));
+      } else {
+        setWhatsappHref("");
+      }
+    } catch {
+      setError("No pudimos registrar tu pedido. Intentá de nuevo en unos minutos.");
+    } finally {
+      setPending(false);
     }
   }
 
@@ -74,6 +86,7 @@ export function CartDrawer({ open, onClose, whatsappNumber }: CartDrawerProps) {
     setConfirmed(null);
     setWhatsappHref("");
     setError("");
+    setAcceptPriceRevision(false);
     onClose();
   }
 

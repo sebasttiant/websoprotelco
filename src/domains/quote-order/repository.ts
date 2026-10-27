@@ -66,6 +66,8 @@ export interface NewOrder {
   message: string;
   userId: string | null;
   items: readonly CartOrderItemInput[];
+  expectedUnitPrices?: readonly { productId: string; unitPriceCents: number }[];
+  acceptPriceRevision?: boolean;
 }
 
 interface PricedProductRow extends QueryResultRow {
@@ -85,6 +87,21 @@ export class UnavailableProductError extends Error {
   }
 }
 
+export class PriceChangedError extends Error {
+  readonly lines: readonly { productId: string; name: string; quantity: number; unitPriceCents: number }[];
+  readonly totalCents: number;
+
+  constructor(
+    lines: readonly { productId: string; name: string; quantity: number; unitPriceCents: number }[],
+    totalCents: number,
+  ) {
+    super("One or more cart prices no longer match the catalog.");
+    this.name = "PriceChangedError";
+    this.lines = lines;
+    this.totalCents = totalCents;
+  }
+}
+
 /**
  * Writes an order and its line items atomically, pricing every line from the PRODUCTS TABLE.
  *
@@ -95,7 +112,9 @@ export class UnavailableProductError extends Error {
  * Inactive and unknown products are rejected outright rather than skipped: silently dropping a
  * line would confirm an order the customer never placed, for less than they asked for.
  */
-export async function insertOrder(input: NewOrder): Promise<{ id: string; totalCents: number }> {
+export async function insertOrder(
+  input: NewOrder,
+): Promise<{ id: string; totalCents: number; lines: { productId: string; name: string; quantity: number; unitPriceCents: number }[] }> {
   return withTransaction(async (client) => {
     const productIds = input.items.map((item) => item.productId);
 
@@ -115,6 +134,35 @@ export async function insertOrder(input: NewOrder): Promise<{ id: string; totalC
       throw new UnavailableProductError();
     }
 
+    const lines = input.items.map((item) => {
+      const product = pricing.get(item.productId)!;
+      return {
+        productId: item.productId,
+        name: product.name,
+        quantity: item.quantity,
+        unitPriceCents: Number(product.price_cents),
+      };
+    });
+
+    let totalCents = 0;
+    for (const line of lines) {
+      const lineCents = line.unitPriceCents * line.quantity;
+      totalCents += lineCents;
+      if (!Number.isSafeInteger(lineCents) || !Number.isSafeInteger(totalCents)) {
+        throw new Error("Order total is not representable.");
+      }
+    }
+
+    // Disclosure gate: if the cart still shows a stale unit price and the customer has not
+    // accepted the revision, abort BEFORE inserting so WhatsApp/confirmation never disagree.
+    if (input.expectedUnitPrices && input.expectedUnitPrices.length > 0 && !input.acceptPriceRevision) {
+      const expected = new Map(input.expectedUnitPrices.map((row) => [row.productId, row.unitPriceCents]));
+      const changed = lines.some((line) => expected.get(line.productId) !== line.unitPriceCents);
+      if (changed) {
+        throw new PriceChangedError(lines, totalCents);
+      }
+    }
+
     const orderRows = await client.query<InsertedOrderRow>(
       `INSERT INTO quote_requests (reference, kind, contact_name, contact_email, contact_phone, message, user_id)
        VALUES ($1, 'order', $2, $3, $4, $5, $6)
@@ -127,30 +175,15 @@ export async function insertOrder(input: NewOrder): Promise<{ id: string; totalC
       throw new Error("Order insert returned no id.");
     }
 
-    let totalCents = 0;
-
-    for (const item of input.items) {
-      // Non-null: the size check above proves every id resolved.
-      const product = pricing.get(item.productId)!;
-      const unitPriceCents = Number(product.price_cents);
-
-      const lineCents = unitPriceCents * item.quantity;
-      totalCents += lineCents;
-
-      // Mirrors the cart's overflow guard. Past this range IEEE-754 rounds silently, and a
-      // rounded order total is a wrong invoice. Throwing rolls the whole order back.
-      if (!Number.isSafeInteger(lineCents) || !Number.isSafeInteger(totalCents)) {
-        throw new Error("Order total is not representable.");
-      }
-
+    for (const line of lines) {
       await client.query(
         `INSERT INTO quote_request_items (quote_request_id, product_id, description, quantity, unit_price_cents, product_name)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [orderId, item.productId, product.name, item.quantity, unitPriceCents, product.name],
+        [orderId, line.productId, line.name, line.quantity, line.unitPriceCents, line.name],
       );
     }
 
-    return { id: orderId, totalCents };
+    return { id: orderId, totalCents, lines };
   });
 }
 

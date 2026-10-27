@@ -88,7 +88,7 @@ export async function submitQuoteRequest(input: ContactRequestInput, userId: str
 export async function submitCartOrder(input: CartOrderInput, userId: string | null): Promise<CartOrderResult> {
   const reference = createReference();
 
-  const { totalCents } = await repository.insertOrder({
+  const { totalCents, lines } = await repository.insertOrder({
     reference,
     contactName: input.name,
     contactEmail: input.email,
@@ -96,9 +96,11 @@ export async function submitCartOrder(input: CartOrderInput, userId: string | nu
     message: input.notes,
     userId,
     items: input.items,
+    expectedUnitPrices: input.expectedUnitPrices,
+    acceptPriceRevision: input.acceptPriceRevision,
   });
 
-  return { reference, totalCents };
+  return { reference, totalCents, lines };
 }
 
 export async function getQuotes(filters: QuoteListFilters = {}): Promise<QuoteSummary[]> {

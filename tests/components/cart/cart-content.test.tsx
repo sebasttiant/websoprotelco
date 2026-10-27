@@ -38,9 +38,37 @@ describe("CartContent checkout", () => {
     expect(screen.getByRole("button", { name: /confirmar pedido por whatsapp/i })).toBeInTheDocument();
   });
 
+  test("restores the submit controls when the order action rejects", async () => {
+    writeCart([FUSIONADORA]);
+    submitCartOrder.mockRejectedValue(new Error("network down"));
+    const user = userEvent.setup();
+    render(<CartContent whatsappNumber="+57 300 123 4567" />);
+
+    await user.type(await screen.findByLabelText("Nombre"), "Juan Pérez");
+    await user.type(screen.getByLabelText("Correo"), "juan@ejemplo.com");
+    await user.type(screen.getByLabelText("Teléfono"), "3001234567");
+    await user.click(screen.getByRole("button", { name: /enviar pedido por formulario/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/no pudimos registrar tu pedido/i);
+    expect(screen.getByRole("button", { name: /enviar pedido por formulario/i })).toBeEnabled();
+    expect(readCart()).toEqual([FUSIONADORA]);
+  });
+
   test("records the order through the form channel and confirms with its reference", async () => {
     writeCart([FUSIONADORA]);
-    submitCartOrder.mockResolvedValue({ success: true, reference: "WEB-2026-0007", totalCents: 3000000 });
+    submitCartOrder.mockResolvedValue({
+      success: true,
+      reference: "WEB-2026-0007",
+      totalCents: 3000000,
+      lines: [
+        {
+          productId: FUSIONADORA.id,
+          name: FUSIONADORA.name,
+          quantity: 2,
+          unitPriceCents: FUSIONADORA.priceCents,
+        },
+      ],
+    });
     const user = userEvent.setup();
     render(<CartContent whatsappNumber="+57 300 123 4567" />);
 
@@ -56,6 +84,7 @@ describe("CartContent checkout", () => {
       expect.objectContaining({
         name: "Juan Pérez",
         items: [{ productId: FUSIONADORA.id, quantity: 2 }],
+        expectedUnitPrices: [{ productId: FUSIONADORA.id, unitPriceCents: FUSIONADORA.priceCents }],
       }),
     );
   });

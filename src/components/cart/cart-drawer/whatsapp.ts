@@ -1,4 +1,5 @@
-import type { CartItem } from "../cart-storage";
+import type { PricedOrderLine } from "@/domains/quote-order/schemas";
+
 import { formatCurrency } from "./format";
 
 // wa.me accepts digits only — no plus sign, spaces or dashes.
@@ -11,17 +12,18 @@ export function buildWhatsappHref(
   whatsappNumber: string,
   reference: string,
   totalCents: number,
-  items: readonly CartItem[],
+  lines: readonly Pick<PricedOrderLine, "name" | "quantity" | "unitPriceCents">[],
 ): string {
   const number = toWaNumber(whatsappNumber);
   if (!number) return "";
 
-  const lines = items.map(
-    (item) => `${item.quantity} × ${item.name} — ${formatCurrency(item.priceCents * item.quantity)}`,
+  // Line amounts come from the server-priced order, never from the stale cart copy.
+  const messageLines = lines.map(
+    (line) => `${line.quantity} × ${line.name} — ${formatCurrency(line.unitPriceCents * line.quantity)}`,
   );
   const message = [
     `Hola, confirmo mi pedido ${reference}:`,
-    ...lines,
+    ...messageLines,
     `Total: ${formatCurrency(totalCents)}`,
     "Quedo atento para coordinar pago y entrega.",
   ].join("\n");

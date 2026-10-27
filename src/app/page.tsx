@@ -23,9 +23,14 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  // Promotions are optional storefront chrome: a transient query failure must not 500 the home
+  // page. Everything else still fails closed through the route.
   const [featuredProducts, promotedProducts, categories, settings, siteUrl] = await Promise.all([
     getFeaturedProducts(6),
-    getPromotedProducts(4),
+    getPromotedProducts(4).catch((error) => {
+      console.error("Promoted products query failed; rendering home without that section.", error);
+      return [];
+    }),
     getCategories(),
     getSiteSettings(),
     publicSiteUrl(),

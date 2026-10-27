@@ -27,7 +27,7 @@ export function Support() {
     <section className="bg-brand-ice pb-16 pt-14 sm:pb-20 sm:pt-16">
       <Container>
         <div className="mb-10 text-center">
-          <p className="mx-auto mb-3 inline-flex rounded-full border border-brand-blue/25 bg-white px-4 py-1.5 text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">
+          <p className="mx-auto mb-3 inline-flex rounded-full border border-brand-fiber/40 bg-white px-4 py-1.5 text-[0.65rem] font-black uppercase tracking-widest text-brand-navy">
             Respaldo total
           </p>
           <h2 className="text-balance text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">
@@ -43,11 +43,16 @@ export function Support() {
             const Icon = item.icon;
             return (
               <Reveal key={item.title} delayMs={index * 80}>
-                <article className="rounded-2xl border border-brand-blue/25 bg-white p-6 transition hover:border-brand-blue">
-                  <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-brand-ice text-brand-blue">
+                <article className="group relative h-full overflow-hidden rounded-2xl border border-brand-line bg-white p-6 pt-7 transition duration-300 hover:-translate-y-0.5 hover:border-brand-fiber/55 hover:shadow-[0_16px_36px_-18px_rgb(12_26_42_/_28%)]">
+                  {/* Fiber accent — same cue as IL Asesorías / ops mail, not a full yellow theme. */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-0 top-0 h-1.5 bg-brand-fiber transition-[height] duration-300 group-hover:h-2"
+                  />
+                  <div className="mb-4 grid h-12 w-12 place-items-center rounded-xl border border-brand-fiber/25 bg-brand-ice text-brand-blue transition group-hover:border-brand-fiber/50 group-hover:text-brand-navy">
                     <Icon aria-hidden="true" className="h-5 w-5" />
                   </div>
-                  <h3 className="mb-2 text-lg font-black text-brand-navy">{item.title}</h3>
+                  <h3 className="mb-2 text-lg font-black tracking-tight text-brand-navy">{item.title}</h3>
                   <p className="text-sm font-medium leading-6 text-brand-muted">{item.text}</p>
                 </article>
               </Reveal>
@@ -55,8 +60,9 @@ export function Support() {
           })}
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-6 overflow-hidden rounded-3xl border-2 border-brand-blue bg-white p-7 text-center md:flex-row md:p-9 md:text-left">
-          <div className="min-w-0">
+        <div className="relative mt-12 flex flex-col items-center justify-between gap-6 overflow-hidden rounded-3xl border border-brand-line bg-white p-7 text-center md:flex-row md:p-9 md:text-left">
+          <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5 bg-brand-fiber" />
+          <div className="min-w-0 pt-1">
             <h3 className="text-xl font-black tracking-tight text-brand-navy sm:text-2xl">
               ¿Necesitas una cotización corporativa?
             </h3>

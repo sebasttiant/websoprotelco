@@ -86,6 +86,7 @@ describe("buildOrderInput", () => {
         { productId: "b", unitPriceCents: 100000 },
       ],
       acceptPriceRevision: undefined,
+      channelHint: "form",
     });
   });
 });

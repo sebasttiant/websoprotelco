@@ -250,6 +250,7 @@ describe("CartDrawer order flow", () => {
         { productId: CABLE.id, unitPriceCents: CABLE.priceCents },
       ],
       acceptPriceRevision: false,
+      channelHint: "whatsapp",
     });
 
     expect(await screen.findByRole("heading", { name: "Pedido recibido" })).toBeInTheDocument();

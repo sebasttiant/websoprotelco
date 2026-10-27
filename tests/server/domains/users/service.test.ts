@@ -41,6 +41,7 @@ describe("getUsersForAdmin", () => {
       {
         id: sessionId,
         email: "admin@soprotelco.test",
+        full_name: "Ana Admin",
         role: "admin",
         is_active: true,
         created_at: "2026-01-01T00:00:00.000Z",
@@ -52,6 +53,7 @@ describe("getUsersForAdmin", () => {
     expect(user).toEqual({
       id: sessionId,
       email: "admin@soprotelco.test",
+      fullName: "Ana Admin",
       role: "admin",
       isActive: true,
       createdAt: "2026-01-01T00:00:00.000Z",

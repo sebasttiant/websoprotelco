@@ -23,6 +23,18 @@ vi.mock("@/components/admin/status-badge", () => ({
   StatusBadge: () => null,
 }));
 
+vi.mock("@/components/admin/new-user-modal", () => ({
+  NewUserModal: () => null,
+}));
+
+vi.mock("@/components/admin/edit-user-modal", () => ({
+  EditUserModal: () => null,
+}));
+
+vi.mock("@/components/admin/delete-user-button", () => ({
+  DeleteUserButton: () => null,
+}));
+
 import AdminUsersPage from "@/app/admin/users/page";
 
 afterEach(() => {

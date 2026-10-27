@@ -5,6 +5,8 @@
 export type {
   AccountOverview,
   AdminCreateUserInput,
+  AdminDeleteUserInput,
+  AdminUpdateUserInput,
   AdminUserSummary,
   AssignableRole,
   PasswordChangeInput,
@@ -14,12 +16,22 @@ export type {
 
 export { assignableRoleSchema } from "./schemas";
 
-export { createUser, getAccountOverview, getProfileDetails, getUsersForAdmin } from "./service";
+export {
+  createUser,
+  deleteUser,
+  getAccountOverview,
+  getProfileDetails,
+  getUsersForAdmin,
+  updateUser,
+} from "./service";
 
 export {
   changePassword,
   createUser as createUserAction,
+  deleteUser as deleteUserAction,
   updateProfile,
+  updateUser as updateUserAction,
   type AccountActionState,
   type CreateUserActionState,
+  type ManageUserActionState,
 } from "./actions";

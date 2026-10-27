@@ -11,6 +11,7 @@ import { query } from "@/server/db/pool";
 export interface AdminUserRow extends QueryResultRow {
   id: string;
   email: string;
+  full_name: string | null;
   role: string;
   is_active: boolean;
   created_at: string;
@@ -30,8 +31,64 @@ export interface ProfileRow extends QueryResultRow {
 
 export async function findAllUsersForAdmin(): Promise<AdminUserRow[]> {
   return query<AdminUserRow>(
-    "SELECT id, email, role, is_active, created_at FROM users ORDER BY created_at DESC, email ASC",
+    "SELECT id, email, full_name, role, is_active, created_at FROM users ORDER BY created_at DESC, email ASC",
   );
+}
+
+export async function findAdminUserById(id: string): Promise<AdminUserRow | null> {
+  const rows = await query<AdminUserRow>(
+    "SELECT id, email, full_name, role, is_active, created_at FROM users WHERE id = $1 LIMIT 1",
+    [id],
+  );
+  return rows[0] ?? null;
+}
+
+export async function countActiveAdmins(): Promise<number> {
+  const rows = await query<{ count: string }>(
+    "SELECT count(*)::text AS count FROM users WHERE role = 'admin' AND is_active = true",
+  );
+  return Number(rows[0]?.count ?? 0);
+}
+
+export async function emailTakenByOtherUser(email: string, excludeId: string): Promise<boolean> {
+  const rows = await query<{ id: string }>(
+    "SELECT id FROM users WHERE lower(email) = lower($1) AND id <> $2 LIMIT 1",
+    [email, excludeId],
+  );
+  return rows.length > 0;
+}
+
+export interface AdminUserUpdate {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  /** When set, replaces the stored hash; when omitted, the password is left untouched. */
+  passwordHash?: string;
+}
+
+export async function updateAdminUser(input: AdminUserUpdate): Promise<boolean> {
+  const rows = await query<{ id: string }>(
+    input.passwordHash
+      ? `UPDATE users
+         SET full_name = $2, email = $3, role = $4, is_active = $5, password_hash = $6
+         WHERE id = $1
+         RETURNING id`
+      : `UPDATE users
+         SET full_name = $2, email = $3, role = $4, is_active = $5
+         WHERE id = $1
+         RETURNING id`,
+    input.passwordHash
+      ? [input.id, input.fullName, input.email, input.role, input.isActive, input.passwordHash]
+      : [input.id, input.fullName, input.email, input.role, input.isActive],
+  );
+  return rows.length > 0;
+}
+
+export async function deleteAdminUser(id: string): Promise<boolean> {
+  const rows = await query<{ id: string }>("DELETE FROM users WHERE id = $1 RETURNING id", [id]);
+  return rows.length > 0;
 }
 
 export async function findAccountById(id: string): Promise<AccountRow | null> {

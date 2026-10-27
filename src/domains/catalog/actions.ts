@@ -36,7 +36,7 @@ function resolvePriceCents(formData: FormData): string {
   return stringValue(formData, "priceCents") ?? "0";
 }
 
-function resolvePromoPriceCents(formData: FormData): number | null {
+function resolvePromoPriceCents(formData: FormData): number | string | null {
   // Blank field means "no promotion". Legacy/tests may post promoPriceCents directly.
   const pesosRaw = stringValue(formData, "promoPricePesos");
   if (pesosRaw !== undefined) {

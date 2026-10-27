@@ -78,7 +78,7 @@ async function optimizeImageBuffer(input: Buffer, options: OptimizeOptions): Pro
       );
     }
 
-    let pipeline = sharp(input)
+    const pipeline = sharp(input)
       .rotate()
       .resize(options.maxDimension, options.maxDimension, {
         fit: "inside",

@@ -24,14 +24,21 @@ test.describe("Public route smoke", () => {
 
       const contactUrl = page.url();
 
-      // Sending opens WhatsApp in a new tab; the contact page itself must stay
-      // put and must never carry the visitor's data in its own URL.
-      const popupPromise = page.waitForEvent("popup");
+      // Capture the deep link without opening a real tab or waiting on WhatsApp's CDN —
+      // every CI second burned on wa.me is a flaky third-party dependency.
+      await page.evaluate(() => {
+        window.open = ((url?: string | URL) => {
+          (window as unknown as { __soprotelcoOpenedUrl?: string }).__soprotelcoOpenedUrl = String(url ?? "");
+          return null;
+        }) as typeof window.open;
+      });
       await page.getByRole("button", { name: "Enviar por WhatsApp" }).click();
-      const popup = await popupPromise;
-      await popup.waitForURL(/wa\.me|whatsapp\.com/, { timeout: 10_000 }).catch(() => undefined);
-      expect(popup.url()).toContain("573001234567");
-      await popup.close();
+      const openedUrl = await page.evaluate(
+        () => (window as unknown as { __soprotelcoOpenedUrl?: string }).__soprotelcoOpenedUrl ?? "",
+      );
+      expect(openedUrl).toContain("https://wa.me/573001234567");
+      expect(openedUrl).toContain(encodeURIComponent("Ada Privada"));
+      expect(openedUrl).toContain(encodeURIComponent("Mensaje privado de prueba"));
 
       await expect(page).toHaveURL(contactUrl);
       expect(page.url()).not.toContain("ada.privada@example.test");

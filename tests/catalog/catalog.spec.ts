@@ -15,6 +15,12 @@ test.describe("Catalog PostgreSQL smoke", () => {
     await expect(page.getByRole("img", { name: "Imagen no segura", exact: true })).toHaveCount(0);
     expect(remoteImageRequests).toEqual([]);
 
+    // Promotional listing: badge + effective price, not the struck list price alone.
+    const promoCard = page.getByRole("article").filter({ hasText: "Empalme en promoción" });
+    await expect(promoCard.getByText("-20%")).toBeVisible();
+    await expect(promoCard.getByText("$ 8.000")).toBeVisible();
+    await expect(promoCard.getByText("$ 10.000")).toBeVisible();
+
     await page.goto("/productos/fibra");
     await expect(page.getByRole("heading", { name: "Fibra óptica" })).toBeVisible();
     await page.goto("/productos/sin-productos");

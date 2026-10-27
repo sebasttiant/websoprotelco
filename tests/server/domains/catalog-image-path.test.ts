@@ -20,6 +20,12 @@ describe("isSafeCatalogImagePath", () => {
     expect(isSafeCatalogImagePath("/uploads/anything.svg")).toBe(false);
     expect(isSafeCatalogImagePath("")).toBe(false);
   });
+
+  test("rejects width-suffixed on-disk variants — responsive sizing stays on next/image, not new paths", () => {
+    // S9 serves srcset via the image optimizer against the canonical upload path. A
+    // `-w480` sibling would be a second contract the storage adapter does not write.
+    expect(isSafeCatalogImagePath("/uploads/2026-03-08-3f2504e0-4f89-41d3-9a0c-0305e82c3301-w480.webp")).toBe(false);
+  });
 });
 
 describe("getSafeCatalogImageUrl", () => {

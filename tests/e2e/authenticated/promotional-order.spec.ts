@@ -24,12 +24,12 @@ test.describe("Promotional storefront order", () => {
       await expect(page.getByText(`${PRODUCT_NAME} se agregó al carrito.`)).toBeAttached();
 
       await page.goto("/carrito");
+      // /carrito is full-page checkout: contact fields are already on the page (no drawer step).
       const quantity = page.locator("main").getByLabel(new RegExp(`Cantidad para ${PRODUCT_NAME}`));
       await expect(quantity).toBeVisible();
       await quantity.fill(String(ORDER_QTY));
       await expect(page.locator("main").getByText("$ 24.000")).toBeVisible();
 
-      await page.getByRole("button", { name: "Continuar con mis datos" }).click();
       await page.getByLabel("Nombre").fill("Cliente Promo E2E");
       await page.getByLabel("Correo").fill("promo.e2e@example.test");
       await page.getByLabel("Teléfono").fill("3005550199");

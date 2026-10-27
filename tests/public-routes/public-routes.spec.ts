@@ -10,7 +10,9 @@ test.describe("Public route smoke", () => {
       await expect(page.getByRole("heading", { name: "Contáctanos" })).toBeVisible();
       await expect(page.getByLabel("Nombre Completo")).toHaveAttribute("required", "");
       await expect(page.getByLabel("Correo Electrónico")).toHaveAttribute("type", "email");
-      await expect(page.getByRole("status")).toContainText("Tu mensaje se abre en WhatsApp con los datos que completes.");
+      await expect(page.getByRole("status")).toContainText(
+        "Tu mensaje se registra en el buzón de SOPROTELCO con un formato claro y estructurado",
+      );
       await expect(page.getByText("Producto consultado: fusionadora-segura")).toBeVisible();
       await expect(page.getByRole("link", { name: "Contactar por WhatsApp" })).toHaveAttribute(
         "href",
@@ -32,7 +34,7 @@ test.describe("Public route smoke", () => {
           return null;
         }) as typeof window.open;
       });
-      await page.getByRole("button", { name: "Enviar por WhatsApp" }).click();
+      await page.getByRole("button", { name: "Enviar y abrir WhatsApp" }).click();
       const openedUrl = await page.evaluate(
         () => (window as unknown as { __soprotelcoOpenedUrl?: string }).__soprotelcoOpenedUrl ?? "",
       );
@@ -43,7 +45,9 @@ test.describe("Public route smoke", () => {
       await expect(page).toHaveURL(contactUrl);
       expect(page.url()).not.toContain("ada.privada@example.test");
       expect(page.url()).not.toContain("Mensaje privado de prueba");
-      await expect(page.getByRole("status")).toContainText("Tu mensaje se abre en WhatsApp con los datos que completes.");
+      await expect(page.getByRole("status")).toContainText(
+        "Tu mensaje se registra en el buzón de SOPROTELCO con un formato claro y estructurado",
+      );
 
       await page.getByRole("link", { name: "Política de privacidad" }).click();
       await expect(page.getByRole("heading", { name: "Política de privacidad" })).toBeVisible();

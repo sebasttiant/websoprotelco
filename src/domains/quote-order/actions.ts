@@ -8,8 +8,13 @@ import { z } from "zod";
 
 import { getCurrentUser, requirePermission } from "@/server/auth/guards";
 
-import { UnavailableProductError } from "./repository";
-import { cartOrderInputSchema, contactRequestInputSchema, quoteStatusUpdateInputSchema } from "./schemas";
+import { PriceChangedError, UnavailableProductError } from "./repository";
+import {
+  cartOrderInputSchema,
+  contactRequestInputSchema,
+  quoteStatusUpdateInputSchema,
+  type PricedOrderLine,
+} from "./schemas";
 import * as quoteOrderService from "./service";
 
 export interface AdminActionState {
@@ -18,7 +23,14 @@ export interface AdminActionState {
 }
 
 export type CartOrderActionState =
-  | { success: true; reference: string; totalCents: number }
+  | { success: true; reference: string; totalCents: number; lines: PricedOrderLine[] }
+  | {
+      success: false;
+      code: "price-changed";
+      message: string;
+      totalCents: number;
+      lines: PricedOrderLine[];
+    }
   | { success: false; message: string };
 
 function formValue(formData: FormData, key: string): FormDataEntryValue | null {
@@ -91,18 +103,34 @@ export async function submitCartOrder(input: unknown): Promise<CartOrderActionSt
     return { success: false, message: "Revisá los datos de contacto y los productos del pedido." };
   }
 
-  // Ownership binding, not an access check: a signed-in visitor's order is tied to their id,
-  // a guest's stays NULL.
-  const user = await getCurrentUser();
-
   try {
+    // Ownership binding, not an access check: a signed-in visitor's order is tied to their id,
+    // a guest's stays NULL. Session lookup stays inside the try so a store/session failure
+    // returns a handled message instead of an unhandled rejection that leaves the UI stuck.
+    const user = await getCurrentUser();
     const result = await quoteOrderService.submitCartOrder(parsed.data, user?.id ?? null);
 
     revalidatePath("/admin/orders");
     revalidatePath("/admin");
 
-    return { success: true, reference: result.reference, totalCents: result.totalCents };
+    return {
+      success: true,
+      reference: result.reference,
+      totalCents: result.totalCents,
+      lines: result.lines,
+    };
   } catch (error) {
+    if (error instanceof PriceChangedError) {
+      return {
+        success: false,
+        code: "price-changed",
+        message:
+          "Algunos precios del carrito cambiaron. Revisá el nuevo total y confirmá de nuevo para continuar.",
+        totalCents: error.totalCents,
+        lines: [...error.lines],
+      };
+    }
+
     if (error instanceof UnavailableProductError) {
       return {
         success: false,
@@ -131,12 +159,21 @@ export async function createAdminOrder(input: unknown): Promise<CartOrderActionS
   }
 
   try {
-    const result = await quoteOrderService.submitCartOrder(parsed.data, null);
+    // Admin entry never carries a stale-cart snapshot: staff price from the live catalog.
+    const result = await quoteOrderService.submitCartOrder(
+      { ...parsed.data, expectedUnitPrices: undefined, acceptPriceRevision: true },
+      null,
+    );
 
     revalidatePath("/admin/orders");
     revalidatePath("/admin");
 
-    return { success: true, reference: result.reference, totalCents: result.totalCents };
+    return {
+      success: true,
+      reference: result.reference,
+      totalCents: result.totalCents,
+      lines: result.lines,
+    };
   } catch (error) {
     if (error instanceof UnavailableProductError) {
       return { success: false, message: "Algún producto ya no está disponible o fue desactivado." };

@@ -193,6 +193,28 @@ describe("importProductsFromCsv", () => {
     },
   );
 
+  test("clears an existing promotion when a CSV re-import updates a promoted SKU", async () => {
+    // CSV has no promotion column. Re-importing a SKU that already carries a promo must never
+    // keep that discount just because it is still below the new list price.
+    const productId = "33333333-3333-4333-8333-333333333333";
+    mockQuery
+      .mockResolvedValueOnce([{ id: categoryId }])
+      .mockResolvedValueOnce([{ id: productId }])
+      .mockResolvedValueOnce([]);
+
+    const result = await importProductsFromCsv(
+      "sku,name,category,price_pesos,stock\nSKU-PROMO,Cable,Fiber,30000,2",
+    );
+
+    expect(result).toEqual({ inserted: 0, updated: 1, skipped: 0, errors: [] });
+    const updateCall = mockQuery.mock.calls.find(([sql]) => /UPDATE products/i.test(String(sql)));
+    expect(updateCall?.[0]).toMatch(/promo_price_cents\s*=\s*\$\d+/i);
+    expect(updateCall?.[0]).not.toMatch(/THEN promo_price_cents/i);
+    expect(updateCall?.[1]).toEqual(
+      expect.arrayContaining([productId, categoryId, 3_000_000, null]),
+    );
+  });
+
   test("preserves the existing simple unquoted CSV import", async () => {
     mockQuery
       .mockResolvedValueOnce([{ id: categoryId }])

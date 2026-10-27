@@ -9,11 +9,21 @@ test.describe("Catalog PostgreSQL smoke", () => {
 
     await page.goto("/productos");
     await expect(page.getByRole("heading", { name: "Nuestros Productos" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Cotizar" }).first()).toHaveAttribute("href", "/contacto?producto=fusionadora-segura");
+    const fusionadoraCard = page.getByRole("article").filter({ hasText: "Fusionadora segura" });
+    await expect(fusionadoraCard.getByRole("link", { name: "Cotizar" })).toHaveAttribute(
+      "href",
+      "/contacto?producto=fusionadora-segura",
+    );
     await expect(page.getByRole("navigation", { name: "Ruta de navegación" })).toBeVisible();
     await expect(page.getByRole("img", { name: /imagen pendiente de/i }).first()).toBeVisible();
     await expect(page.getByRole("img", { name: "Imagen no segura", exact: true })).toHaveCount(0);
     expect(remoteImageRequests).toEqual([]);
+
+    // Promotional listing: badge + effective price, not the struck list price alone.
+    const promoCard = page.getByRole("article").filter({ hasText: "Empalme en promoción" });
+    await expect(promoCard.getByText("-20%")).toBeVisible();
+    await expect(promoCard.getByText("$ 8.000")).toBeVisible();
+    await expect(promoCard.getByText("$ 10.000")).toBeVisible();
 
     await page.goto("/productos/fibra");
     await expect(page.getByRole("heading", { name: "Fibra óptica" })).toBeVisible();

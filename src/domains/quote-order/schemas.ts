@@ -62,6 +62,11 @@ export const cartOrderItemInputSchema = z.object({
 
 export type CartOrderItemInput = z.infer<typeof cartOrderItemInputSchema>;
 
+export const expectedUnitPriceSchema = z.object({
+  productId: z.uuid(),
+  unitPriceCents: z.number().int().min(0),
+});
+
 export const cartOrderInputSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.email().max(180),
@@ -69,13 +74,25 @@ export const cartOrderInputSchema = z.object({
   notes: z.string().trim().max(2_000).default(""),
   // An empty order is never a real intent, and the max bounds a single request's write size.
   items: z.array(cartOrderItemInputSchema).min(1).max(99),
+  // Snapshot of what the cart UI is showing. When it drifts from the products table and the
+  // customer has not accepted a revision, checkout stops before writing an order.
+  expectedUnitPrices: z.array(expectedUnitPriceSchema).max(99).optional(),
+  acceptPriceRevision: z.boolean().optional().default(false),
 });
 
 export type CartOrderInput = z.infer<typeof cartOrderInputSchema>;
 
+export interface PricedOrderLine {
+  productId: string;
+  name: string;
+  quantity: number;
+  unitPriceCents: number;
+}
+
 export interface CartOrderResult {
   reference: string;
   totalCents: number;
+  lines: PricedOrderLine[];
 }
 
 // --- Admin read model --------------------------------------------------------

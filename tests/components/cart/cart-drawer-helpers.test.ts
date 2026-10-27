@@ -33,8 +33,10 @@ describe("buildWhatsappHref", () => {
     expect(buildWhatsappHref("n/a", "PED-1", 100, [])).toBe("");
   });
 
-  test("encodes an itemized order message for wa.me", () => {
-    const href = buildWhatsappHref("+57 300 123 4567", "PED-1", 250000, [item("a", 2)]);
+  test("encodes an itemized order message for wa.me from server-priced lines", () => {
+    const href = buildWhatsappHref("+57 300 123 4567", "PED-1", 250000, [
+      { name: "Producto", quantity: 2, unitPriceCents: 100000 },
+    ]);
     const url = new URL(href);
 
     expect(url.origin + url.pathname).toBe("https://wa.me/573001234567");
@@ -70,7 +72,7 @@ describe("canSubmitContact", () => {
 });
 
 describe("buildOrderInput", () => {
-  test("sends contact fields and only product ids with quantities", () => {
+  test("sends contact fields, ids/quantities, and the cart price snapshot for disclosure", () => {
     const form = { name: "Juan", email: "j@e.co", phone: "3001234567", notes: "Calle 1" };
 
     expect(buildOrderInput(form, [item("a", 2), item("b", 1)])).toEqual({
@@ -79,6 +81,11 @@ describe("buildOrderInput", () => {
         { productId: "a", quantity: 2 },
         { productId: "b", quantity: 1 },
       ],
+      expectedUnitPrices: [
+        { productId: "a", unitPriceCents: 100000 },
+        { productId: "b", unitPriceCents: 100000 },
+      ],
+      acceptPriceRevision: undefined,
     });
   });
 });

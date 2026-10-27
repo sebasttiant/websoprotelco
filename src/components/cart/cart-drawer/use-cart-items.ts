@@ -8,6 +8,21 @@ interface CartItems {
   changeQuantity: (id: string, rawValue: string) => string;
   removeItem: (id: string) => void;
   clear: () => void;
+  /** Aligns local unit prices with a server-priced snapshot after a disclosure. */
+  applyServerPrices: (lines: readonly { productId: string; unitPriceCents: number }[]) => void;
+}
+
+/**
+ * Persist now, broadcast after React finishes the current setState work.
+ * A synchronous cart-changed event from inside a setState updater makes every other
+ * useCartItems instance (CartDrawer vs CartContent) call setState mid-render — React 19
+ * rejects that.
+ */
+function persistCart(next: CartItem[]): void {
+  writeCart(next, { notify: false });
+  queueMicrotask(() => {
+    window.dispatchEvent(new Event(cartChangedEventName()));
+  });
 }
 
 /** The persisted cart, kept in step with changes made elsewhere on the page or in other tabs. */
@@ -31,7 +46,7 @@ export function useCartItems(): CartItems {
 
     setItems((current) => {
       const next = current.map((item) => (item.id === id ? { ...item, quantity: result.quantity } : item));
-      writeCart(next);
+      persistCart(next);
       return next;
     });
     return "";
@@ -40,7 +55,7 @@ export function useCartItems(): CartItems {
   function removeItem(id: string): void {
     setItems((current) => {
       const next = current.filter((item) => item.id !== id);
-      writeCart(next);
+      persistCart(next);
       return next;
     });
   }
@@ -50,5 +65,17 @@ export function useCartItems(): CartItems {
     setItems([]);
   }
 
-  return { items, changeQuantity, removeItem, clear };
+  function applyServerPrices(lines: readonly { productId: string; unitPriceCents: number }[]): void {
+    const byId = new Map(lines.map((line) => [line.productId, line.unitPriceCents]));
+    setItems((current) => {
+      const next = current.map((item) => {
+        const unitPriceCents = byId.get(item.id);
+        return unitPriceCents === undefined ? item : { ...item, priceCents: unitPriceCents };
+      });
+      persistCart(next);
+      return next;
+    });
+  }
+
+  return { items, changeQuantity, removeItem, clear, applyServerPrices };
 }

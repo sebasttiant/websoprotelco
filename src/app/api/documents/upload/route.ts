@@ -3,10 +3,13 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/server/auth/guards";
 import { hasPermission } from "@/server/auth/rbac";
 import { createDocumentStorageAdapter, MAX_DOCUMENT_SIZE_BYTES, validateDocumentFile } from "@/server/storage";
+import { readBoundedFormData, RequestBodyTooLargeError } from "@/server/storage/request-limits";
 
 // The Server Action body size limit defaults to 1MB, but the spec requires accepting PDFs
 // up to 10MB, so this upload MUST go through a route handler instead of a Server Action.
 export const runtime = "nodejs";
+
+const MULTIPART_OVERHEAD_BYTES = 256 * 1024;
 
 export async function POST(request: Request): Promise<NextResponse> {
   const user = await getCurrentUser();
@@ -19,17 +22,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Necesitás permiso para editar documentos." }, { status: 403 });
   }
 
-  // Cheap early-out, not the authoritative guard: `content-length` can be spoofed or omitted
-  // entirely, so a request that skips or lies about it still falls through to the post-parse
-  // `validateDocumentFile` size check below. This only prevents buffering a body we already
-  // know exceeds the limit into memory via `request.formData()`.
-  const contentLength = Number(request.headers.get("content-length"));
-
-  if (Number.isFinite(contentLength) && contentLength > MAX_DOCUMENT_SIZE_BYTES) {
-    return NextResponse.json({ error: "El documento debe pesar 10MB o menos." }, { status: 413 });
+  let formData: FormData;
+  try {
+    formData = await readBoundedFormData(request, MAX_DOCUMENT_SIZE_BYTES + MULTIPART_OVERHEAD_BYTES);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: "El documento debe pesar 10MB o menos." }, { status: 413 });
+    }
+    throw error;
   }
 
-  const formData = await request.formData();
   const value = formData.get("file");
   const file = value instanceof File ? value : null;
   const category = formData.get("category");

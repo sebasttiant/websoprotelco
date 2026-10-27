@@ -51,8 +51,8 @@ export default async function globalSetup(): Promise<void> {
       CATEGORY_ID,
     ]);
     await client.query(
-      `INSERT INTO products (id, category_id, sku, slug, name, description, price_cents, currency, image_url, brand, stock_quantity)
-       VALUES ($1, $2, 'E2E-001', 'e2e-fusionadora', 'Fusionadora E2E', 'Producto de prueba aislada.', 1500000, 'COP', NULL, 'SOPROTELCO', 7)`,
+      `INSERT INTO products (id, category_id, sku, slug, name, description, price_cents, promo_price_cents, currency, image_url, brand, stock_quantity)
+       VALUES ($1, $2, 'E2E-001', 'e2e-fusionadora', 'Fusionadora E2E', 'Producto de prueba aislada.', 1500000, 1200000, 'COP', NULL, 'SOPROTELCO', 7)`,
       [PRODUCT_ID, CATEGORY_ID],
     );
   } finally {

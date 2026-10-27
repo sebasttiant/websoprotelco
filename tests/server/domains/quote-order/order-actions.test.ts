@@ -142,4 +142,36 @@ describe("submitCartOrder", () => {
     expect(state.success).toBe(false);
     expect(mockWithTransaction).not.toHaveBeenCalled();
   });
+
+  test("returns the server-priced lines on success", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(null);
+    stubHappyPath();
+
+    const state = await submitCartOrder(validInput);
+
+    expect(state).toMatchObject({
+      success: true,
+      totalCents: 139800000,
+      lines: [{ productId, name: "Switch PoE+", quantity: 2, unitPriceCents: 69900000 }],
+    });
+  });
+
+  test("discloses a price change without writing the order", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(null);
+    mockClientQuery.mockResolvedValueOnce([{ id: productId, name: "Switch PoE+", price_cents: "50000000" }]);
+
+    const state = await submitCartOrder({
+      ...validInput,
+      expectedUnitPrices: [{ productId, unitPriceCents: 69900000 }],
+      acceptPriceRevision: false,
+    });
+
+    expect(state).toMatchObject({
+      success: false,
+      code: "price-changed",
+      totalCents: 100000000,
+      lines: [{ productId, unitPriceCents: 50000000 }],
+    });
+    expect(mockClientQuery).toHaveBeenCalledTimes(1);
+  });
 });

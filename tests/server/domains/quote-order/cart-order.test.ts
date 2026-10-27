@@ -20,7 +20,7 @@ vi.mock("@/server/db/pool", () => ({
   withTransaction: mockWithTransaction,
 }));
 
-import { insertOrder, UnavailableProductError } from "@/domains/quote-order/repository";
+import { insertOrder, PriceChangedError, UnavailableProductError } from "@/domains/quote-order/repository";
 
 const productA = "11111111-1111-4111-8111-111111111111";
 const productB = "44444444-4444-4444-8444-444444444444";
@@ -28,7 +28,12 @@ const orderId = "99999999-9999-4999-8999-999999999999";
 const userId = "22222222-2222-4222-8222-222222222222";
 
 afterEach(() => {
-  vi.clearAllMocks();
+  // resetAllMocks clears leftover mockResolvedValueOnce queues; clearAllMocks alone
+  // leaves an unused order-insert stub that the next test then consumes as "products".
+  vi.resetAllMocks();
+  mockWithTransaction.mockImplementation(
+    async (handler: (client: { query: unknown }) => Promise<unknown>) => handler({ query: mockClientQuery }),
+  );
 });
 
 function baseOrder(items: readonly { productId: string; quantity: number }[]) {
@@ -159,5 +164,34 @@ describe("insertOrder promotional pricing", () => {
     expect(itemInsert?.[1]).toContain(360_000);
     const pricingCall = mockClientQuery.mock.calls[0] as [string, unknown[]];
     expect(pricingCall[0]).toContain("promo_price_cents");
+  });
+});
+
+describe("insertOrder stale cart disclosure", () => {
+  test("aborts before writing when the cart unit price no longer matches the catalog", async () => {
+    mockClientQuery.mockResolvedValueOnce([{ id: productA, name: "Switch PoE+", price_cents: "50000000" }]);
+
+    await expect(
+      insertOrder({
+        ...baseOrder([{ productId: productA, quantity: 1 }]),
+        expectedUnitPrices: [{ productId: productA, unitPriceCents: 69900000 }],
+        acceptPriceRevision: false,
+      }),
+    ).rejects.toBeInstanceOf(PriceChangedError);
+
+    expect(mockClientQuery).toHaveBeenCalledTimes(1);
+  });
+
+  test("writes after the customer accepts the revised server prices", async () => {
+    stubHappyPath([{ id: productA, name: "Switch PoE+", price_cents: "50000000" }]);
+
+    const result = await insertOrder({
+      ...baseOrder([{ productId: productA, quantity: 1 }]),
+      expectedUnitPrices: [{ productId: productA, unitPriceCents: 69900000 }],
+      acceptPriceRevision: true,
+    });
+
+    expect(result.totalCents).toBe(50_000_000);
+    expect(result.lines[0]?.unitPriceCents).toBe(50_000_000);
   });
 });

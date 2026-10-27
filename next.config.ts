@@ -21,6 +21,18 @@ const nextConfig: NextConfig = {
   // would never catch — hence the container smoke test in CI-adjacent verification.
   serverExternalPackages: ["sharp"],
 
+  // Catalog photos still live at `/uploads/<date>-<uuid>.webp` (see getSafeCatalogImageUrl).
+  // next/image serves them with responsive srcset and negotiates AVIF/WebP — no on-disk variant
+  // paths, so the safe-path contract does not change. localPatterns blocks optimizing anything
+  // outside these controlled roots (open-proxy guard).
+  images: {
+    formats: ["image/avif", "image/webp"],
+    localPatterns: [
+      { pathname: "/uploads/**", search: "" },
+      { pathname: "/assets/**", search: "" },
+    ],
+  },
+
   // `/documents` and `/uploads` serve user-supplied files (PDFs, images) as static assets.
   // `nosniff` stops a browser from MIME-sniffing a spoofed-but-validated file into an
   // executable content type; forcing `Content-Disposition: attachment` on documents means a

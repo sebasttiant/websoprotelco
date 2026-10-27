@@ -103,6 +103,32 @@ describe("catalog product actions", () => {
     expect(mockRedirect).toHaveBeenCalledWith("/admin/products/new?error=action-failed");
   });
 
+  test.each(["199junk", "199.99", "12e3"])(
+    "rejects malformed legacy promoPriceCents %s instead of truncating with parseInt",
+    async (promoPriceCents) => {
+      mockRequirePermission.mockResolvedValue({ id: productId, email: "admin@soprotelco.test", role: "admin" });
+
+      await expect(
+        createProduct(
+          formData({
+            categoryId,
+            sku: "SP-PROMO",
+            slug: "sp-promo",
+            name: "Promo tool",
+            pricePesos: "5000",
+            promoPriceCents,
+            currency: "COP",
+            stockQuantity: "1",
+            isActive: "on",
+          }),
+        ),
+      ).rejects.toThrow("NEXT_REDIRECT");
+
+      expect(mockQuery).not.toHaveBeenCalled();
+      expect(mockRedirect).toHaveBeenCalledWith("/admin/products/new?error=action-failed");
+    },
+  );
+
   test("retains a product image when the image field is omitted", async () => {
     mockRequirePermission.mockResolvedValue({ id: productId, email: "admin@soprotelco.test", role: "admin" });
     mockQuery.mockResolvedValueOnce([productRow]).mockResolvedValueOnce([]);

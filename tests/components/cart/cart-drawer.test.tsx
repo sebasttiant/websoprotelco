@@ -208,7 +208,15 @@ describe("CartDrawer cart step", () => {
 describe("CartDrawer order flow", () => {
   test("submits only ids and quantities, then confirms with a WhatsApp link", async () => {
     const user = userEvent.setup();
-    submitCartOrder.mockResolvedValue({ success: true, reference: "PED-2026-0042", totalCents: 3250000 });
+    submitCartOrder.mockResolvedValue({
+      success: true,
+      reference: "PED-2026-0042",
+      totalCents: 3250000,
+      lines: [
+        { productId: FUSIONADORA.id, name: FUSIONADORA.name, quantity: 2, unitPriceCents: FUSIONADORA.priceCents },
+        { productId: CABLE.id, name: CABLE.name, quantity: 1, unitPriceCents: CABLE.priceCents },
+      ],
+    });
     writeCart([FUSIONADORA, CABLE]);
     renderDrawer();
 
@@ -237,6 +245,11 @@ describe("CartDrawer order flow", () => {
         { productId: FUSIONADORA.id, quantity: 2 },
         { productId: CABLE.id, quantity: 1 },
       ],
+      expectedUnitPrices: [
+        { productId: FUSIONADORA.id, unitPriceCents: FUSIONADORA.priceCents },
+        { productId: CABLE.id, unitPriceCents: CABLE.priceCents },
+      ],
+      acceptPriceRevision: false,
     });
 
     expect(await screen.findByRole("heading", { name: "Pedido recibido" })).toBeInTheDocument();
@@ -263,7 +276,12 @@ describe("CartDrawer order flow", () => {
 
   test("confirming by email records the order without offering WhatsApp", async () => {
     const user = userEvent.setup();
-    submitCartOrder.mockResolvedValue({ success: true, reference: "PED-2026-0043", totalCents: 250000 });
+    submitCartOrder.mockResolvedValue({
+      success: true,
+      reference: "PED-2026-0043",
+      totalCents: 250000,
+      lines: [{ productId: CABLE.id, name: CABLE.name, quantity: 1, unitPriceCents: CABLE.priceCents }],
+    });
     writeCart([CABLE]);
     renderDrawer();
 
@@ -323,7 +341,12 @@ describe("CartDrawer order flow", () => {
 
   test("returning to the store resets the flow and closes the drawer", async () => {
     const user = userEvent.setup();
-    submitCartOrder.mockResolvedValue({ success: true, reference: "PED-2026-0044", totalCents: 250000 });
+    submitCartOrder.mockResolvedValue({
+      success: true,
+      reference: "PED-2026-0044",
+      totalCents: 250000,
+      lines: [{ productId: CABLE.id, name: CABLE.name, quantity: 1, unitPriceCents: CABLE.priceCents }],
+    });
     writeCart([CABLE]);
     const { onClose } = renderDrawer();
 
@@ -341,6 +364,41 @@ describe("CartDrawer order flow", () => {
     await user.click(screen.getByRole("button", { name: "Continuar con mis datos" }));
     expect(screen.getByLabelText("Nombre")).toHaveValue("");
     expect(screen.getByLabelText("Notas (opcional)")).toHaveValue("");
+  });
+
+  test("discloses a stale cart price, refreshes the line, and confirms only after accept", async () => {
+    const user = userEvent.setup();
+    const revisedCents = 200000;
+    submitCartOrder
+      .mockResolvedValueOnce({
+        success: false,
+        code: "price-changed",
+        message:
+          "Algunos precios del carrito cambiaron. Revisá el nuevo total y confirmá de nuevo para continuar.",
+        totalCents: revisedCents,
+        lines: [{ productId: CABLE.id, name: CABLE.name, quantity: 1, unitPriceCents: revisedCents }],
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        reference: "PED-2026-0099",
+        totalCents: revisedCents,
+        lines: [{ productId: CABLE.id, name: CABLE.name, quantity: 1, unitPriceCents: revisedCents }],
+      });
+    writeCart([CABLE]);
+    renderDrawer();
+
+    await user.click(screen.getByRole("button", { name: "Continuar con mis datos" }));
+    await fillContactForm(user);
+    await user.click(screen.getByRole("button", { name: "Enviar pedido por formulario" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/precios del carrito cambiaron/i);
+    expect(readCart()[0]?.priceCents).toBe(revisedCents);
+    expect(submitCartOrder).toHaveBeenLastCalledWith(expect.objectContaining({ acceptPriceRevision: false }));
+
+    await user.click(screen.getByRole("button", { name: "Enviar pedido por formulario" }));
+
+    expect(submitCartOrder).toHaveBeenLastCalledWith(expect.objectContaining({ acceptPriceRevision: true }));
+    expect(await screen.findByText("PED-2026-0099")).toBeInTheDocument();
   });
 
   test("renders the contact fields with their input semantics", async () => {

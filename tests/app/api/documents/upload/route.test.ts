@@ -63,10 +63,12 @@ describe("POST /api/documents/upload", () => {
     expect(mockSaveDocument).not.toHaveBeenCalled();
   });
 
-  test("returns 413 when content-length exceeds the 10MB limit before parsing the body", async () => {
+  test("returns 413 when content-length exceeds the bounded body limit before parsing", async () => {
     mockGetCurrentUser.mockResolvedValue(staffUser);
+    // Bound is 10MB file + 256KiB multipart framing — just over that must refuse before formData().
+    const overBound = 10 * 1024 * 1024 + 256 * 1024 + 1;
     const request = uploadRequest(new File([pdfBytes], "manual.pdf", { type: "application/pdf" }), {
-      "content-length": String(10 * 1024 * 1024 + 1),
+      "content-length": String(overBound),
     });
     const formDataSpy = vi.spyOn(request, "formData");
 

@@ -188,7 +188,12 @@ export async function createAdminOrder(input: unknown): Promise<CartOrderActionS
   try {
     // Admin entry never carries a stale-cart snapshot: staff price from the live catalog.
     const result = await quoteOrderService.submitCartOrder(
-      { ...parsed.data, expectedUnitPrices: undefined, acceptPriceRevision: true },
+      {
+        ...parsed.data,
+        expectedUnitPrices: undefined,
+        acceptPriceRevision: true,
+        channelHint: "admin",
+      },
       null,
     );
 

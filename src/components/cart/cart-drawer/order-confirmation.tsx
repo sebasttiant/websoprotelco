@@ -17,8 +17,8 @@ export function OrderConfirmation({ order, whatsappHref, onReset }: OrderConfirm
       <h3 className="mt-5 text-2xl font-black text-brand-navy">Pedido recibido</h3>
       <p className="mt-2 text-sm font-medium text-brand-muted">
         Tu referencia es <span className="font-black text-brand-navy">{order.reference}</span> por{" "}
-        <span className="font-black text-brand-navy">{formatCurrency(order.totalCents)}</span>. Te
-        contactamos para coordinar pago y entrega.
+        <span className="font-black text-brand-navy">{formatCurrency(order.totalCents)}</span>. Ya
+        registramos el pedido y enviamos una copia estructurada al correo operativo.
       </p>
       {whatsappHref ? (
         <a

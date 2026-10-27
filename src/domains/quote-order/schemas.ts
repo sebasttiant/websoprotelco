@@ -67,6 +67,8 @@ export const expectedUnitPriceSchema = z.object({
   unitPriceCents: z.number().int().min(0),
 });
 
+export const cartOrderChannelSchema = z.enum(["whatsapp", "form", "admin"]);
+
 export const cartOrderInputSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.email().max(180),
@@ -78,6 +80,8 @@ export const cartOrderInputSchema = z.object({
   // customer has not accepted a revision, checkout stops before writing an order.
   expectedUnitPrices: z.array(expectedUnitPriceSchema).max(99).optional(),
   acceptPriceRevision: z.boolean().optional().default(false),
+  // How the customer confirmed. WhatsApp still queues the ops email to info@; it is not exclusive.
+  channelHint: cartOrderChannelSchema.optional().default("form"),
 });
 
 export type CartOrderInput = z.infer<typeof cartOrderInputSchema>;

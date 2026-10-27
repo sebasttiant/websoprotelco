@@ -16,6 +16,7 @@ export interface OrderInput extends ContactForm {
   items: OrderLineInput[];
   expectedUnitPrices: { productId: string; unitPriceCents: number }[];
   acceptPriceRevision?: boolean;
+  channelHint?: "whatsapp" | "form" | "admin";
 }
 
 export const EMPTY_FORM: ContactForm = { name: "", email: "", phone: "", notes: "" };
@@ -29,7 +30,7 @@ export function canSubmitContact(form: ContactForm): boolean {
 export function buildOrderInput(
   form: ContactForm,
   items: CartItem[],
-  options: { acceptPriceRevision?: boolean } = {},
+  options: { acceptPriceRevision?: boolean; channelHint?: "whatsapp" | "form" | "admin" } = {},
 ): OrderInput {
   return {
     name: form.name,
@@ -39,5 +40,6 @@ export function buildOrderInput(
     items: items.map((item) => ({ productId: item.id, quantity: item.quantity })),
     expectedUnitPrices: items.map((item) => ({ productId: item.id, unitPriceCents: item.priceCents })),
     acceptPriceRevision: options.acceptPriceRevision,
+    channelHint: options.channelHint ?? "form",
   };
 }

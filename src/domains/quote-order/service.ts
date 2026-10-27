@@ -111,7 +111,8 @@ export async function submitCartOrder(input: CartOrderInput, userId: string | nu
   });
 
   // Always notify the ops mailbox, including WhatsApp-confirmed checkouts: the order is
-  // already persisted server-side before the visitor opens WhatsApp.
+  // already persisted server-side before the visitor opens WhatsApp. WhatsApp is an extra
+  // customer channel; info@ still receives the structured copy.
   await notifyOpsOrderCreated({
     reference,
     contactName: input.name,
@@ -120,7 +121,7 @@ export async function submitCartOrder(input: CartOrderInput, userId: string | nu
     notes: input.notes,
     totalCents,
     lines,
-    channelHint: "form",
+    channelHint: input.channelHint,
   });
 
   return { reference, totalCents, lines };

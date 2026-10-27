@@ -21,10 +21,15 @@ describe("ops mail builders", () => {
 
     expect(mail.to).toBe("info@soprotelco.com");
     expect(mail.subject).toContain("WEB-ABC");
+    expect(mail.subject).toContain("Ana Pérez");
+    expect(mail.replyTo).toBe("ana@empresa.com");
     expect(mail.text).toContain("Ana Pérez");
     expect(mail.text).toContain("IVA incluido");
+    expect(mail.text).toContain("WhatsApp (copia automática al correo)");
     expect(mail.html).toContain("Nuevo pedido WEB-ABC");
     expect(mail.html).toContain("VFL 10 Kms");
+    expect(mail.html).toContain("#f5c400");
+    expect(mail.html).toContain("info@soprotelco.com");
   });
 
   test("builds a structured contact email", () => {
@@ -41,7 +46,9 @@ describe("ops mail builders", () => {
     );
 
     expect(mail.subject).toContain("Cotización de Productos");
+    expect(mail.replyTo).toBe("luis@empresa.com");
     expect(mail.text).toContain("fusionadora-x");
     expect(mail.html).toContain("Necesito stock de fusión.");
+    expect(mail.html).toContain("Producto consultado");
   });
 });

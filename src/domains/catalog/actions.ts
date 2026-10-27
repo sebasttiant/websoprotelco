@@ -80,15 +80,22 @@ function productInput(formData: FormData): Record<string, unknown> {
 function categoryInput(formData: FormData): Record<string, unknown> {
   const name = stringValue(formData, "name");
   const explicitSlug = stringValue(formData, "slug")?.trim() ?? "";
+  const id = stringValue(formData, "id");
   const input: Record<string, unknown> = {
-    id: stringValue(formData, "id"),
+    id,
     parentId: stringValue(formData, "parentId") ?? null,
     slug: explicitSlug || slugifyName(name ?? ""),
     name,
-    // Category images are not used on the storefront; omit the upload field and keep null.
-    imageUrl: formData.has("imageUrl") ? stringValue(formData, "imageUrl") : null,
     displayOrder: stringValue(formData, "displayOrder") ?? "0",
   };
+  // Create forms no longer collect a category image — default null.
+  // Update forms must omit the key when the field is absent so the repository keeps
+  // any legacy image_url (CASE WHEN false) instead of wiping it to null.
+  if (formData.has("imageUrl")) {
+    input.imageUrl = stringValue(formData, "imageUrl");
+  } else if (!id) {
+    input.imageUrl = null;
+  }
   return input;
 }
 

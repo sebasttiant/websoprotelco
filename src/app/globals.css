@@ -6,6 +6,8 @@
   --color-brand-blue: #1b6eac;
   --color-brand-accent: #06d3f9;
   --color-brand-accent-soft: #7cf3ff;
+  /* Fiber optic cue — logo check + timeline accents only (not a full theme). */
+  --color-brand-fiber: #f5c400;
   /* One storefront canvas: body, page shells, and ice surfaces share this tone. */
   --color-brand-bg: #f4f7fc;
   --color-brand-ice: #f4f7fc;

@@ -10,6 +10,15 @@ export const adminLead = "mt-1.5 max-w-2xl text-sm font-medium leading-6 text-br
 
 export const adminPage = "min-w-0 space-y-5";
 
+/** Full-width catalog create/edit shell: uses the panel width on desktop, stacks on mobile. */
+export const adminFormPage = "min-w-0 w-full max-w-none space-y-5";
+
+export const adminFormCard =
+  "min-w-0 w-full rounded-2xl border border-brand-line bg-white p-4 shadow-sm shadow-blue-950/5 sm:p-6 lg:p-7";
+
+export const adminFormActions =
+  "flex flex-col-reverse gap-3 border-t border-brand-line pt-5 sm:flex-row sm:items-center sm:justify-end";
+
 export const adminCard =
   "min-w-0 rounded-2xl border border-brand-line bg-white p-4 shadow-sm shadow-blue-950/5 sm:p-5";
 

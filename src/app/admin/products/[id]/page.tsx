@@ -2,6 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductFormFields } from "@/components/admin/product-form-fields";
+import {
+  adminEyebrow,
+  adminFormActions,
+  adminFormCard,
+  adminFormPage,
+  adminLead,
+  adminPrimaryBtn,
+  adminTitle,
+} from "@/components/admin/ui";
 import { getCategoryOptions, getProductByIdForAdmin, updateProduct } from "@/domains/catalog";
 import { isUuid } from "@/lib/uuid";
 import { requirePermission } from "@/server/auth/guards";
@@ -31,16 +40,16 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
   }
 
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
-      <Link href="/admin/products" className="text-sm font-bold text-brand-blue">
+    <section className={adminFormPage}>
+      <Link href="/admin/products" className="inline-flex text-sm font-bold text-brand-blue">
         ← Volver a productos
       </Link>
-      <div>
-        <p className="text-[0.65rem] font-black uppercase tracking-widest text-brand-blue">Catálogo</p>
-        <h1 className="text-2xl font-black tracking-tight text-brand-navy sm:text-3xl">Editar producto</h1>
-        <p className="mt-2 text-sm font-medium text-brand-muted">{product.name}</p>
+      <div className="min-w-0">
+        <p className={adminEyebrow}>Catálogo</p>
+        <h1 className={adminTitle}>Editar producto</h1>
+        <p className={adminLead}>{product.name}</p>
       </div>
-      <form action={updateProduct as unknown as FormAction} className="grid gap-4 rounded-2xl bg-white p-6 shadow-sm shadow-blue-950/5">
+      <form action={updateProduct as unknown as FormAction} className={`${adminFormCard} grid gap-6`}>
         <input type="hidden" name="id" value={product.id} />
         <ProductFormFields
           categories={categories}
@@ -60,9 +69,11 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
             isActive: product.isActive,
           }}
         />
-        <button type="submit" className="rounded-full bg-brand-blue px-5 py-3 text-sm font-black text-white transition hover:bg-brand-primary">
-          Guardar cambios
-        </button>
+        <div className={adminFormActions}>
+          <button type="submit" className={`${adminPrimaryBtn} w-full sm:w-auto sm:min-w-[12rem]`}>
+            Guardar cambios
+          </button>
+        </div>
       </form>
     </section>
   );

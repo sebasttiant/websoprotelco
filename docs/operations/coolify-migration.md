@@ -144,20 +144,37 @@ crontab -l | grep -n docker_guard
 
 Restoring it is step 8. It is not optional.
 
-## 4. Pre-build the image
+## 4. Pre-build the images without starting services
 
-The interruption is dominated by the Next.js build, not by the data. Building
-before stopping anything shrinks the window to seconds.
+The interruption is dominated by the Next.js build, not by the data. Populate
+the host's BuildKit cache before stopping anything, but **never press Deploy**
+for this step. Once Coolify reads `compose.coolify.yaml`, a deployment can
+start its Postgres against the external production volume even while the
+manual Postgres is still running. A missing domain does not prevent that.
 
-In Coolify, run a deployment **with the domain still unset**. It builds the
-image and then fails to start, because `compose.yaml`'s published ports are
-still held by the manual stack and because the external volumes are in use.
-That failure is expected and harmless: the build cache is what matters.
+Update the server checkout to the reviewed merge commit, validate the rendered
+compose file, then run only the build subcommand. `build` creates images and
+cache layers; it does not create or start containers.
+
+```bash
+cd /opt/docker/websoprotelco
+git fetch origin main
+git switch main
+git pull --ff-only origin main
+
+docker compose --env-file .env -f compose.coolify.yaml config --quiet
+docker compose --env-file .env -f compose.coolify.yaml build migrate web
+```
+
+Compose parses `.env` itself, so passwords containing shell metacharacters are
+not reinterpreted by `source`, `xargs` or `eval`. Neither command prints the
+resolved values.
 
 Confirm no Coolify container is running before continuing:
 
 ```bash
-docker ps --filter "name=eejuwo2zlbhdmv1bvig4waed" --format '{{.Names}} {{.Status}}'
+docker ps --filter "name=eejuwo2zlbhdmv1bvig4waed" \
+  --format '{{.Names}} {{.Status}}'
 ```
 
 That command must print nothing. If it prints a container, stop and

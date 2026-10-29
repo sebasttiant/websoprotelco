@@ -139,6 +139,11 @@ jobs:
       - name: Validate Compose configuration contract
         run: bash tests/deploy/compose-contract.sh
 
+      # Guards the Coolify definition: external production volumes, the nested
+      # PGDATA mount path, no published host ports, and no seed service.
+      - name: Validate Coolify Compose contract
+        run: bash tests/deploy/compose-coolify-contract.sh
+
       - name: Runtime image shell contract
         run: bash tests/deploy/runtime-manifest.sh
 

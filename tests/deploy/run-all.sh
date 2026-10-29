@@ -6,7 +6,8 @@
 #   pnpm test:contract:deploy      (or: bash tests/deploy/run-all.sh)
 #
 # Deliberately NOT included, because they call a real Docker daemon:
-#   tests/deploy/compose-contract.sh   (`docker compose config`)
+#   tests/deploy/compose-contract.sh           (`docker compose config`)
+#   tests/deploy/compose-coolify-contract.sh   (`docker compose config`)
 #   tests/deploy/runtime-manifest.sh   (`docker run` against the runtime base image)
 # CI runs those two next to the image builds. The black-box standalone asset contract is a separate
 # command: `pnpm test:contract:assets`.

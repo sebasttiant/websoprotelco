@@ -1,0 +1,148 @@
+---
+# Coolify deployment definition. NOT for local work or ./deploy.sh.
+#
+# compose.yaml stays the source of truth for development and the manual
+# deploy path. This file exists because a Coolify deployment has three
+# constraints the manual stack does not, and encoding them in compose.yaml
+# would break local development:
+#
+#   1. Volumes must be `external` under their PRODUCTION names. Coolify
+#      prefixes compose-declared volumes with the application UUID, so a
+#      plain `postgres-data:` resolves to an empty
+#      `eejuwo2zlbhdmv1bvig4waed_postgres-data`. Postgres would initdb a
+#      fresh cluster and the site would serve an empty database while the
+#      real data sat untouched and unreachable.
+#
+#   2. No host ports are published. Traefik reaches `web` over the Docker
+#      network Coolify attaches, and Postgres must never be reachable from
+#      the host or the Internet. The manual stack publishes 0.0.0.0:8686,
+#      which bypasses TLS entirely.
+#
+#   3. No `name:` key. Coolify owns the compose project name (the
+#      application UUID). Declaring `name: websoprotelco` would collide
+#      with the manual stack's project and let Coolify adopt or destroy
+#      containers it does not own.
+#
+# Deploy with Build Strategy "Docker Compose", Compose location
+# /compose.coolify.yaml.
+#
+# CRITICAL: the manual stack MUST be stopped before this one starts. Two
+# postgres processes writing the same PGDATA corrupts the cluster. The
+# ordered cutover is docs/operations/coolify-migration.md.
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      # Fail closed: these must match the existing cluster exactly. A
+      # default here would let a typo start an unusable second cluster.
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    # No `ports:` on purpose. The manual stack publishes 127.0.0.1:5432 for
+    # host-side `pnpm dev`; a Coolify deployment has no such consumer, and
+    # publishing it would also fail the cutover on an already-bound port.
+    volumes:
+      # /var/lib/postgresql, NOT /var/lib/postgresql/data. The postgres:18
+      # image keeps PGDATA at /var/lib/postgresql/18/docker and the
+      # production volume holds that nested layout. Changing this path
+      # makes Postgres initdb an empty cluster.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # One-shot deploy step: runs to completion, then `web` starts. Concurrent
+  # runs are serialised by a PostgreSQL advisory lock, so a redeploy racing
+  # a running migration waits instead of corrupting the schema.
+  migrate:
+    build:
+      context: .
+      target: migrator
+    restart: "no"
+    environment:
+      CI: "1"
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      # Derived from the same POSTGRES_* values the db service uses, so the
+      # credentials cannot drift apart. The backslash is a YAML double-quoted
+      # line continuation: it joins without inserting a space.
+      DATABASE_URL: "postgresql://${POSTGRES_USER:?required}:\
+        ${POSTGRES_PASSWORD:?required}@db:5432/${POSTGRES_DB:?required}"
+      DATABASE_SSL: ${DATABASE_SSL:-disable}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-5}
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 8686
+      # Fail closed. A `:-local` default would re-create the silent
+      # misconfiguration the runtime guard prevents. Contract:
+      # tests/deploy/compose-coolify-contract.sh.
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:?STORAGE_PROVIDER is required}
+      DATABASE_URL: "postgresql://${POSTGRES_USER:?required}:\
+        ${POSTGRES_PASSWORD:?required}@db:5432/${POSTGRES_DB:?required}"
+      DATABASE_SSL: ${DATABASE_SSL:-disable}
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+      # Empty keeps the cookie's Secure flag. Traefik terminates TLS in
+      # front of this service, so it stays empty here: unlike the manual
+      # stack there is no plain-HTTP path that would need it relaxed.
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
+    # `expose`, not `ports`: reachable from the proxy network, never from
+    # the host. Set the application port to 8686 in Coolify with the domain.
+    expose:
+      - "8686"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - uploads-data:/app/data/uploads
+      - documents-data:/app/data/documents
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# `seed` is deliberately absent. The manual compose keeps it behind the
+# "tools" profile, but a profile is one UI toggle away from running in
+# production and the seed can create accounts and overwrite users. Admin
+# creation stays a manual, audited step:
+#   docker compose -f compose.yaml run --rm seed pnpm db:create-admin
+
+volumes:
+  # The production volumes, byte-for-byte. `external: true` attaches an
+  # existing volume and refuses to start when it is missing, instead of
+  # silently creating an empty one: the failure this file prevents.
+  postgres-data:
+    external: true
+    name: websoprotelco_postgres-data
+
+  uploads-data:
+    external: true
+    name: websoprotelco_uploads-data
+
+  documents-data:
+    external: true
+    name: websoprotelco_documents-data

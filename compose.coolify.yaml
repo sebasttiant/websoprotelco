@@ -13,6 +13,13 @@
 #      fresh cluster and the site would serve an empty database while the
 #      real data sat untouched and unreachable.
 #
+#      `external: true` is necessary but NOT sufficient. Coolify keeps one
+#      local_persistent_volumes row per volume, and while a row with the
+#      generated name exists it deliberately ignores this declaration and
+#      mounts the generated volume anyway. Clear those rows and verify the
+#      PROCESSED compose first: step 0 of
+#      docs/operations/coolify-migration.md.
+#
 #   2. No host ports are published. Traefik reaches `web` over the Docker
 #      network Coolify attaches, and Postgres must never be reachable from
 #      the host or the Internet. The manual stack publishes 0.0.0.0:8686,

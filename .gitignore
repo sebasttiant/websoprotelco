@@ -57,3 +57,6 @@ odd/
 backups/
 
 tmp/
+
+# Local VPS audit reports — may contain infrastructure detail. Never committed.
+.audit/

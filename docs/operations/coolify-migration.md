@@ -9,8 +9,9 @@ and verified.
 
 ## What makes this risky
 
-Three facts drive every decision below. They were established by auditing the
-running server, not assumed.
+Four facts drive every decision below. They were established by auditing the
+running server and by a cutover that failed twice before it succeeded, not by
+assumption.
 
 **Coolify renames volumes.** It prefixes compose-declared volumes with the
 application UUID. The application `websoprotelco-production`
@@ -21,6 +22,17 @@ volumes at the correct mount paths. Postgres runs `initdb`, the site serves an
 empty database, and the real data stays untouched but unreachable in
 `websoprotelco_postgres-data`. `compose.coolify.yaml` fixes this with
 `external: true`.
+
+**`external: true` alone is not enough.** Coolify 4.5.3 keeps a
+`local_persistent_volumes` row per volume. When such a row exists with the
+generated `{uuid}_{volume}` name, `useComposeExternalVolumeAsWritten()` in
+`bootstrap/helpers/parsers.php` deliberately **ignores** the external
+declaration and keeps the generated name, so the resource does not lose data it
+wrote under the old name. The first cutover attempt did exactly that: the
+processed compose declared `external: true` at the top level, while the
+services still mounted `eejuwo2zlbhdmv1bvig4waed_*`. Deleting those metadata
+rows (step 0) is what makes the external declaration take effect. Deleting a
+row removes Coolify metadata only; it never removes a Docker volume.
 
 **Two Postgres processes cannot share one PGDATA.** Once the volume is
 external, starting the Coolify stack while the manual stack runs gives two
@@ -39,9 +51,50 @@ Changing it makes Postgres initialise an empty cluster.
 - [ ] `bash tests/deploy/compose-coolify-contract.sh` passes.
 - [ ] Coolify Compose location is `/compose.coolify.yaml`, not `/compose.yaml`.
 - [ ] Every environment variable below is set in Coolify.
+- [ ] No `local_persistent_volumes` rows remain for the application, and the
+      **processed** compose mounts the production volumes (step 0).
+- [ ] No container carries `coolify.applicationUuid=<uuid>`, running or stopped.
 - [ ] A fresh backup is taken and verified (step 2).
 - [ ] The Docker guard is paused (step 3).
 - [ ] Auto Deploy is OFF. It is enabled only after a verified cutover.
+
+## 0. Clear the legacy storage metadata
+
+Skip this and the deployment silently mounts empty `{uuid}_*` volumes even
+though the Compose file says `external: true`. Back the rows up first; they
+carry no application secrets.
+
+```bash
+docker exec coolify-db psql -U coolify -d coolify -AtF '|' -c \
+  "select id,name,mount_path,uuid from local_persistent_volumes
+   where resource_type='App\\Models\\Application' and resource_id=<id>" \
+  > /root/soprotelco-cutover/storage-metadata.before-delete.txt
+
+docker exec coolify php artisan tinker --execute='
+  $a=App\Models\Application::findOrFail(<id>);
+  foreach($a->persistentStorages()->get() as $row){ $row->delete(); }
+  $a->loadComposeFile();
+  echo "reparsed\n";
+'
+```
+
+Then verify the **processed** compose, not the raw file. The raw file is what
+the repository says; the processed one is what Docker will actually run.
+
+```bash
+docker exec coolify php artisan tinker --execute='
+  $c=parseDockerComposeYaml(App\Models\Application::findOrFail(<id>)->docker_compose);
+  echo json_encode([
+    "db"=>data_get($c,"services.db.volumes"),
+    "web"=>data_get($c,"services.web.volumes"),
+    "volumes"=>data_get($c,"volumes"),
+  ], JSON_PRETTY_PRINT)."\n";
+'
+```
+
+Every service entry must read `postgres-data:`, `uploads-data:` or
+`documents-data:`. A `eejuwo2zlbhdmv1bvig4waed_` prefix anywhere means a
+metadata row survived: stop and fix it before touching production.
 
 ## 1. Environment variables
 
@@ -58,6 +111,16 @@ them into a chat or an issue.
 | `DATABASE_SSL` | no | Defaults to `disable`; traffic never leaves the host |
 | `DATABASE_POOL_MAX` | no | Defaults to 10 for `web`, 5 for `migrate` |
 | `SESSION_COOKIE_SECURE` | no | **Leave empty.** Traefik terminates TLS |
+
+Do not copy `SESSION_COOKIE_SECURE` from the server `.env`. The manual stack
+sets it to `false` because it published `0.0.0.0:8686` for plain-HTTP access.
+Under Coolify every request arrives over TLS, so the value must be empty and
+the session cookie must come back `Secure`. Verify it after the first
+deployment instead of trusting the setting:
+
+```bash
+curl -sSi -X POST https://soprotelco.com/login | grep -i '^set-cookie: session'
+```
 
 `DATABASE_URL` is derived inside the compose file from the three `POSTGRES_*`
 values, so the credentials cannot drift apart. Do not set it separately.
@@ -228,25 +291,37 @@ schema.
 
 HTTP 200 on the homepage proves almost nothing. Check all of it.
 
+Select containers by Coolify's own label, never by a guessed name. Coolify
+names each container `<service>-<uuid>-<timestamp>`, so the timestamp changes
+on every deployment, and the label is `coolify.applicationUuid` — there is no
+`coolify.applicationId` label on a container.
+
 ```bash
-docker ps --filter "name=eejuwo2zlbhdmv1bvig4waed" \
+UUID=eejuwo2zlbhdmv1bvig4waed
+docker ps -a --filter "label=coolify.applicationUuid=$UUID" \
   --format '{{.Names}}\t{{.Status}}'
 
 # The new containers must hold the production volumes, not UUID-prefixed ones.
-docker ps -q --filter "name=eejuwo2zlbhdmv1bvig4waed" \
+docker ps -q --filter "label=coolify.applicationUuid=$UUID" \
   | xargs -r docker inspect \
       -f '{{.Name}}{{range .Mounts}} {{.Name}}->{{.Destination}}{{end}}'
 ```
 
 Every volume name printed must start with `websoprotelco_`. A name starting
 with `eejuwo2zlbhdmv1bvig4waed_` means the deployment used empty volumes: stop,
-roll back (step 7), and fix the compose file.
+roll back (step 7), and clear the storage metadata (step 0).
+
+Orphan `{uuid}_*` volumes may still exist from an earlier attempt. They are
+harmless while no running container mounts them. The mounts above are the
+authority, not `docker volume ls`. Never delete a volume during a cutover.
 
 ```bash
-# Row counts must match the pre-cutover numbers, not zero.
-docker exec "$(docker ps -q -f name=eejuwo2zlbhdmv1bvig4waed -f name=db)" \
+# Row counts must match the pre-cutover numbers exactly, not merely be non-zero.
+db_id=$(docker ps -q --filter "label=coolify.applicationUuid=$UUID" \
+  --filter 'label=com.docker.compose.service=db')
+docker exec "$db_id" \
   sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
-    "select relname, n_live_tup from pg_stat_user_tables order by n_live_tup desc limit 10"'
+    "select relname, n_live_tup from pg_stat_user_tables order by relname"'
 
 curl -sS -o /dev/null -w 'root  %{http_code} ssl=%{ssl_verify_result}\n' \
   https://soprotelco.com
@@ -276,6 +351,11 @@ dig +short soprotelco.com MX
 dig +short mail.soprotelco.com A
 ```
 
+When comparing against a pre-cutover container list, exclude both the manual
+`websoprotelco-*` names **and** the application UUID. A container from an
+earlier attempt is not an unrelated service, and treating it as one reports a
+false failure.
+
 The mail records must still read `0 mail.soprotelco.com.` and
 `95.216.181.83`. Mail stays on the previous host and is out of scope; this
 check exists to prove the migration did not touch it.
@@ -285,18 +365,34 @@ check exists to prove the migration did not touch it.
 Rollback is fast because the old containers were stopped, not removed.
 
 ```bash
-# 7.1 Stop the Coolify stack from the UI, or:
-docker stop $(docker ps -q --filter "name=eejuwo2zlbhdmv1bvig4waed")
+UUID=eejuwo2zlbhdmv1bvig4waed
 
-# 7.2 Restore the Traefik router.
+# 7.1 Cancel the deployment first, then remove every container it owns.
+#     Stopping containers while the queue still runs lets the worker recreate
+#     them seconds later, beside the manual Postgres, on the same PGDATA.
+docker exec coolify php artisan tinker --execute='
+  $d=App\Models\ApplicationDeploymentQueue::where("deployment_uuid","<uuid>")->first();
+  if ($d && in_array($d->status,["queued","in_progress"],true)) {
+    $d->update(["status"=>"cancelled-by-user"]);
+    App\Actions\Application\CleanupCancelledDeployment::run($d,(int)$d->application->team()->id);
+  }
+  echo $d?->status."\n";
+'
+docker rm -f $(docker ps -aq --filter "label=coolify.applicationUuid=$UUID")
+[ -z "$(docker ps -aq --filter "label=coolify.applicationUuid=$UUID")" ] || exit 1
+
+# 7.2 Restart the manual containers directly.
+#     NOT `docker compose start web`: that resolves depends_on and fails with
+#     "web is missing dependency migrate", because `migrate` is a one-shot
+#     container that no longer exists after the Coolify deployment.
+docker start websoprotelco-db-1
+docker start websoprotelco-web-1
+docker inspect websoprotelco-web-1 --format '{{.State.Health.Status}}'
+
+# 7.3 Restore the Traefik router only after the target is healthy.
+#     A router pointing at a dead service is worse than no router.
 mv /root/soprotelco-cutover/websoprotelco.yaml.disabled \
    /data/coolify/proxy/dynamic/websoprotelco.yaml
-
-# 7.3 Restart the manual stack.
-cd /opt/docker/websoprotelco
-docker compose start db
-docker compose start web
-docker compose ps
 ```
 
 Then remove the domains from the Coolify application, so its labels stop
@@ -373,6 +469,30 @@ feature branch → PR → CI → merge to main → Coolify webhook → productio
 Branch protection on `main` is what keeps an unreviewed push from reaching
 production. Without it, Auto Deploy means any push deploys.
 
+Auto Deploy is on by default on a new Coolify application. Turn it **off**
+before a cutover and back on afterwards, so a push cannot start a deployment
+in the middle of the window.
+
+```bash
+docker exec coolify php artisan tinker --execute='
+  $a=App\Models\Application::findOrFail(<id>);
+  $a->settings->is_auto_deploy_enabled=true;   # false before a cutover
+  $a->settings->save();
+  echo ($a->settings->fresh()->is_auto_deploy_enabled?"on":"off")."\n";
+'
+```
+
+The GitHub App must have a webhook secret, or Coolify rejects every delivery:
+
+```bash
+docker exec coolify-db psql -U coolify -d coolify -AtF '|' -c \
+  "select name, app_id, installation_id, webhook_secret is not null
+   from github_apps where id=(select source_id from applications where id=<id>)"
+```
+
+The flag, the secret and a reachable endpoint are necessary but not sufficient.
+Only a real merge to `main` proves the delivery path end to end.
+
 ## Known follow-ups
 
 Found during the audit, outside this migration's scope. Each needs its own
@@ -391,3 +511,34 @@ change.
 - **Build artefacts litter the production directory.** Around 30 empty files
   named `Building`, `Creating`, `sha256:...` from a redirected build log. Safe
   to delete, untracked, cosmetic.
+- **Orphan `{uuid}_*` volumes** remain from the first attempt, holding an empty
+  cluster and no files. Nothing mounts them. Remove them only outside a cutover
+  window, one explicit name at a time, never with `docker volume prune`.
+- **The manual stack is still on disk**, stopped, at
+  `/opt/docker/websoprotelco`. Keep it until Coolify has run unattended for a
+  while: it is the fastest rollback path and the only copy of the previously
+  deployed image.
+
+## What actually went wrong
+
+Kept because the next migration will hit the same walls.
+
+**Attempt 1 silently used empty volumes.** `external: true` was in the Compose
+file and in the parsed top-level `volumes`, but the services still mounted
+`{uuid}_*`, because `local_persistent_volumes` rows from the initial import
+overrode it (see step 0). The deployment reported success. No data was lost:
+the manual stack still held the production volumes, and the two Postgres
+processes never shared a data directory.
+
+**Attempt 1's rollback failed safely.** `docker compose start web` refused with
+`web is missing dependency migrate`, so the router was deliberately not
+restored to a dead service and the script exited non-zero. Recovery was
+`docker start` on the two existing containers, then the router (see step 7).
+
+**Attempt 2 aborted in preflight.** `KNOWN_UPLOAD_URL` is a path, not a URL,
+so `curl` rejected it. Nothing in production had been touched yet. The checks
+now prefix `https://soprotelco.com`.
+
+**Attempt 3 succeeded** after step 0 cleared the metadata and the leftover
+containers were removed. Every one of the 15 table counts matched the
+pre-cutover snapshot exactly.

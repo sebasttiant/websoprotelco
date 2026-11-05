@@ -16,13 +16,13 @@ const LOGO = {
   symbol: {
     light: {
       src: "/assets/brand/soprotelco-symbol.svg",
-      width: 344,
-      height: 122,
+      width: 430,
+      height: 176,
     },
     dark: {
       src: "/assets/brand/soprotelco-symbol-white.svg",
-      width: 344,
-      height: 122,
+      width: 430,
+      height: 176,
     },
   },
 } as const;
@@ -37,7 +37,7 @@ const SIZE_CLASS = {
   xl: "h-[4.75rem] w-auto sm:h-20 md:h-24",
 } as const;
 
-// The symbol is much wider than tall (344×122), so the same heights would make
+// The symbol is much wider than tall (430×176), so the same heights would make
 // bars and sidebars enormous. Symbol sizes keep the mark readable but slim.
 const SYMBOL_SIZE_CLASS = {
   sm: "h-8 w-auto",

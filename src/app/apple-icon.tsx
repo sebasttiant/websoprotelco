@@ -7,13 +7,13 @@ export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
 /**
- * Home-screen icon for iOS: the SP symbol on the brand navy, matching the
- * favicon's mark. Kept as its own file convention because Apple ignores the
- * SVG favicon the rest of the site uses.
+ * Home-screen icon for iOS: the yellow check, matching the favicon. Kept as
+ * its own file convention because Apple ignores the SVG favicon the rest of
+ * the site uses.
  */
 export default async function AppleIcon() {
   const symbolSvg = await readFile(
-    join(process.cwd(), "public/assets/brand/soprotelco-symbol-white.svg"),
+    join(process.cwd(), "public/assets/brand/soprotelco-check.svg"),
     "utf8",
   );
   const symbolSrc = `data:image/svg+xml;base64,${Buffer.from(symbolSvg).toString("base64")}`;
@@ -27,10 +27,10 @@ export default async function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#0C1A2A",
+          backgroundColor: "#ffffff",
         }}
       >
-        <img src={symbolSrc} width={140} alt="" />
+        <img src={symbolSrc} width={164} height={171} alt="" />
       </div>
     ),
     size,

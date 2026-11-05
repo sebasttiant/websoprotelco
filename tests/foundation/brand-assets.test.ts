@@ -47,6 +47,9 @@ describe("brand asset safety contract", () => {
       expect(svg).not.toMatch(/<image|data:image|base64/i);
     }
     expect(darkSvg).toContain('fill="#7cf3ff"');
+    const favicon = readFileSync(resolve(process.cwd(), "src/app/icon.svg"), "utf8");
+    expect(favicon).toContain('fill="#F5C400"');
+    expect(favicon).not.toContain('fill="#0c1a2a"');
     expect(brandLogoSource).toContain("/assets/brand/soprotelco-logo.svg");
     expect(brandLogoSource).toContain("/assets/brand/soprotelco-logo-white.svg");
   });

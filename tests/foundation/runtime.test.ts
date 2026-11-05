@@ -10,7 +10,8 @@ describe("runtime foundation", () => {
     expect(packageJson.packageManager).toBe("pnpm@12.18.0");
     expect(packageJson.engines.node).toBe("24.22.2");
     expect(packageJson.engines.pnpm).toBe("12.18.0");
-    expect(packageJson.dependencies.next).toBe("16.4.5");
+    // 16.4.5 drops Content-Length on HEAD route responses, which breaks the asset contract.
+    expect(packageJson.dependencies.next).toBe("16.4.4");
     expect(packageJson.dependencies.react).toBe("19.3.1");
     // TS 7 breaks eslint-config-next's typescript-eslint peers; stay on latest 6.x.
     expect(packageJson.devDependencies.typescript).toBe("6.0.3");

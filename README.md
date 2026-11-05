@@ -12,7 +12,7 @@ Versions are pinned in `package.json`, `.nvmrc`, `Dockerfile` and `.github/workf
 | --- | --- |
 | Node.js `24.22.2` | `.nvmrc`, `engines.node`, Docker base image, CI |
 | pnpm `12.18.0` | `packageManager`, `engines.pnpm`, CI |
-| Next.js `16.4.5` | App Router, `output: "standalone"` |
+| Next.js `16.4.4` | App Router, `output: "standalone"` |
 | React `19.3.1` | with `react-dom` |
 | TypeScript `6.0.3` | kept on 6.x: TypeScript 7 breaks `eslint-config-next`'s peers |
 | PostgreSQL 18 | `postgres:18` in `compose.yaml` and CI |
